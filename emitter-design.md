@@ -46,7 +46,7 @@ See also https://blogs.msdn.microsoft.com/ericlippert/2009/06/26/iterators-at-th
 https://blogs.msdn.microsoft.com/ericlippert/2009/07/23/iterator-blocks-part-five-push-vs-pull/.
 
 C has neither GC nor lifetime checks (like Rust https://doc.rust-lang.org/nomicon/lifetimes.html). It also has no
-RAII (https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization).
+[RAII](https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization).
 So creating a `pull` iterator is complicated and could be unsafe.
 One of the way to solve the problem is to use a `push` iterator.
 It gives some scoped lifetime (a lifetime of a function execution) and it's very easy to create
