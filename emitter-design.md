@@ -40,7 +40,7 @@ This data is also known as
 ## Emitters (push iterators)
 
 An emitter is a `push` iterator. Usually an iterator means a `pull` iterator (it has a function `get`, `next` etc).
-A `push` iterator is a function which accepts an action and calls this action for every value in an iterator sequence.
+A `push` iterator is a function which accepts an action and calls this action for every value in the iterator sequence.
 
 See also https://blogs.msdn.microsoft.com/ericlippert/2009/06/26/iterators-at-the-summer-games/ and
 https://blogs.msdn.microsoft.com/ericlippert/2009/07/23/iterator-blocks-part-five-push-vs-pull/.
