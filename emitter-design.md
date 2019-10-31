@@ -62,7 +62,7 @@ to IO don't require comparisons of emitters usually.
 
 It's possible to convert from an iterator to an emitter. The emitter function accepts an iterator and an action, it applies the given action for all items in the iterator. Usually this function is called `for_each`.
 
-An emitter is a similar to a cold observable collection in reactive programming (Rx). The main difference is that an emitter is using an action instead of a subscriber.
+An emitter is similar to a cold observable collection in reactive programming (Rx). The main difference is that an emitter is using an action instead of a subscriber.
 
 ```c
 // (SVO) subject verb object // https://en.wikipedia.org/wiki/Subject–verb–object
