@@ -5,7 +5,7 @@ then the first woodpecker that came along would destroy civilization.
 
 ## Actions
 
-An action is similar to a C# generic type [Action<T>](https://docs.microsoft.com/en-us/dotnet/api/system.action-1?view=netframework-4.8). It contains a pointer to a function `func` and a context `self`.
+An action is similar to a C# generic type [Action](https://docs.microsoft.com/en-us/dotnet/api/system.action-1?view=netframework-4.8). It contains a pointer to a function `func` and a context `self`.
 
 It's also known as
 
