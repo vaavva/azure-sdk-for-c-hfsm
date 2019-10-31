@@ -19,7 +19,7 @@ It's also known as
 
 ```c
 typedef struct {
-  az_result (*func)(az_span);
+  az_result (*func)(void *, az_span);
   void * self;
 } az_span_action;
 
