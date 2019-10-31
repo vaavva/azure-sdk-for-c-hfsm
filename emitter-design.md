@@ -1,7 +1,7 @@
 # Actions and Emitters
 
-Weinberg's Second Law: If builders built buildings the way programmers wrote programs,
-then the first woodpecker that came along would destroy civilization.
+_Weinberg's Second Law: If builders built buildings the way programmers wrote programs,
+then the first woodpecker that came along would destroy civilization._
 
 ## Actions
 
