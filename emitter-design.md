@@ -140,3 +140,22 @@ az_result foo_or_bar_do(foo_or_bar const self, foo_or_bar_visitor const * p_visi
   return self.func(self.self, p_visitor);
 }
 ```
+
+## RAII
+
+As mentioned before, C has no RAII support. It's possible to partly solve the problem by using actions. For example, if we need temporary memory allocation, we can create a function which accepts a size and a span action.
+
+```c
+/**
+ * The function allocates a temporary mutable span on heap and pass this span to the given action.
+ */
+az_result az_scoped_alloc(size_t const size, az_mut_span_action const action) {
+  uint8_t * const p = malloc(size);
+  if (p == NULL) {
+    return AZ_ERROR_OUT_OF_MEMORY;
+  }
+  az_result const result = az_mut_span_action_do(action, ((az_span) { .begin = p, .size = size });
+  free(p);
+  return result;
+}
+```
