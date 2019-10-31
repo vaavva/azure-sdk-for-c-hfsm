@@ -60,7 +60,7 @@ to run two `push` iterators simultaneously. Sometimes it's required for such ope
 `zip merge`, `equal`, `compare` etc. However serialization/deserialization and reading/writing
 to IO (file, network, HTTP etc) don't require comparisons of emitters, usually.
 
-It's possible to convert from an iterator to an emitter. The function which accepts an iterator and an action. and applies this action for all items in the iterator. Usually, this function is called `for_each`.
+It's possible to convert from an iterator to an emitter. The function accepts an iterator and an action. It applies this action for all items in the iterator. Usually, this function is called `for_each`.
 
 An emitter is a similar to a cold observable collection in reactive programming (Rx). The main difference is that an emitter is using an action instead of a subscriber.
 
@@ -82,7 +82,7 @@ with a JSON builder. A JSON parser output is an input for a JSON builder. And a 
 
 Because all these transformation are lazy we can serialize data, stream it to HTTP as JSON, read JSON from HTTP
 and then deserialize it without allocating intermediate buffers.
-There are some allocations on stack but there are fixed in size and don't depend on size of input/output data
+There are some allocations on stack but these objects are fixed in size and don't depend on size of input/output data
 (`O(1)` space).
 
 ## Discriminated Unions
