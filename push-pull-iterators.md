@@ -1,4 +1,4 @@
-# Actions and Emitters
+# Push And Pull Iterators
 
 _Weinberg's Second Law: If builders built buildings the way programmers wrote programs,
 then the first woodpecker that came along would destroy civilization._
@@ -37,10 +37,10 @@ This data is also known as
 - `context`,
 - `me` in VB :-).
 
-## Emitters (push iterators)
+## Push Iterators
 
-An emitter is a `push` iterator. Usually an iterator means a `pull` iterator (it has a function `get`, `next` etc).
-A `push` iterator is a function which accepts an action and calls this action for every value in the iterator sequence.
+Usually an iterator means a `pull` iterator (it has a function `read`, `get_next`, `next` etc).
+A `push` iterator is a function which accepts an action and calls this action for every value in the iterator sequence. Also known as an emitter, a writer. A writer accepts a function `write`.
 
 See also https://blogs.msdn.microsoft.com/ericlippert/2009/06/26/iterators-at-the-summer-games/ and
 https://blogs.msdn.microsoft.com/ericlippert/2009/07/23/iterator-blocks-part-five-push-vs-pull/.
