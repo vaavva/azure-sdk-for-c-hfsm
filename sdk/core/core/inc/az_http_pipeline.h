@@ -30,4 +30,5 @@ AZ_NODISCARD az_result az_http_pipeline_process(
     az_http_policies const * const policies);
 
 #include <_az_cfg_suffix.h>
+
 #endif
