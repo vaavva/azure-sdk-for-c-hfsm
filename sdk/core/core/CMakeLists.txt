@@ -111,3 +111,5 @@ install(
 install(
   DIRECTORY inc/ DESTINATION include
 )
+# Hack: There should be a way to prevent header files from showing up in debug/include
+file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
