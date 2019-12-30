@@ -69,12 +69,12 @@ target_include_directories (az_core PUBLIC inc)
 add_library (az::core ALIAS az_core)
 
 add_executable (
-    az_core_test 
-    test/main.c 
+    az_core_test
+    test/main.c
     test/test_json_builder.c
     test/test_json_get_by_pointer.c
     test/test_json_pointer.c
-    test/test_json_string.c  
+    test/test_json_string.c
     test/test_url_parse.c
     )
 
@@ -100,11 +100,10 @@ set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation d
 set(INSTALL_MAN_DIR "${CMAKE_INSTALL_PREFIX}/share/man" CACHE PATH "Installation directory for manual pages")
 set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/share/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
 
-message("INSTALL BIN DIR -- ${INSTALL_BIN_DIR}")
-
 install(
   TARGETS az_core
   RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
   ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
   LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
+  PUBLIC_HEADER DESTINATION "${INSTALL_INC_DIR}"
 )
