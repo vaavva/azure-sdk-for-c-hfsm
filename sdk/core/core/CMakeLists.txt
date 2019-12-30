@@ -109,7 +109,5 @@ install(
 )
 
 install(
-  DIRECTORY inc/
-  TYPE INCLUDE
-  COMPONENT dev
+  DIRECTORY inc/ DESTINATION include
 )
