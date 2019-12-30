@@ -109,6 +109,6 @@ install(
 )
 
 install(
-  DIRECTORY inc
+  DIRECTORY inc/
   TYPE INCLUDE
 )
