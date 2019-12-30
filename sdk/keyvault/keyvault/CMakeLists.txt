@@ -70,4 +70,5 @@ install(
 install(
   DIRECTORY inc/
   TYPE INCLUDE
+  COMPONENT dev
 )
