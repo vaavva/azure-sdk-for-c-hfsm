@@ -33,6 +33,7 @@ else()
 endif()
 
 target_include_directories (az_keyvault PUBLIC inc)
+target_include_directories (az_keyvault INTERFACE inc)
 
 target_link_libraries(az_keyvault PUBLIC az_core az_identity)
 

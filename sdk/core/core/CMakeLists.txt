@@ -64,6 +64,7 @@ else()
 endif()
 
 target_include_directories (az_core PUBLIC inc)
+target_include_directories (az_core INTERFACE inc)
 
 # make sure that users can consume the project as a library.
 add_library (az::core ALIAS az_core)
