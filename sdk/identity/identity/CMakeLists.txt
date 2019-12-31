@@ -17,19 +17,19 @@ if(MSVC)
     set(WARNINGS_AS_ERRORS_FLAG "/WX")
   endif()
 
-  target_compile_options(az_core PRIVATE /Wall ${WARNINGS_AS_ERRORS_FLAG} /wd5031 /wd4668 /wd4820 /wd4255 /analyze)
+  target_compile_options(az_identity PRIVATE /Wall ${WARNINGS_AS_ERRORS_FLAG} /wd5031 /wd4668 /wd4820 /wd4255 /analyze)
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   if(WARNINGS_AS_ERRORS)
     set(WARNINGS_AS_ERRORS_FLAG "-Werror")
   endif()
 
-  target_compile_options(az_core PRIVATE -Xclang -Wall -Wextra -pedantic  ${WARNINGS_AS_ERRORS_FLAG} -Wdocumentation -Wdocumentation-unknown-command -Wcast-qual)
+  target_compile_options(az_identity PRIVATE -Xclang -Wall -Wextra -pedantic  ${WARNINGS_AS_ERRORS_FLAG} -Wdocumentation -Wdocumentation-unknown-command -Wcast-qual)
 else()
   if(WARNINGS_AS_ERRORS)
     set(WARNINGS_AS_ERRORS_FLAG "-Werror")
   endif()
 
-  target_compile_options(az_core PRIVATE -Wall -Wextra -pedantic  ${WARNINGS_AS_ERRORS_FLAG})
+  target_compile_options(az_identity PRIVATE -Wall -Wextra -pedantic  ${WARNINGS_AS_ERRORS_FLAG})
 endif()
 
 target_include_directories (az_identity PUBLIC inc)
