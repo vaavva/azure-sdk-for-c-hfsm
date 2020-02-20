@@ -16,8 +16,8 @@ typedef struct az_iot_hub_client {
     } _internal;
 } az_provisioning_client;
 
-void az_iot_hub_client_device_init(az_iot_hub_client* client, az_span device_id);
-void az_iot_hub_client_module_init(az_iot_hub_client* client, az_span device_id, az_span module_id);
+az_result az_iot_hub_client_device_init(az_iot_hub_client* client, az_span iot_hub, az_span device_id, az_iot_mqtt_connect* mqtt_connect);
+az_result az_iot_hub_client_module_init(az_iot_hub_client* client, az_span iot_hub, az_span device_id, az_span module_id, az_iot_mqtt_connect* mqtt_connect);
 
 #include <_az_cfg_suffix.h>
 

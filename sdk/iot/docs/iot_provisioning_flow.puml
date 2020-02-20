@@ -13,8 +13,7 @@ state color_coding {
 
 ' Init
 [*] --> az_iot_provisioning_client_init: START
-az_iot_provisioning_client_init -> az_iot_provisioning_get_connect_information : X509 auth
-az_iot_provisioning_get_connect_information -> az_iot_mqtt_connect
+az_iot_provisioning_client_init -> az_iot_mqtt_connect: X509 auth
 state application_mqtt_connect <<APP>>
 az_iot_mqtt_connect --> application_mqtt_connect
 
