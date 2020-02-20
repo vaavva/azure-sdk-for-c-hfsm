@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-#include <az_span.h>
-
 #ifndef _az_IOT_MQTT_H
 #define _az_IOT_MQTT_H
+
+#include <az_span.h>
 
 #include <_az_cfg_prefix.h>
 

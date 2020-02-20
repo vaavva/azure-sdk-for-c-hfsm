@@ -1,8 +1,8 @@
-# Azure IoT SDK v2 MQTT State Machine
+# Azure IoT SDK MQTT State Machine
 
 ## High-level architecture
 
-Device Provisioning and IoT Hub service protocols require additional state management on top of the MQTT protocol. The Azure IoT SDK v2 components provide a common programming model for the C SDK.
+Device Provisioning and IoT Hub service protocols require additional state management on top of the MQTT protocol. The Azure IoT SDK components provide a common programming model for the C SDK.
 
 The following aspects are being handled by the SDK:
 1. Generate MQTT CONNECT credentials.
@@ -19,9 +19,6 @@ The following aspects are being handled by the SDK:
 
 ### Device Provisioning Service
 ![image](iot_provisioning_flow.png "Device Provisioning MQTT State Machine")
-
-### Common Retry Flow
-![image](iot_retry_flow.png "MQTT Retry Flow")
 
 ## Design Decisions
 Porting requirements:
@@ -207,6 +204,12 @@ Example MQTT PUB handler implementation:
         // process twin update.
     }
 ```
+
+## Error Handling and Retry
+
+### Common Retry Flow
+![image](iot_retry_flow.png "MQTT Retry Flow")
+
 
 ## Sample Application
 
