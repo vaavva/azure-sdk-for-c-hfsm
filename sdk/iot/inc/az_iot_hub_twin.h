@@ -17,8 +17,8 @@ typedef struct az_iot_hub_twin_response {
     az_span version; // NULL when received as a response for twin_get.
 } az_iot_hub_twin_response;
 
-az_result az_iot_hub_twin_get_response_subscribe_topic(az_iot_hub_client* client, az_iot_topic* mqtt_topic_filter);
-az_result az_iot_hub_twin_get_patch_subscribe_topic(az_iot_hub_client* client, az_iot_topic* mqtt_topic_filter);
+az_result az_iot_hub_twin_response_subscribe_topic_get(az_iot_hub_client* client, az_iot_topic* mqtt_topic_filter);
+az_result az_iot_hub_twin_patch_subscribe_topic_get(az_iot_hub_client* client, az_iot_topic* mqtt_topic_filter);
 
 az_result az_iot_twin_get_create(az_iot_hub_client* client, az_span request_id, az_iot_mqtt_publish *mqtt_publish);
 

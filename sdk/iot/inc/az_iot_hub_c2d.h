@@ -6,20 +6,18 @@
 
 #include <az_span.h>
 #include <az_result.h>
-#include "az_iot_mqtt.h"
-#include "az_iot_hub_client.h"
+#include "az_iot_hub_connect.h"
 #include "az_iot_hub_properties.h"
 
 #include <_az_cfg_prefix.h>
 
-az_result az_iot_hub_c2d_get_subscribe_topic(az_iot_hub_client* client, az_iot_topic* mqtt_topic_filter);
+az_result az_iot_hub_c2d_subscribe_topic_filter_get(az_iot_identity* identity, az_span mqtt_topic_filter, az_span* out_mqtt_topic_filter);
 
 typedef struct az_iot_hub_c2d_request {
-    az_span payload;
-    az_iot_hub_properties properties;
+    az_span properties;
 } az_iot_hub_c2d_request;
 
-az_result az_iot_c2d_handle(az_iot_hub_client* client, az_iot_mqtt_publish* pub_received, az_iot_hub_c2d_request* request);
+az_result az_iot_c2d_handle(az_span topic, az_iot_hub_c2d_request* out_request);
 
 #include <_az_cfg_suffix.h>
 
