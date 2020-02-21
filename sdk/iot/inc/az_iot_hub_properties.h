@@ -9,9 +9,10 @@
 
 #include <_az_cfg_prefix.h>
 
-az_result az_iot_hub_properties_add(az_span properties, az_span name, az_span value);
-az_result az_iot_hub_properties_read(az_span properties, az_span* out_name, az_span* out_value);
-az_result az_iot_hub_properties_remove(az_span properties, az_span name);
+// TODO: argument order:
+az_result az_iot_hub_properties_add(az_span properties, az_span name, az_span value, az_span* out_properties);
+az_result az_iot_hub_properties_read(az_span properties, az_span name, az_span* out_value);
+az_result az_iot_hub_properties_remove(az_span properties, az_span name, az_span* out_properties);
 
 // TODO: az_SDKs common iterator pattern + result types.
 typedef struct az_iot_hub_properties_iterator {

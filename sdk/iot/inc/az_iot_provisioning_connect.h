@@ -6,17 +6,10 @@
 
 #include <az_span.h>
 #include <az_result.h>
-#include "az_iot_mqtt.h"
 
 #include <_az_cfg_prefix.h>
 
-typedef struct az_iot_provisioning_client {
-    struct {
-        az_span registration_id;
-    } _internal;
-} az_iot_provisioning_client;
-
-void az_iot_provisioning_client_init(az_iot_provisioning_client* client, az_span id_scope, az_span registration_id, az_iot_mqtt_connect* mqtt_connect);
+az_result az_iot_provisioning_user_name_get(az_span id_scope, az_span registration_id, az_span user_agent, az_span mqtt_user_name, az_span* out_mqtt_user_name);
 
 #include <_az_cfg_suffix.h>
 

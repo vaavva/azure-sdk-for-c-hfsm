@@ -17,7 +17,8 @@ typedef struct az_iot_hub_c2d_request {
     az_span properties;
 } az_iot_hub_c2d_request;
 
-az_result az_iot_c2d_handle(az_span topic, az_iot_hub_c2d_request* out_request);
+// TODO: do we want to check the identity in the topic or expose it within the c2d request?
+az_result az_iot_c2d_handle(az_span received_topic, az_iot_hub_c2d_request* out_request);
 
 #include <_az_cfg_suffix.h>
 
