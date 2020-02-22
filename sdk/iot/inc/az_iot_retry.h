@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <az_result.h>
+#include "az_iot_status.h"
 
 #include <_az_cfg_prefix.h>
 
@@ -26,7 +27,7 @@ typedef struct az_retry_context {
 } az_retry_context;
 
 az_result az_retry_init(az_retry_context* context);
-az_result az_retry_get_delay(az_retry_context* context, az_result error_code, int random, uint32_t* retry_after_milliseconds);
+az_result az_retry_get_delay(az_retry_context* context, enum az_iot_status status, int random, uint32_t* retry_after_milliseconds);
 
 #include <_az_cfg_suffix.h>
 

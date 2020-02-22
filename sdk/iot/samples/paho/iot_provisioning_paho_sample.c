@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "MQTTClient.h"
-#include "az_dps_client.h"
+#include "az_iot_provisioning_connect.h"
+#include "az_iot_provisioning_connect_sas.h"
+#include "az_iot_provisioning_register.h"
 
 #define TIMEOUT     4 * 60 * 1000L // Recommended 4 minute timeouts for all Azure IoT Services.
-
-az_dps_client dps_client;
 
 volatile MQTTClient_deliveryToken deliveredtoken;
 

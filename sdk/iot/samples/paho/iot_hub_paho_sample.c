@@ -1,12 +1,19 @@
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "MQTTClient.h"
-#include "az_iot_client.h"
+#include "az_iot_hub_connect.h"
+#include "az_iot_hub_connect_sas.h"
+#include "az_iot_hub_telemetry.h"
+#include "az_iot_hub_c2d.h"
+#include "az_iot_hub_twin.h"
+#include "az_iot_retry.h"
 
 #define TIMEOUT     4 * 60 * 1000L // Recommended 4 minute timeouts for all Azure IoT Services.
 
-az_iot_client iot_client;
+az_iot_identity identity;
 
 volatile MQTTClient_deliveryToken deliveredtoken;
 
@@ -103,7 +110,13 @@ int main(int argc, char* argv[])
     int rc;
     int ch;
 
-    az_iot_mqtt_connect mqtt_connect;
+    az_iot_hub_identity_init(&identity, AZ_SPAN_FROM_STR("my_device1"), az_span_null());
+    if (!az_succeeded(az_iot_hub_user_name_get(
+            AZ_SPAN_FROM_STR("myhub.azuredevices.com"),
+            &identity,
+            az_span_null(),
+            
+    )))
 
     // Note: When Device Provisioning is used, AZ_IOT_HUB_HOST_NAME and AZ_DEVICE_ID will be 
     //       replaced with the provisioning result values:

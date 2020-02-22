@@ -17,8 +17,8 @@ typedef struct az_iot_identity
     } _internal;
 } az_iot_identity;
 
-az_result az_iot_hub_idenity_init(az_iot_identity *identity, az_span device_id, az_span module_id);
-az_result az_iot_hub_user_name_get(az_span iot_hub, az_iot_identity identity, az_span user_agent, az_span mqtt_user_name, az_span* out_mqtt_user_name);
+void az_iot_hub_identity_init(az_iot_identity *identity, az_span device_id, az_span module_id);
+az_result az_iot_hub_user_name_get(az_span iot_hub, az_iot_identity* identity, az_span user_agent, az_span mqtt_user_name, az_span* out_mqtt_user_name);
 
 #include <_az_cfg_suffix.h>
 

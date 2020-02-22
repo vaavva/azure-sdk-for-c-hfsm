@@ -6,7 +6,7 @@
 
 #include <az_span.h>
 #include <az_result.h>
-#include "az_iot_hub_connect.h"
+#include "az_iot_status.h"
 
 #include <_az_cfg_prefix.h>
 
@@ -14,6 +14,7 @@ az_result az_iot_hub_twin_response_subscribe_topic_get(az_span mqtt_topic_filter
 az_result az_iot_hub_twin_patch_subscribe_topic_get(az_span mqtt_topic_filter, az_span* out_mqtt_topic_filter);
 
 typedef struct az_iot_hub_twin_response {
+    enum az_iot_status status;
     az_span request_id;
     az_span version; // NULL when received as a response for twin_get.
 } az_iot_hub_twin_response;

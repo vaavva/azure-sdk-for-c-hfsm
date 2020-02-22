@@ -2,15 +2,20 @@
 
 ## High-level architecture
 
-Device Provisioning and IoT Hub service protocols require additional state management on top of the MQTT protocol. The Azure IoT SDK components provide a common programming model for the C SDK.
+Device Provisioning and IoT Hub service protocols require additional state management on top of the MQTT protocol. The Azure IoT SDK for C provides a common programming model layered on an MQTT client selected by the application developer.
 
 The following aspects are being handled by the SDK:
 1. Generate MQTT CONNECT credentials.
-1. Obtain SUBSCRIBE topic filters required by various service features.
-1. Output a standardized MQTT PUBLISH object.
+1. Obtain SUBSCRIBE topic filters and PUBLISH topic strings required by various service features.
 1. Parse service errors and output an uniform error object model (i.e. az_result) 
 1. Provide the correct sequence of events required to perform an operation. 
 1. Provide suggested timing information when retrying operations.
+
+The following aspects need to be handled by the application or convenience layers:
+1. Ensure secure TLS communication using either server or mutual X509 authentication.
+1. Perform MQTT transport-level operations.
+1. Delay execution for retry purposes.
+1. (Optional) Provide real-time clock information and perform HMAC-SHA256 operations for SAS token generation.
 
 ## Components
 
@@ -27,161 +32,79 @@ Porting requirements:
 
 The SDK is provided only for the MQTT protocol. Support for WebSocket/WebProxy tunneling as well as TLS security is not handled by the SDK.
 
-The following API provides a framework and a programming model. Each service feature (telemetry, methods, etc) will have a separate client following the same structure to allow users to only consume and compile Azure IoT features that their devices require.
-
 Assumptions and recommendations for the application:
 - Our API does not support unsubscribing from any of the previously subscribed topics. We assume that the device will only set-up topics that must be used.
-- It is recommeded that MQTT layer uses the `clean_session == FALSE` during MQTT CONNECT. This allows the application to avoid resubscribing.
 
 ## API
 
-### MQTT messages
+### Connecting
 
-#### MQTT CONNECT
-```C
-typedef struct az_iot_mqtt_connect {
-    az_span client_id;  // NULL terminated string.
-    az_span user;       // NULL terminated string.
-    az_span password;   // NULL terminated string (may be an empty string).
-} az_iot_mqtt_connect;
-```
+The application code is required to initialize the TLS and MQTT stacks.
+Two authentication schemes are currently supported: _X509 Client Certificate Authentication_ and _Shared Access Signature_ authentication. 
 
-#### MQTT SUB
-```C
-typedef struct az_iot_topic {
-    az_span name;       // NULL terminated string.
-    uint8_t qos;
-} az_iot_topic;
-```
-
-#### MQTT PUB
-
-`Note:` this applies for the MQTT PUB either sent or received.
-
-```C
-typedef struct az_iot_mqtt_pub {
-    az_iot_topic topic;
-    az_span payload;
-} az_iot_mqtt_pub;
-```
-
-### Client Initialization
-```C
-// Provisioning
-
-typedef struct az_provisioning_client {
-    struct {
-        az_span registration_id;
-    } _internal;
-} az_provisioning_client;
-
-void az_provisioning_client_init(az_provisioning_client* client, az_span registration_id);
-
-// IoT Hub
-
-typedef struct az_iot_hub_client {
-    struct {
-        az_span identity;   // deviceId[/moduleId]
-    } _internal;
-} az_provisioning_client;
-
-void az_iot_hub_client_init(az_iot_hub_client* client, az_span device_id);
-void az_iot_hub_client_init(az_iot_hub_client* client, az_span device_id, az_span module_id);
-```
-
-### Connect Credentials
-
-Two authentication schemes are currently supported: _X509 Client Certificate Authentication_ and _Shared Access Signature_ authentication. The API must support both cases as well without making assumptions of direct access to secrets (Hardware Security Modules are supported).
+When X509 client authenticaiton is used, the MQTT password field should be an empty string. The following API can be used to obtain the MQTT username:
 
 ```C
 // Provisioning
-az_result az_iot_provisioning_client_init(az_provisioning_client* client, az_span id_scope, az_iot_mqtt_connect* mqtt_connect);
-az_result az_iot_provisioning_get_connect_information(az_iot_hub_client* client, az_span id_scope, az_iot_mqtt_connect* mqtt_connect);
+az_result az_iot_provisioning_user_name_get(az_span id_scope, az_span registration_id, az_span user_agent, az_span mqtt_user_name, az_span* out_mqtt_user_name);
 
 // IoT Hub
-az_result az_iot_hub_client_init(az_iot_hub_client* client, az_iot_mqtt_connect* mqtt_connect);
-az_result az_iot_hub_get_connect_information(az_iot_hub_client* client, az_span hub_hostname, az_iot_mqtt_connect* mqtt_connect);
+
+void az_iot_hub_identity_init(az_iot_identity *identity, az_span device_id, az_span module_id);
+az_result az_iot_hub_user_name_get(az_span iot_hub, az_iot_identity* identity, az_span user_agent, az_span mqtt_user_name, az_span* out_mqtt_user_name);
 ```
 
-If X509 Client authenticaiton is not used, `mqtt_connect.password` must contain a valid SAS Token. The password is obtained by using 2 function calls: one to initialize a SAS token and another to sign and update it.
+If SAS tokens are used the following APIs provide a way to create as well as refresh the lifetime of the used token upon reconnect:
 
 ```C
 // Provisioning
-typedef struct az_iot_provisioning_sas {
-    struct {
-        az_span audience; // URLENC("<id_scope>/registrations/<registration_id>"). This is HMAC256-ed together with expiration_time.
-        az_span key_name; // Can be empty.
-    } _internal;
-} az_iot_provisioning_sas;
-
-az_result az_iot_provisioning_sas_init(az_iot_provisioning_sas* sas, az_provisioning_client* client, az_span id_scope, az_span key_name);
-az_result az_iot_provisioning_sas_update(az_iot_provisioning_sas* sas, time_t expiration_time, az_span base64_hmac256_signature, az_iot_mqtt_connect* mqtt_connect);
+az_result az_iot_provisioning_sas_init(az_iot_provisioning_sas* sas, az_span id_scope, az_span registration_id, az_span optional_key_name, az_span signature_buffer);
+az_result az_iot_provisioning_sas_update_signature(az_iot_provisioning_sas* sas, uint32_t token_expiration_unix_time, az_span to_hmac_sha256_sign);
+az_result az_iot_provisioning_sas_update_password(az_iot_provisioning_sas* sas, az_span base64_hmac_sha256_signature, az_span mqtt_password, az_span* out_mqtt_password);
 
 // IoT Hub
-typedef struct az_iot_hub_sas {
-    struct {
-        az_span audience;
-        az_span key_name;
-    } _internal;
-} az_iot_hub_sas;
-
-az_result az_iot_hub_sas_init(az_iot_hub_sas* sas, az_iot_hub_client* client, az_span hub_name, az_span key_name);
-az_result az_iot_hub_sas_update(az_iot_hub_sas* sas, time_t expiration_time, az_span base64_hmac256_signature, az_iot_mqtt_connect* mqtt_connect);
+az_result az_iot_hub_sas_init(az_iot_hub_sas* sas, az_iot_identity* identity, az_span hub_name, az_span key_name, az_span signature_buffer);
+az_result az_iot_hub_sas_update_signature(az_iot_hub_sas* sas, uint32_t token_expiration_unix_time, az_span to_hmac_sha256_sign);
+az_result az_iot_hub_sas_update_password(az_iot_hub_sas* sas, az_span base64_hmac_sha256_signature, az_span mqtt_password, az_span* out_mqtt_password);
 ```
-
 
 ### Subscribe topic information
-Note: All services (Device Provisioning, IoT Hub) require either no subscription (Telemetry) or _a single_ subscription to a topic _filter_.
+Note: Azure IoT services (Device Provisioning, IoT Hub) require either no subscription (e.g. sending device-to-cloud Telemetry) or _a single_ subscription to a topic _filter_.
 
 Each service requiring subscriptions is componentized and must implement a function similar to the following:
 
+_Examples:_
 ```C
-// Examples:
-az_result az_provisioning_register_get_subscribe_topic(az_provisioning_client* client, az_iot_topic* mqtt_topic_filter);
+// Provisioning:
+az_result az_iot_provisioning_register_subscribe_topic_filter_get(az_span mqtt_topic_filter, az_span* out_mqtt_topic_filter);
 
-az_result az_iot_hub_methods_get_subscribe_topic(az_iot_client* client, az_iot_topic* mqtt_topic_filter);
+// IoT Hub:
+az_result az_iot_hub_methods_subscribe_topic_filter_get(az_span mqtt_topic_filter, az_span* out_mqtt_topic_filter);
 ```
 
 ### Sending APIs
 
 Each action (e.g. send telemetry, request twin) is represented by a separate public API.
-To allow pipelining several operations the state (i.e. `request_id`s) are associated with the request and response objects rather than the client.
+The application is responsible for filling in the MQTT payload with the format expected by the service.
 
 _Examples:_
-
 ```C
-// Telemetry:
+// Provisioning
+// MQTT payload must be a valid JSON string.
+az_result az_iot_provisioning_register_publish_topic_get(az_span registration_id, az_span mqtt_topic, az_span *out_mqtt_topic);
 
-// Note: CRUD operations are available to add / change / remove properties.
-typedef struct az_iot_telemetry_properties {
-    struct {
-        az_span property_string;   // "URIENCODED(name1=val1&name2=val2&...)"
-    } _internal;
-} az_iot_telemetry_properties;
-
-az_result az_iot_sendtelemetry(az_iot_client* client, az_span payload, az_iot_telemetry_properties* properties, az_iot_mqtt_pub *mqtt_pub);
-// Module to module:
-az_result az_iot_sendtelemetry(az_iot_client* client, az_span destination, az_span payload, az_iot_telemetry_properties* properties, az_iot_mqtt_pub *mqtt_pub);
-
-// Method response:
-typedef struct az_iot_method_response {
-    uint8_t status;
-    az_span request_id;
-    az_span payload;
-} az_iot_method_response;
-
-az_result az_iot_methods_send_response(az_iot_client* client, az_iot_method_response* response, az_iot_mqtt_pub *mqtt_pub);
+// IoT Hub:
+// Accepts binary MQTT payloads.
+az_result az_iot_telemetry_publish_topic_get(az_iot_identity* identity, az_span properties, az_span mqtt_topic, az_span *out_mqtt_topic);
 ```
 
 ### Receiving APIs
 
-Handling incoming MQTT PUB messages is done via a delegating handler architecture to avoid simpler composition as well as allow future modes.
+We recommend that the handling of incoming MQTT PUB messages is implemented by a delegating handler architecture. Each handler is passed the topic and will 
 
 Example MQTT PUB handler implementation:
 
 ```C
-    az_iot_mqtt_pub pub_received; // Application must fill this structure with the received MQTT PUB data.
-
     az_result ret;
     az_iot_c2d_request c2d_request;
     az_iot_method_request method_request;

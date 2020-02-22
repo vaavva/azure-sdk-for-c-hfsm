@@ -6,6 +6,7 @@
 
 #include <az_span.h>
 #include <az_result.h>
+#include "az_iot_status.h"
 
 #include <_az_cfg_prefix.h>
 
@@ -22,13 +23,13 @@ typedef struct az_iot_provisioning_register_registration_state
 
 typedef struct az_iot_provisioning_register_response
 {
+    enum az_iot_status status;
     az_span request_id;
     az_span state; // "unassigned", "assigning", "assigned". TODO: #defines?
     uint32_t retry_after;
     az_iot_provisioning_register_registration_state registration_state;
 } az_iot_provisioning_register_response;
 
-// az_result will encapsulate the service status.
 az_result az_iot_provisioning_register_handle(az_span received_topic, az_span received_payload, az_iot_provisioning_register_response* out_response);
 
 // Note: payload may contain JSON-encoded data.
