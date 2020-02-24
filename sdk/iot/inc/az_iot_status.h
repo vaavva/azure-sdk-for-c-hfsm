@@ -8,6 +8,7 @@
 
 enum az_iot_status
 {
+    // missing success cases.
     AZ_IOT_STATUS_BAD_REQUEST = 400,
     AZ_IOT_STATUS_UNAUTHORIZED = 401,
     AZ_IOT_STATUS_FORBIDDEN = 403,

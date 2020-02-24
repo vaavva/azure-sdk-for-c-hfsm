@@ -27,7 +27,7 @@ typedef struct az_retry_context {
 } az_retry_context;
 
 az_result az_retry_init(az_retry_context* context);
-az_result az_retry_get_delay(az_retry_context* context, enum az_iot_status status, int random, uint32_t* retry_after_milliseconds);
+az_result az_retry_get_delay(az_retry_context* context, enum az_iot_status status, uint32_t random, uint32_t* retry_after);
 
 #include <_az_cfg_suffix.h>
 

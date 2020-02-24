@@ -17,7 +17,7 @@ typedef struct az_iot_provisioning_register_registration_state
     az_span assigned_hub;
     az_span device_id;
     az_span json_payload;
-    az_span error_code;
+    enum az_iot_status error_code;
     az_span error_message;
 } az_iot_provisioning_register_registration_state;
 
@@ -30,7 +30,7 @@ typedef struct az_iot_provisioning_register_response
     az_iot_provisioning_register_registration_state registration_state;
 } az_iot_provisioning_register_response;
 
-az_result az_iot_provisioning_register_handle(az_span received_topic, az_span received_payload, az_iot_provisioning_register_response* out_response);
+az_result az_iot_provisioning_register_topic_payload_parse(az_span received_topic, az_span received_payload, az_iot_provisioning_register_response* out_response);
 
 // Note: payload may contain JSON-encoded data.
 az_result az_iot_provisioning_register_publish_topic_get(az_span registration_id, az_span mqtt_topic, az_span *out_mqtt_topic);

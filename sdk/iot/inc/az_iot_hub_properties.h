@@ -9,21 +9,26 @@
 
 #include <_az_cfg_prefix.h>
 
-// TODO: argument order:
-az_result az_iot_hub_properties_add(az_span properties, az_span name, az_span value, az_span* out_properties);
-az_result az_iot_hub_properties_read(az_span properties, az_span name, az_span* out_value);
-az_result az_iot_hub_properties_remove(az_span properties, az_span name, az_span* out_properties);
-
-// TODO: az_SDKs common iterator pattern + result types.
-typedef struct az_iot_hub_properties_iterator {
+typedef struct az_iot_hub_properties {
     struct {
         az_span properties;
+    } _internal;
+} az_iot_hub_properties;
+
+void az_iot_hub_properties_init(az_iot_hub_properties* properties, az_span buffer);
+az_result az_iot_hub_properties_append(az_iot_hub_properties* properties, az_span name, az_span value);
+az_result az_iot_hub_properties_read(az_iot_hub_properties* properties, az_span name, az_span* out_value);
+
+// TODO: AZ SDKs to followup. az_SDKs common iterator pattern + result types.
+typedef struct az_iot_hub_properties_iterator {
+    struct {
+        az_iot_hub_properties properties;
         uint8_t* current;
     } _internal;
 } az_iot_hub_properties_iterator;
 
-az_result az_iot_hub_properties_enumerator_init(az_iot_hub_properties_iterator* iterator,  az_span properties);
-az_result az_iot_hub_properties_enumerator_next(az_iot_hub_properties_iterator* iterator,  az_span* out_key, az_span* out_value);
+az_result az_iot_hub_properties_enumerator_init(az_iot_hub_properties_iterator* iterator, az_iot_hub_properties properties);
+az_result az_iot_hub_properties_enumerator_next(az_iot_hub_properties_iterator* iterator, az_span* out_key, az_span* out_value);
 
 #include <_az_cfg_suffix.h>
 
