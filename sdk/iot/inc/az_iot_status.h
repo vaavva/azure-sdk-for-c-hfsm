@@ -8,7 +8,15 @@
 
 enum az_iot_status
 {
-    // missing success cases.
+    // Environment errors
+    AZ_IOT_STATUS_NETWORK_ERROR = 1,
+
+    // Service success codes
+    AZ_IOT_STATUS_OK = 200,
+    AZ_IOT_STATUS_ACCEPTED = 202,
+    AZ_IOT_STATUS_NO_CONTENT = 204,
+
+    // Service error codes
     AZ_IOT_STATUS_BAD_REQUEST = 400,
     AZ_IOT_STATUS_UNAUTHORIZED = 401,
     AZ_IOT_STATUS_FORBIDDEN = 403,
