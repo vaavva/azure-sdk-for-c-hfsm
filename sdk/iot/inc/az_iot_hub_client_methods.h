@@ -22,11 +22,14 @@ typedef struct az_iot_hub_method_request {
   az_span name;
 } az_iot_method_response;
 
-az_result az_iot_hub_client_methods_topic_parse(
+// TODO: change to _incoming_ to all PUB recvd.
+// TODO: ask AZ SDKs for user study.
+az_result az_iot_hub_client_methods_incoming_topic_parse(
     az_iot_hub_client const * client,
-    az_span recevied_topic,
+    az_span received_topic,
     az_iot_hub_method_request * out_request);
 
+// TODO: change to mark as outgoing
 az_result az_iot_hub_client_methods_publish_topic_get(
     az_iot_hub_client const * client,
     az_span request_id,

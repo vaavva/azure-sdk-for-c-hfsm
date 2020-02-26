@@ -22,6 +22,8 @@ az_result az_iot_hub_client_twin_patch_subscribe_topic_filter_get(
     az_span * out_mqtt_topic_filter);
 
 typedef struct az_iot_hub_twin_response {
+  // TODO: typedef
+  enum az_iot_client_twin_response_type twin_type;
   enum az_iot_status status;
   az_span request_id;
   az_span version; // NULL when received as a response for twin_get.
@@ -35,16 +37,17 @@ az_result az_iot_client_twin_topic_parse(
 
 // Requires an empty MQTT payload.
 // TODO: better name?
-az_result az_iot_twin_get_publish_topic_get(
+az_result az_iot_client_twin_get_publish_topic_get(
     az_iot_hub_client const * client,
     az_span request_id,
     az_span mqtt_topic,
     az_span * out_mqtt_topic);
 
 // MQTT payload contains a JSON document formatted according to the Twin specification.
-az_result az_iot_twin_patch_publish_topic_get(
+az_result az_iot_client_twin_patch_publish_topic_get(
     az_iot_hub_client const * client,
     az_span request_id,
+    az_span if_match_version,    // "*": define an az_span of "*" or actual version
     az_span mqtt_topic,
     az_span * out_mqtt_topic);
 

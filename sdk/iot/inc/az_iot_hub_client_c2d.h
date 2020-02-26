@@ -20,7 +20,7 @@ typedef struct az_iot_hub_client_c2d_request {
   az_iot_hub_properties properties;
 } az_iot_hub_client_c2d_request;
 
-// May return AZ_IOT_FAIL_TO_PARSE.
+// May return AZ_ERROR_IOT_FAIL_TO_PARSE or AZ_ERROR_NOT_FOR_ME
 az_result az_iot_hub_client_c2d_topic_parse(
     az_iot_hub_client const * client,
     az_span received_topic,

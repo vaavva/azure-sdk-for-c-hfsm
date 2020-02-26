@@ -11,6 +11,7 @@
 
 #include <_az_cfg_prefix.h>
 
+// QoS 1
 az_result az_iot_client_telemetry_publish_topic_get(
     az_iot_hub_client const * client,
     az_iot_hub_properties const * properties,

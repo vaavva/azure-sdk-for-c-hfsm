@@ -12,6 +12,7 @@
 typedef struct az_iot_hub_properties {
   struct {
     az_span properties;
+    uint8_t * current_property;
   } _internal;
 } az_iot_hub_properties;
 
@@ -20,26 +21,15 @@ az_result az_iot_hub_properties_append(
     az_iot_hub_properties * properties,
     az_span name,
     az_span value);
-az_result az_iot_hub_properties_read(
+
+az_result az_iot_hub_properties_find(
     az_iot_hub_properties * properties,
     az_span name,
     az_span * out_value);
 
-// TODO: AZ SDKs to followup. az_SDKs common iterator pattern + result types.
-typedef struct az_iot_hub_properties_iterator {
-  struct {
-    az_iot_hub_properties properties;
-    uint8_t * current;
-  } _internal;
-} az_iot_hub_properties_iterator;
-
-az_result az_iot_hub_properties_enumerator_init(
-    az_iot_hub_properties_iterator * iterator,
-    az_iot_hub_properties properties);
-az_result az_iot_hub_properties_enumerator_next(
-    az_iot_hub_properties_iterator * iterator,
-    az_span * out_key,
-    az_span * out_value);
+az_result az_iot_hub_properties_next(
+    az_iot_hub_properties * properties,
+    az_pair * out);
 
 #include <_az_cfg_suffix.h>
 

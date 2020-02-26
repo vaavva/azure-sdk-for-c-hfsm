@@ -5,7 +5,7 @@
 #define _az_IOT_STATUS_H
 
 #include <_az_cfg_prefix.h>
-
+// typedef
 enum az_iot_status
 {
     // Environment errors
