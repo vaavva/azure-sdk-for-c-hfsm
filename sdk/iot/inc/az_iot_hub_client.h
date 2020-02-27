@@ -25,7 +25,6 @@ typedef struct az_iot_hub_client {
 az_iot_hub_client_options az_iot_hub_client_options_default();
 
 // TODO : add returns to all init functions.
-// TODO : AZ_NODISCARD
 AZ_NODISCARD az_result az_iot_hub_client_init(
     az_iot_hub_client const * client,
     az_span iot_hub_hostname,
@@ -37,10 +36,25 @@ AZ_NODISCARD az_result az_iot_hub_client_user_name_get(
     az_span mqtt_user_name,
     az_span * out_mqtt_user_name);
 
-az_result az_iot_hub_client_id_get(
+AZ_NODISCARD az_result az_iot_hub_client_id_get(
     az_iot_hub_client const * client,
     az_span mqtt_client_id,
     az_span * out_mqtt_client_id);
+
+
+AZ_NODISCARD az_result az_iot_hub_client_sas_signature_get(
+    az_iot_hub_client const * client,
+    uint32_t token_expiration_unix_time,
+    az_span signature,
+    az_span * out_signature);
+
+AZ_NODISCARD az_result az_iot_hub_client_sas_password_get(
+    az_iot_hub_client const * client,
+    az_span base64_hmac_sha256_signature,
+    az_span key_name,
+    az_span mqtt_password,
+    az_span * out_mqtt_password);
+
 
 #include <_az_cfg_suffix.h>
 
