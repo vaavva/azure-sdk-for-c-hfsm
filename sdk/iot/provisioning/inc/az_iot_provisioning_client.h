@@ -5,6 +5,8 @@
  * @file az_iot_provisioning_client.h
  *
  * @brief definition for the Azure Device Provisioning client.
+ * @note The Device Provisioning MQTT protocol is described at
+ * https://docs.microsoft.com/en-us/azure/iot-dps/iot-dps-mqtt-support
  */
 
 #ifndef _az_IOT_PROVISIONING_CLIENT_H
@@ -145,7 +147,7 @@ AZ_NODISCARD az_result az_iot_provisioning_client_sas_signature_get(
  * @param[out] out_mqtt_password The output #az_span containing the MQTT password.
  * @return #az_result.
  */
-AZ_NODISCARD az_result az_iot_hub_client_sas_password_get(
+AZ_NODISCARD az_result az_iot_provisioning_client_sas_password_get(
     az_iot_provisioning_client const* client,
     az_span base64_hmac_sha256_signature,
     az_span key_name,
@@ -186,9 +188,11 @@ typedef struct az_iot_provisioning_client_registration_state
                                     available if error_code is success. */
   az_span device_id; /**< Assigned device ID. */
   az_span json_payload; /**< Additional JSON payload. */
-  az_iot_status error_code; /**< The register operation status. */
+  az_iot_status status; /**< The register operation status. */
   uint32_t extended_error_code; /**< The extended, 6 digit error code. */
   az_span error_message; /**< Error description. */
+  az_span error_tracking_id; /**< Submit this ID when asking for Azure IoT service-desk help. */
+  az_span error_timestamp; /**< Submit this ID when asking for Azure IoT service-desk help. */
 } az_iot_provisioning_client_registration_state;
 
 /**
@@ -230,7 +234,9 @@ AZ_NODISCARD az_result az_iot_provisioning_client_received_topic_payload_parse(
 /**
  * @brief Gets the MQTT topic that must be used to submit a Register request.
  * @note The payload of the MQTT publish message may contain a JSON document formatted according to
- * the Provisioning Service's Register Device specification.
+ * the [Provisioning Service's DeviceRegistration document]
+ * (https://docs.microsoft.com/en-us/rest/api/iot-dps/runtimeregistration/registerdevice#deviceregistration)
+ * specification.
  *
  * @param[in] client The #az_iot_provisioning_client to use for this call.
  * @param[in] mqtt_topic An empty #az_span with sufficient capacity to hold the MQTT topic.

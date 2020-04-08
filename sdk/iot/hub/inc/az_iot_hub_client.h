@@ -5,6 +5,8 @@
  * @file az_iot_hub_client.h
  *
  * @brief definition for the Azure IoT Hub client.
+ * @note The IoT Hub MQTT protocol is described at 
+ * https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-mqtt-support
  */
 
 #ifndef _az_IOT_HUB_CLIENT_H

@@ -264,8 +264,7 @@ AZ_NODISCARD az_result az_span_to_uint64(az_span span, uint64_t* out_number);
  * @param out_number The pointer to the variable that is to receive the number
  * @return An #az_result value indicating the result of the operation.
  *          #AZ_OK if successful
- *          #AZ_ERROR_PARSER_UNEXPECTED_CHAR if a non-ASCII digit
- * is found within the span.
+ *          #AZ_ERROR_PARSER_UNEXPECTED_CHAR if a non-ASCII digit is found within the span.
  */
 AZ_NODISCARD az_result az_span_to_uint32(az_span span, uint32_t* out_number);
 

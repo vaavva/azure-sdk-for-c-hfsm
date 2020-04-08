@@ -4,6 +4,7 @@
 #include "test_az_iot_provisioning_client.h"
 #include <az_iot_provisioning_client.h>
 #include <az_span.h>
+#include <az_test_span.h>
 
 #include <setjmp.h>
 #include <stdarg.h>
@@ -12,6 +13,7 @@
 
 #include <cmocka.h>
 
+// TODO: #564 - Remove the use of the _az_cfh.h header in samples.
 #include <_az_cfg.h>
 
 static const az_span test_global_device_endpoint
@@ -24,7 +26,7 @@ static const az_span test_id_scope = AZ_SPAN_LITERAL_FROM_STR(TEST_ID_SCOPE);
 static const az_span test_registration_id = AZ_SPAN_LITERAL_FROM_STR(TEST_REGISTRATION_ID);
 
 #define TEST_USER_AGENT "c/1.2.3"
-#define TEST_REQUEST_ID "9060edd6-cc37-43d7-a96e-1bb3c3abcb82"
+#define TEST_OPERATION_ID "4.d0a671905ea5b2c8.42d78160-4c78-479e-8be7-61d5e55dac0d"
 
 static void test_az_iot_provisioning_client_options_default_succeed()
 {
@@ -133,11 +135,9 @@ static void test_az_iot_provisioning_client_get_operation_status_publish_topic_f
 
   az_span expected_topic
       = AZ_SPAN_LITERAL_FROM_STR("$dps/registrations/GET/iotdps-get-operationstatus/"
-                                 "?$rid=1&operationId=4.d0a671905ea5b2c8.42d78160-4c78-479e-8be7-"
-                                 "61d5e55dac0d" TEST_REQUEST_ID);
+                                 "?$rid=1&operationId=" TEST_OPERATION_ID);
 
-  az_span operation_id
-      = AZ_SPAN_LITERAL_FROM_STR("4.d0a671905ea5b2c8.42d78160-4c78-479e-8be7-61d5e55dac0d");
+  az_span operation_id = AZ_SPAN_LITERAL_FROM_STR(TEST_OPERATION_ID);
   az_iot_provisioning_client_register_response response = { 0 };
   response.operation_id = operation_id;
 
