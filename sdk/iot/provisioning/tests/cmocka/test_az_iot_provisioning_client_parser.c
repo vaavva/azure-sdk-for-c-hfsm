@@ -20,9 +20,15 @@
 #define TEST_HUB_HOSTNAME "contoso.azure-devices.net"
 #define TEST_DEVICE_ID "my-device-id1"
 #define TEST_OPERATION_ID "4.d0a671905ea5b2c8.42d78160-4c78-479e-8be7-61d5e55dac0d"
+
 #define TEST_STATUS_ASSIGNING "assigning"
 #define TEST_STATUS_ASSIGNED "assigned"
 #define TEST_STATUS_FAILED "failed"
+#define TEST_STATUS_DISABLED "disabled"
+
+#define TEST_ERROR_MESSAGE "Invalid certificate."
+#define TEST_ERROR_TRACKING_ID "8ad0463c-6427-4479-9dfa-3e8bb7003e9b"
+#define TEST_ERROR_TIMESTAMP "2020-04-10T05:24:22.4718526Z"
 
 static void test_az_iot_provisioning_client_received_topic_payload_parse_assigning_state_succeed()
 {
@@ -58,9 +64,10 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_assigni
 {
   az_iot_provisioning_client client;
   az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/202/?retry-after=120&$rid=1");
-  az_span received_payload = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID 
-  "\",\"status\":\"" TEST_STATUS_ASSIGNING "\",\"registrationState\":{\"registrationId\":\""
-  TEST_REGISTRATION_ID "\",\"status\":\"" TEST_STATUS_ASSIGNING "\"}}");
+  az_span received_payload = AZ_SPAN_FROM_STR(
+      "{\"operationId\":\"" TEST_OPERATION_ID "\",\"status\":\"" TEST_STATUS_ASSIGNING
+      "\",\"registrationState\":{\"registrationId\":\"" TEST_REGISTRATION_ID
+      "\",\"status\":\"" TEST_STATUS_ASSIGNING "\"}}");
 
   az_iot_provisioning_client_register_response response;
   az_result ret = az_iot_provisioning_client_received_topic_payload_parse(
@@ -89,18 +96,20 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_assigne
 {
   az_iot_provisioning_client client;
   az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
-  az_span received_payload = AZ_SPAN_FROM_STR(
-      "{\"operationId\":\"" TEST_OPERATION_ID "\",\"status\":\"" TEST_STATUS_ASSIGNED 
-       "\",\"registrationState\":{"
-       "\"x509\":{},"
-       "\"registrationId\":\"" TEST_REGISTRATION_ID "\","
-       "\"createdDateTimeUtc\":\"2020-04-10T03:11:13.0276997Z\","
-       "\"assignedHub\":\"contoso.azure-devices.net\","
-       "\"deviceId\":\"" TEST_DEVICE_ID "\","
-       "\"status\":\"" TEST_STATUS_ASSIGNED "\","
-       "\"substatus\":\"initialAssignment\","
-       "\"lastUpdatedDateTimeUtc\":\"2020-04-10T03:11:13.2096201Z\","
-       "\"etag\":\"IjYxMDA4ZDQ2LTAwMDAtMDEwMC0wMDAwLTVlOGZlM2QxMDAwMCI=\"");
+  az_span received_payload
+      = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
+                         "\",\"status\":\"" TEST_STATUS_ASSIGNED "\",\"registrationState\":{"
+                         "\"x509\":{},"
+                         "\"registrationId\":\"" TEST_REGISTRATION_ID "\","
+                         "\"createdDateTimeUtc\":\"2020-04-10T03:11:13.0276997Z\","
+                         "\"assignedHub\":\"contoso.azure-devices.net\","
+                         "\"deviceId\":\"" TEST_DEVICE_ID "\","
+                         "\"status\":\"" TEST_STATUS_ASSIGNED "\","
+                         "\"substatus\":\"initialAssignment\","
+                         "\"lastUpdatedDateTimeUtc\":\"2020-04-10T03:11:13.2096201Z\","
+                         "\"payload\": {\"myArray\": [1, 2, 3, 4, 5],"
+                         "\"myCustomAllocationProperty\":\"123\"},"
+                         "\"etag\":\"IjYxMDA4ZDQ2LTAwMDAtMDEwMC0wMDAwLTVlOGZlM2QxMDAwMCI=\"}}");
 
   az_iot_provisioning_client_register_response response;
   az_result ret = az_iot_provisioning_client_received_topic_payload_parse(
@@ -139,12 +148,9 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_assigne
   assert_int_equal(200, response.registration_information.status);
   assert_int_equal(0, response.registration_information.extended_error_code);
   assert_true(0 == az_span_length(response.registration_information.error_message));
+  //TODO: 
   assert_true(0 == az_span_length(response.registration_information.json_payload));
 }
-
-#define TEST_ERROR_MESSAGE "Invalid certificate."
-#define TEST_ERROR_TRACKING_ID "8ad0463c-6427-4479-9dfa-3e8bb7003e9b"
-#define TEST_ERROR_TIMESTAMP "2020-04-10T05:24:22.4718526Z"
 
 static void test_az_iot_provisioning_client_received_topic_payload_parse_error_state_succeed()
 {
@@ -178,7 +184,7 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_error_s
 
   assert_int_equal(AZ_IOT_STATUS_UNAUTHORIZED, response.registration_information.status);
   assert_int_equal(401002, response.registration_information.extended_error_code);
-  
+
   az_span_for_test_verify(
       response.registration_information.error_message,
       TEST_ERROR_MESSAGE,
@@ -193,34 +199,37 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_error_s
 
   az_span_for_test_verify(
       response.registration_information.error_tracking_id,
-      TEST_ERROR_TRACKING_ID, 
+      TEST_ERROR_TRACKING_ID,
       (uint32_t)strlen(TEST_ERROR_TRACKING_ID),
       (uint32_t)strlen(TEST_ERROR_TRACKING_ID));
 }
 
-// TODO: test for disabled device:
-/*
-   topic (34): $dps/registrations/res/200/?$rid=1
-   message (237): {"operationId":"","status":"disabled","registrationState":{"registrationId":"paho-sample-device1","status":"disabled","lastUpdatedDateTimeUtc":"2020-04-10T06:15:52.4943778Z","etag":"IjYzMDBiNTA1LTAwMDAtMDEwMC0wMDAwLTVlOTAwZjE4MDAwMCI="}
-*/
+static void test_az_iot_provisioning_client_received_topic_payload_parse_disabled_state_succeed()
+{
+  az_iot_provisioning_client client;
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_payload = AZ_SPAN_FROM_STR(
+      "{\"operationId\":\"\",\"status\":\"" TEST_STATUS_DISABLED
+      "\",\"registrationState\":{\"registrationId\":\"" TEST_REGISTRATION_ID
+      "\",\"status\":\"" TEST_STATUS_DISABLED "\"}}");
 
-// TODO: test for payload parsing:
-/*
-{"operationId":"4.d0a671905ea5b2c8.e7173b7b-0e54-4aa0-9d20-aeb1b89e6c7d","status":"assigned",
- "registrationState":{
-    "x509":{},
-    "registrationId":"paho-sample-device1",
-    "createdDateTimeUtc":"2020-04-10T03:11:13.0276997Z",
-    "assignedHub":"contoso.azure-devices.net",
-    "deviceId":"paho-sample-device1",
-    "status":"assigned",
-    "substatus":"initialAssignment",
-    "lastUpdatedDateTimeUtc":"2020-04-10T03:11:13.2096201Z",
-    "etag":"IjYxMDA4ZDQ2LTAwMDAtMDEwMC0wMDAwLTVlOGZlM2QxMDAwMCI=",
-    "payload":{...}
-    }
- }
-*/
+  az_iot_provisioning_client_register_response response;
+  az_result ret = az_iot_provisioning_client_received_topic_payload_parse(
+      &client, received_topic, received_payload, &response);
+  assert_int_equal(AZ_OK, ret);
+
+  // From topic
+  assert_int_equal(AZ_IOT_STATUS_OK, response.status); // 200
+  assert_int_equal(0, response.retry_after_seconds);
+
+  // From payload
+  assert_int_equal(0, az_span_length(response.operation_id));
+  az_span_for_test_verify(
+      response.registration_state,
+      TEST_STATUS_DISABLED,
+      (uint32_t)strlen(TEST_STATUS_DISABLED),
+      (uint32_t)strlen(TEST_STATUS_DISABLED));
+}
 
 #ifdef _MSC_VER
 // warning C4113: 'void (__cdecl *)()' differs in parameter lists from 'CMUnitTestFunction'
@@ -232,12 +241,14 @@ int test_az_iot_provisioning_client_parser()
   const struct CMUnitTest tests[] = {
     cmocka_unit_test(
         test_az_iot_provisioning_client_received_topic_payload_parse_assigning_state_succeed),
-  cmocka_unit_test(
+    cmocka_unit_test(
         test_az_iot_provisioning_client_received_topic_payload_parse_assigning2_state_succeed),
-cmocka_unit_test(
+    cmocka_unit_test(
         test_az_iot_provisioning_client_received_topic_payload_parse_assigned_state_succeed),
-cmocka_unit_test(
+    cmocka_unit_test(
         test_az_iot_provisioning_client_received_topic_payload_parse_error_state_succeed),
+    cmocka_unit_test(
+        test_az_iot_provisioning_client_received_topic_payload_parse_disabled_state_succeed),
   };
 
   return cmocka_run_group_tests_name("az_iot_provisioning_client_parser", tests, NULL, NULL);

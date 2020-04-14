@@ -174,14 +174,12 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_registration_state_parse(
 
   bool assignedHub = false;
   bool deviceId = false;
+  bool payload = false;
 
-  while ((!(deviceId && assignedHub)) && az_succeeded(az_json_parser_parse_token_member(jp, tm)))
+  while ((!(deviceId && assignedHub && payload))
+         && az_succeeded(az_json_parser_parse_token_member(jp, tm)))
   {
-    if (tm->token.kind == AZ_JSON_TOKEN_OBJECT_START)
-    {
-      AZ_RETURN_IF_FAILED(az_json_parser_skip_children(jp, tm->token));
-    }
-    else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("assignedHub"), tm->name))
+    if (az_span_is_content_equal(AZ_SPAN_FROM_STR("assignedHub"), tm->name))
     {
       assignedHub = true;
       AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->assigned_hub_hostname));
@@ -193,8 +191,24 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_registration_state_parse(
     }
     else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("payload"), tm->name))
     {
-      // TODO: figure out how to extract a span here.
-      AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->json_payload));
+      payload = true;
+      uint8_t* start = az_span_ptr(tm->name) + az_span_length(tm->name) + 1;
+
+      if (tm->token.kind == AZ_JSON_TOKEN_OBJECT_START)
+      {
+        AZ_RETURN_IF_FAILED(az_json_parser_skip_children(jp, tm->token));
+      }
+
+      // TODO: temporary
+      AZ_RETURN_IF_FAILED(az_json_parser_parse_token_member(jp, tm));
+
+
+      out_state->json_payload
+          = az_span_init(start, (int32_t)(az_span_ptr(tm->name) - start), (int32_t)(az_span_ptr(tm->name) - start));
+    }
+    else if (tm->token.kind == AZ_JSON_TOKEN_OBJECT_START)
+    {
+      AZ_RETURN_IF_FAILED(az_json_parser_skip_children(jp, tm->token));
     }
     // else ignore token.
   }
