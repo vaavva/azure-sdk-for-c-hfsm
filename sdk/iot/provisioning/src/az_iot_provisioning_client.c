@@ -189,23 +189,6 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_registration_state_parse(
       deviceId = true;
       AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->device_id));
     }
-    else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("payload"), tm->name))
-    {
-      payload = true;
-      uint8_t* start = az_span_ptr(tm->name) + az_span_length(tm->name) + 1;
-
-      if (tm->token.kind == AZ_JSON_TOKEN_OBJECT_START)
-      {
-        AZ_RETURN_IF_FAILED(az_json_parser_skip_children(jp, tm->token));
-      }
-
-      // TODO: temporary
-      AZ_RETURN_IF_FAILED(az_json_parser_parse_token_member(jp, tm));
-
-
-      out_state->json_payload
-          = az_span_init(start, (int32_t)(az_span_ptr(tm->name) - start), (int32_t)(az_span_ptr(tm->name) - start));
-    }
     else if (tm->token.kind == AZ_JSON_TOKEN_OBJECT_START)
     {
       AZ_RETURN_IF_FAILED(az_json_parser_skip_children(jp, tm->token));
@@ -330,8 +313,7 @@ AZ_NODISCARD az_result az_iot_provisioning_client_received_topic_payload_parse(
   int32_t idx = az_span_find(received_topic, str_dps_registrations_res);
   if (idx != 0)
   {
-    // TODO: Replace with common IoT topic not matched.
-    return AZ_ERROR_ITEM_NOT_FOUND;
+    return AZ_ERROR_IOT_TOPIC_NO_MATCH;
   }
 
   // Parse the status.

@@ -119,6 +119,9 @@ AZ_NODISCARD az_result az_iot_provisioning_client_id_get(
  *          this API, sign it using HMAC-SHA256 using the Shared Access Key as password then Base64
  *          encode the result.
  *
+ * @note More information available at
+ * https://docs.microsoft.com/en-us/azure/iot-dps/concepts-symmetric-key-attestation#detailed-attestation-process
+ *
  * @param[in] client The #az_iot_provisioning_client to use for this call.
  * @param[in] token_expiration_epoch_time The time, in seconds, from 1/1/1970.
  * @param[in] signature An empty #az_span with sufficient capacity to hold the SAS signature.
@@ -187,7 +190,6 @@ typedef struct az_iot_provisioning_client_registration_state
   az_span assigned_hub_hostname; /**< Assigned Azure IoT Hub hostname. @note This is only
                                     available if error_code is success. */
   az_span device_id; /**< Assigned device ID. */
-  az_span json_payload; /**< Additional JSON payload. */
   az_iot_status status; /**< The register operation status. */
   uint32_t extended_error_code; /**< The extended, 6 digit error code. */
   az_span error_message; /**< Error description. */

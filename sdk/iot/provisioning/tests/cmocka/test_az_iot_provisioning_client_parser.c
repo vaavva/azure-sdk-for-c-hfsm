@@ -148,8 +148,6 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_assigne
   assert_int_equal(200, response.registration_information.status);
   assert_int_equal(0, response.registration_information.extended_error_code);
   assert_true(0 == az_span_length(response.registration_information.error_message));
-  //TODO: 
-  assert_true(0 == az_span_length(response.registration_information.json_payload));
 }
 
 static void test_az_iot_provisioning_client_received_topic_payload_parse_error_state_succeed()
@@ -180,7 +178,6 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_error_s
 
   assert_true(0 == az_span_length(response.registration_information.assigned_hub_hostname));
   assert_true(0 == az_span_length(response.registration_information.device_id));
-  assert_true(0 == az_span_length(response.registration_information.json_payload));
 
   assert_int_equal(AZ_IOT_STATUS_UNAUTHORIZED, response.registration_information.status);
   assert_int_equal(401002, response.registration_information.extended_error_code);
