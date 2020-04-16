@@ -162,6 +162,21 @@ https://docs.microsoft.com/en-us/rest/api/iot-dps/runtimeregistration/registerde
     "lastUpdatedDateTimeUtc":"2020-04-10T03:11:13.2096201Z",
     "etag":"IjYxMDA4ZDQ2LTAwMDAtMDEwMC0wMDAwLTVlOGZlM2QxMDAwMCI="}}
 */
+AZ_INLINE az_result az_iot_provisioning_client_payload_error_code_parse(
+    az_json_token_member* tm,
+    az_iot_provisioning_client_registration_state* out_state)
+{
+  if (az_span_is_content_equal(AZ_SPAN_FROM_STR("errorCode"), tm->name))
+  {
+    double value;
+    AZ_RETURN_IF_FAILED(az_json_token_get_number(&tm->token, &value));
+    out_state->extended_error_code = (uint32_t)value;
+    out_state->status = (uint32_t)value / 1000;
+  }
+
+  return AZ_OK;
+}
+
 AZ_INLINE az_result az_iot_provisioning_client_payload_registration_state_parse(
     az_json_parser* jp,
     az_json_token_member* tm,
@@ -172,28 +187,38 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_registration_state_parse(
     return AZ_ERROR_PARSER_UNEXPECTED_CHAR;
   }
 
-  bool assignedHub = false;
-  bool deviceId = false;
-  bool payload = false;
+  bool found_assigned_hub = false;
+  bool found_device_id = false;
 
-  while ((!(deviceId && assignedHub && payload))
+  while ((!(found_device_id && found_assigned_hub))
          && az_succeeded(az_json_parser_parse_token_member(jp, tm)))
   {
     if (az_span_is_content_equal(AZ_SPAN_FROM_STR("assignedHub"), tm->name))
     {
-      assignedHub = true;
+      found_assigned_hub = true;
       AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->assigned_hub_hostname));
     }
     else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("deviceId"), tm->name))
     {
-      deviceId = true;
+      found_device_id = true;
       AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->device_id));
+    }
+    else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("errorMessage"), tm->name))
+    {
+      AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->error_message));
+    }
+    else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("lastUpdatedDateTimeUtc"), tm->name))
+    {
+      AZ_RETURN_IF_FAILED(az_json_token_get_string(&tm->token, &out_state->error_timestamp));
     }
     else if (tm->token.kind == AZ_JSON_TOKEN_OBJECT_START)
     {
       AZ_RETURN_IF_FAILED(az_json_parser_skip_children(jp, tm->token));
     }
-    // else ignore token.
+    else
+    {
+      AZ_RETURN_IF_FAILED(az_iot_provisioning_client_payload_error_code_parse(tm, out_state));
+    }
   }
 
   return AZ_OK;
@@ -206,9 +231,9 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_parse(
   // Parse the payload:
   az_json_parser jp;
   az_json_token_member tm;
-  bool found_error_code = false;
   bool found_operation_id = false;
   bool found_registration_state = false;
+  bool found_error = false;
 
   AZ_RETURN_IF_FAILED(az_json_parser_init(&jp, received_payload));
   AZ_RETURN_IF_FAILED(az_json_parser_parse_token(&jp, &tm.token));
@@ -236,17 +261,6 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_parse(
       AZ_RETURN_IF_FAILED(az_iot_provisioning_client_payload_registration_state_parse(
           &jp, &tm, &out_response->registration_information));
     }
-    else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("errorCode"), tm.name))
-    {
-      double value;
-      AZ_RETURN_IF_FAILED(az_json_token_get_number(&tm.token, &value));
-      out_response->registration_information.extended_error_code = (uint32_t)value;
-      out_response->registration_information.status = (uint32_t)value / 1000;
-
-      out_response->operation_id = AZ_SPAN_NULL;
-      out_response->registration_state = AZ_SPAN_FROM_STR("failed");
-      found_error_code = true;
-    }
     else if (az_span_is_content_equal(AZ_SPAN_FROM_STR("trackingId"), tm.name))
     {
       AZ_RETURN_IF_FAILED(az_json_token_get_string(
@@ -262,12 +276,23 @@ AZ_INLINE az_result az_iot_provisioning_client_payload_parse(
       AZ_RETURN_IF_FAILED(az_json_token_get_string(
           &tm.token, &out_response->registration_information.error_timestamp));
     }
+    else if (tm.token.kind == AZ_JSON_TOKEN_OBJECT_START)
+    {
+      AZ_RETURN_IF_FAILED(az_json_parser_skip_children(&jp, tm.token));
+    }
+
     // else ignore token.
   }
 
-  if (!((found_registration_state && found_operation_id) || found_error_code))
+  if (!(found_registration_state && found_operation_id))
   {
-    return AZ_ERROR_ITEM_NOT_FOUND;
+    out_response->operation_id = AZ_SPAN_NULL;
+    out_response->registration_state = AZ_SPAN_FROM_STR("failed");
+    
+    if (!found_error)
+    {
+      return AZ_ERROR_ITEM_NOT_FOUND;
+    }
   }
 
   return AZ_OK;

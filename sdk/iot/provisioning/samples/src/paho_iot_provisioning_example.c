@@ -348,9 +348,6 @@ static int get_operation_status()
       print_buffer(response.registration_information.assigned_hub_hostname);
       printf("\tDevice Id: ");
       print_buffer(response.registration_information.device_id);
-      printf(
-          "\tJSON Payload: (%d)\n", az_span_length(response.registration_information.json_payload));
-      print_buffer(response.registration_information.json_payload);
       registration_complete = true;
     }
     else // unassigned, failed or disabled states

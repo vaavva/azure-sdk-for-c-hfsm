@@ -228,6 +228,18 @@ static void test_az_iot_provisioning_client_received_topic_payload_parse_disable
       (uint32_t)strlen(TEST_STATUS_DISABLED));
 }
 
+/*
+TODO: Failing to parse token member:
+
+     topic (34): $dps/registrations/res/200/?$rid=1
+   message (423): {"operationId":"4.d0a671905ea5b2c8.058e7278-c2f6-4a3c-8af9-a8efe267e369","status":"failed","registrationState":{"registrationId":"paho-sample-device1","createdDateTimeUtc":"2020-04-16T01:10:27.0847107Z","status":"failed","errorCode":400207,"errorMessage":"Custom allocation failed with status code: 400","lastUpdatedDateTimeUtc":"2020-04-16T01:10:27.2504469Z","etag":"IjdmMDA0OTEzLTAwMDAtMDEwMC0wMDAwLTVlOTdiMDgzMDAwMCI="}}
+*/
+
+/* Payload message:
+TODO: topic (34): $dps/registrations/res/200/?$rid=1
+   message (527): {"operationId":"4.d0a671905ea5b2c8.75ccba60-812a-4fdb-9a18-8d55623126be","status":"assigned","registrationState":{"x509":{},"registrationId":"paho-sample-device1","createdDateTimeUtc":"2020-04-16T02:38:41.3644548Z","assignedHub":"crispop-iothub1.azure-devices.net","deviceId":"paho-sample-device1","status":"assigned","substatus":"initialAssignment","lastUpdatedDateTimeUtc":"2020-04-16T02:38:41.5095012Z","etag":"IjgwMDBlOGMxLTAwMDAtMDEwMC0wMDAwLTVlOTdjNTMxMDAwMCI=","payload":{"hello":"world","arr":[1,2,3,4,5,6],"num":123}}}
+*/
+
 #ifdef _MSC_VER
 // warning C4113: 'void (__cdecl *)()' differs in parameter lists from 'CMUnitTestFunction'
 #pragma warning(disable : 4113)
