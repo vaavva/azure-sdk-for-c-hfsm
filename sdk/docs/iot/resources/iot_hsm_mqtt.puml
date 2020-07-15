@@ -1,0 +1,61 @@
+@startuml
+
+state MqttClient {
+
+    state Disconnected
+    [*] --> Disconnected
+    Disconnected : DISCONNECT_REQ / ^DISCONNECT_RSP(success)
+
+    state Connecting
+    Connecting : entry/ start timeoutTimer; mqtt_pal_connect_start();
+    Connecting : exit/ stop timeoutTimer;
+
+    state Disconnecting
+    Disconnecting: entry/ start timeoutTimer; mqtt_pal_disconnect_start();
+    Disconnecting: exit/ stop timeoutTimer;
+
+    state CriticalError
+    CriticalError: entry/ assert(); system_reset();
+
+    Disconnected -> Connecting : CONNECT_REQ
+    Connecting --> Connected : ON_MQTT_PAL_CONNECTED / ^MQTT_CONNECTED
+    Connected --> Disconnected : ON_MQTT_PAL_DISCONNECTED / ^MQTT_DISCONNECTED(error)
+    Disconnecting --> Disconnected : ON_MQTT_PAL_DISCONNECTED / ^DISCONNECT_RSP(success)
+    Connected --> Disconnecting : DISCONNECT_REQ
+    Connected --> Disconnected : FAILED, TIMEOUT / ^MQTT_DISCONNECTED(error)
+
+    state Connected {
+        state PUB_Idle
+        state PUB_Sending
+
+        [*] -> PUB_Idle
+        PUB_Idle -> PUB_Sending : MQTT_PUB_REQ
+        PUB_Sending -> PUB_Idle : SENT / ^MQTT_PUB_RSP(success)
+        
+        PUB_Sending : entry/ start timeoutTimer; mqtt_pal_pub_start()
+        PUB_Sending : ON_MQTT_PAL_PUB_ACK/ ^^SENT
+        ---
+        state SUB_Idle
+        state SUB_Sending
+
+        [*] -> SUB_Idle
+        SUB_Idle -> SUB_Sending : MQTT_SUB_REQ
+        SUB_Sending -> SUB_Idle : SENT/ ^MQTT_SUB_RSP(success)
+
+        SUB_Sending : entry/ start timeoutTimer; mqtt_pal_sub_start()
+        SUB_Sending : ON_MQTT_PAL_SUB_ACK/ ^^SENT
+        ---
+        state RECV_Idle
+        state RECV_Processing
+
+        [*] -> RECV_Idle
+        RECV_Idle -> RECV_Processing : ON_MQTT_PAL_RECV
+        RECV_Processing -> RECV_Idle : DISPATCHED
+
+        RECV_Processing : entry / MQTT_RECV_REQ
+        RECV_Processing : MQTT_RECV_RSP(success) / ^^DISPATCHED
+    }
+
+}
+
+@enduml
