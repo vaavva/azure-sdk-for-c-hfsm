@@ -19,44 +19,39 @@ state MqttClient {
 
     Disconnected -> Connecting : CONNECT_REQ
     Connecting --> Connected : ON_MQTT_PAL_CONNECTED / ^MQTT_CONNECTED
-    Connected --> Disconnected : ON_MQTT_PAL_DISCONNECTED / ^MQTT_DISCONNECTED(error)
+    Connecting --> Disconnected : TIMEOUT, FAILED / ^MQTT_DISCONNECTED(error)
     Disconnecting --> Disconnected : ON_MQTT_PAL_DISCONNECTED / ^DISCONNECT_RSP(success)
-    Connected --> Disconnecting : DISCONNECT_REQ
-    Connected --> Disconnected : FAILED, TIMEOUT / ^MQTT_DISCONNECTED(error)
+    Connected -> Disconnecting : DISCONNECT_REQ
+    Connected --> Disconnected : ON_MQTT_PAL_DISCONNECTED, FAILED, TIMEOUT / ^MQTT_DISCONNECTED(error)
+    Disconnecting --> CriticalError : TIMEOUT, FAILED
 
     ' Note: the following state machine definition does not support MQTT send pipeline 
     ' (i.e. sending PUB SUB without waiting for the respective ACKs).
     state Connected {
         Connected : ON_MQTT_PAL_RECV/ ^MQTT_RECV_IND(message)
 
-        state PUB_Idle
-        state PUB_Sending
-        [*] -> PUB_Idle
-        PUB_Idle -> PUB_Sending : MQTT_PUB_REQ
-        PUB_Sending -> PUB_Idle : SENT / ^MQTT_PUB_RSP(success)
-        
-        PUB_Idle : entry/ recall;
+        state Idle
+        Idle : entry/ recall;
 
+        state PUB_Sending
         PUB_Sending : entry/ start timeoutTimer; mqtt_pal_pub_start()
         PUB_Sending : exit/ stop timeoutTimer;
-        PUB_Sending : MQTT_PUB_REQ/ defer;
+        PUB_Sending : MQTT_PUB_REQ, MQTT_SUB_REQ/ defer;
         PUB_Sending : ON_MQTT_PAL_PUB_ACK/ ^^SENT
 
-        ---
-        state SUB_Idle
         state SUB_Sending
-
-        [*] -> SUB_Idle
-        SUB_Idle -> SUB_Sending : MQTT_SUB_REQ
-        SUB_Sending -> SUB_Idle : SENT/ ^MQTT_SUB_RSP(success)
-
-        SUB_Idle : entry/ recall;
-
         SUB_Sending : entry/ start timeoutTimer; mqtt_pal_sub_start()
         SUB_Sending : exit/ stop timeoutTimer;
+        SUB_Sending : MQTT_PUB_REQ, MQTT_SUB_REQ/ defer;
         SUB_Sending : ON_MQTT_PAL_SUB_ACK/ ^^SENT
-    }
 
+        [*] -> Idle
+
+        Idle --> PUB_Sending : MQTT_PUB_REQ
+        Idle --> SUB_Sending : MQTT_SUB_REQ
+        PUB_Sending -> Idle : SENT / ^MQTT_PUB_RSP(success)
+        SUB_Sending -> Idle : SENT/ ^MQTT_SUB_RSP(success)
+    }
 }
 
 @enduml

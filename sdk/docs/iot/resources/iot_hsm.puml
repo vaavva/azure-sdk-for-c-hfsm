@@ -1,0 +1,26 @@
+@startuml
+
+state AzureIot {
+    state Idle
+    state Started {
+        state Provisioning
+        state Hub
+        state RetryProvisioning
+        state RetryHub
+
+        [*] -> Provisioning
+        Provisioning --> Hub : PROV_SUCCESS(device_info)
+        Provisioning -> RetryProvisioning : ERROR, TIMEOUT
+        RetryProvisioning -> Provisioning : RETRY
+        Hub -> RetryHub : ERROR, TIMEOUT
+        RetryHub -> Hub : RETRY
+        RetryHub -> Provisioning : NO_RETRY
+        
+    }
+
+    [*] -> Idle
+    Idle -> Started : AZ_IOT_START
+    Started --> Idle : AZ_IOT_STOP
+}
+
+@enduml

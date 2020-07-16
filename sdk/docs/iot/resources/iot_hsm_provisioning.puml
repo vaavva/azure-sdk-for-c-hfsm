@@ -1,0 +1,14 @@
+@startuml
+
+state AzureIotProvisioning {
+    state Idle
+    state Started {
+        
+    }
+
+    [*] -> Idle
+    Idle -> Started : AZ_IOT_START
+    Started --> Idle : AZ_IOT_STOP
+}
+
+@enduml
