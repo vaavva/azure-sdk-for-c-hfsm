@@ -18,8 +18,8 @@ state MqttClient {
     CriticalError: entry/ assert(); system_reset();
 
     Disconnected -> Connecting : CONNECT_REQ
-    Connecting --> Connected : ON_MQTT_PAL_CONNECTED / ^MQTT_CONNECTED
-    Connecting --> Disconnected : TIMEOUT, FAILED / ^MQTT_DISCONNECTED(error)
+    Connecting --> Connected : ON_MQTT_PAL_CONNECTED / ^CONNECT_RSP
+    Connecting --> Disconnected : TIMEOUT, FAILED / ^CONNECT_RSP(error)
     Disconnecting --> Disconnected : ON_MQTT_PAL_DISCONNECTED / ^DISCONNECT_RSP(success)
     Connected -> Disconnecting : DISCONNECT_REQ
     Connected --> Disconnected : ON_MQTT_PAL_DISCONNECTED, FAILED, TIMEOUT / ^MQTT_DISCONNECTED(error)
@@ -32,6 +32,8 @@ state MqttClient {
 
         state Idle
         Idle : entry/ recall;
+
+'TODO: MQTT_PUB/SUB_RSP must be sent on error:
 
         state PUB_Sending
         PUB_Sending : entry/ start timeoutTimer; mqtt_pal_pub_start()

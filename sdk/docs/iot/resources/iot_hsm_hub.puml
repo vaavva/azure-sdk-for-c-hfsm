@@ -3,12 +3,64 @@
 state AzureIotHub {
     state Idle
     state Started {
-        
+        state Connecting
+        Connecting : entry/ ^CONNECT_REQ
+        Connecting : CONNECT_RSP(error) / ^ERROR
+
+        state Connected {
+            state Subscribing
+            Subscribing : entry/ 
+            state Subscribed {
+                state Receiver {
+                    state Receiver_Idle
+                    state Receiver_Parse
+                    Receiver_Parse : entry/ MessageParser sends(AZ_IOT_C2D_IND)
+
+                    [*] -> Receiver_Idle
+                    Receiver_Idle -> Receiver_Parse : MQTT_RECV_IND
+                    Receiver_Parse -> Receiver_Idle : PARSED
+                }
+                --
+                state Telemetry {
+                    state Telemetry_Idle
+                    state Telemetry_Sending
+
+                    [*] -> Telemetry_Idle
+                    Telemetry_Idle -> Telemetry_Sending : AZ_IOT_SEND_TELEMETRY
+                    Telemetry_Sending -> Telemetry_Idle : MQTT_PUB_RSP
+                }
+                --
+                state Methods {
+                    state Methods_Idle
+                    state MethodsResponse_Sending
+                    
+                    [*] -> Methods_Idle
+                    Methods_Idle -> MethodsResponse_Sending : AZ_IOT_SEND_METHOD_RESPONSE
+                }
+                --
+                state Twin {
+                    state Twin_Idle
+                    state Twin_Get_Sending
+                    state Twin_Reported_Sending
+
+                    [*] -> Twin_Idle
+                    Twin_Idle -> Twin_Get_Sending : AZ_IOT_SEND_TWIN_GET
+                    Twin_Idle -> Twin_Reported_Sending : AZ_IOT_SEND_TWIN_REPORTED
+                }
+            }
+
+            [*] -> Subscribing
+            Subscribing --> Subscribed
+        }
+
+        [*] -> Connecting
+        Connecting --> Connected : CONNECT_RSP(success)
     }
 
-    [*] -> Idle
-    Idle -> Started : AZ_IOT_START
+    [*] --> Idle
+    Idle -> Started : AZ_IOT_START / ^CONNECT_REQ
     Started --> Idle : AZ_IOT_STOP
+    Started --> Idle : ERROR, TIMEOUT / ^ERROR
 }
 
 @enduml
