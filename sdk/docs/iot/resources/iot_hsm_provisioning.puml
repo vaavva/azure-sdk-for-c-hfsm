@@ -1,14 +1,37 @@
 @startuml
 
 state AzureIotProvisioning {
-    state Idle
+state Idle
     state Started {
-        
+        state Connecting
+        Connecting : entry/ ^CONNECT_REQ
+        Connecting : CONNECT_RSP(error) / ^ERROR
+
+        state Connected {
+            state Subscribing
+            Subscribing : entry/ ^MQTT_SUB_REQ(...)
+            Subscribing : MQTT_SUB_RSP/ if (all_subscribed) ^^SUBSCRIBED else ^MQTT_SUB_REQ(...)
+            state Subscribed {
+
+            }
+
+            [*] -> Subscribing
+            Subscribing --> Subscribed : SUBSCRIBED
+        }
+
+        state Disconnecting
+        Disconnecting : entry/ start timer; ^MQTT_DISCONNECT_REQ
+        Disconnecting : exit/ stop timer
+
+        [*] -> Connecting
+        Connecting --> Connected : CONNECT_RSP(success)
+        Connecting --> Disconnecting : AZ_IOT_PROVISIONING_STOP
+        Connected --> Disconnecting : AZ_IOT_PROVISIONING_STOP
     }
 
-    [*] -> Idle
-    Idle -> Started : AZ_IOT_START
-    Started --> Idle : AZ_IOT_STOP
-}
+    [*] --> Idle
+    Idle -> Started : AZ_IOT_PROVISIONING_START / ^CONNECT_REQ
+    Started --> Idle : MQTT_DISCONNECT_RSP
+    Started --> Idle : ERROR, TIMEOUT / ^ERROR}
 
 @enduml
