@@ -4,13 +4,13 @@ state AzureIotHub {
     state Idle
     state Started {
         state Connecting
-        Connecting : entry/ ^CONNECT_REQ
-        Connecting : CONNECT_RSP(error) / ^ERROR
+        Connecting : <b>entry/</b> ^CONNECT_REQ
+        Connecting : <b>CONNECT_RSP(error)/</b> ^ERROR
 
         state Connected {
             state Subscribing
-            Subscribing : entry/ ^MQTT_SUB_REQ(...)
-            Subscribing : MQTT_SUB_RSP/ if (all_subscribed) ^^SUBSCRIBED else ^MQTT_SUB_REQ(...)
+            Subscribing : <b>entry/</b> ^MQTT_SUB_REQ(...)
+            Subscribing : <b>MQTT_SUB_RSP/</b> if (all_subscribed) ^^SUBSCRIBED else ^MQTT_SUB_REQ(...)
             state Subscribed {
                 state Telemetry {
                     state Telemetry_Idle
@@ -23,17 +23,17 @@ state AzureIotHub {
                 --
                 state Methods {
                     state Methods_Idle
-                    Methods_Idle : entry/ recall;
-                    Methods_Idle : AZ_IOT_SEND_METHOD_RESPONSE/ defer;
+                    Methods_Idle : <b>entry/</b> recall;
+                    Methods_Idle : <b>AZ_IOT_SEND_METHOD_RESPONSE/</b> defer;
 
                     state MethodsRequest_Processing
-                    MethodsRequest_Processing : entry/ start timer; recall
-                    MethodsRequest_Processing : AZ_IOT_HUB_METHOD_REQUEST/ defer;
-                    MethodsRequest_Processing : exit/ stop timer
+                    MethodsRequest_Processing : <b>entry/</b> start timer; recall
+                    MethodsRequest_Processing : <b>AZ_IOT_HUB_METHOD_REQUEST/</b> defer;
+                    MethodsRequest_Processing : <b>exit/</b> stop timer
 
                     state MethodsResponse_Sending
-                    MethodsResponse_Sending : entry/ MQTT_PUB_REQ(method_response)
-                    MethodsResponse_Sending : AZ_IOT_SEND_METHOD_RESPONSE/ ^ERROR
+                    MethodsResponse_Sending : <b>entry/</b> MQTT_PUB_REQ(method_response)
+                    MethodsResponse_Sending : <b>AZ_IOT_SEND_METHOD_RESPONSE/</b> ^ERROR
 
                     [*] -> Methods_Idle
                     Methods_Idle -> MethodsRequest_Processing : AZ_IOT_HUB_METHOD_REQUEST
@@ -43,20 +43,20 @@ state AzureIotHub {
                 --
                 state Twin {
                     state Twin_Get_Idle
-                    Twin_Get_Idle : entry/ recall
-                    Twin_Get_Idle : AZ_IOT_HUB_TWIN_ERROR/ ^ERROR
+                    Twin_Get_Idle : <b>entry/</b> recall
+                    Twin_Get_Idle : <b>AZ_IOT_HUB_TWIN_ERROR/</b> ^ERROR
 
                     state Twin_Get_Sending
-                    Twin_Get_Sending : AZ_IOT_SEND_TWIN_GET/ defer
+                    Twin_Get_Sending : <b>AZ_IOT_SEND_TWIN_GET/</b> defer
 
                     state Twin_Get_Wait
-                    Twin_Get_Wait : AZ_IOT_HUB_TWIN_ERROR/ if (shouldRetry) { ^RETRY(delay) } else ^ERROR
-                    Twin_Get_Wait : AZ_IOT_SEND_TWIN_GET/ defer
+                    Twin_Get_Wait : <b>AZ_IOT_HUB_TWIN_ERROR/</b> if (shouldRetry) { ^RETRY(delay) } else ^ERROR
+                    Twin_Get_Wait : <b>AZ_IOT_SEND_TWIN_GET/</b> defer
 
                     state Twin_Get_RetryTimeout
-                    Twin_Get_RetryTimeout : entry/ start twin_timer(delay)
-                    Twin_Get_RetryTimeout : AZ_IOT_SEND_TWIN_GET/ defer
-                    Twin_Get_RetryTimeout : exit/ stop twin_timer
+                    Twin_Get_RetryTimeout : <b>entry/</b> start twin_timer(delay)
+                    Twin_Get_RetryTimeout : <b>AZ_IOT_SEND_TWIN_GET/</b> defer
+                    Twin_Get_RetryTimeout : <b>exit/</b> stop twin_timer
 
                     [*] -> Twin_Get_Idle
                     Twin_Get_Idle -> Twin_Get_Sending : AZ_IOT_SEND_TWIN_GET
@@ -68,29 +68,30 @@ state AzureIotHub {
                     ---
 
                     state Twin_Reported_Idle
-                    Twin_Reported_Idle : AZ_IOT_HUB_TWIN_ERROR/ ^ERROR
+                    Twin_Reported_Idle : <b>AZ_IOT_HUB_TWIN_ERROR/</b> ^ERROR
 
                     state Twin_Reported_Sending
 
                     [*] -> Twin_Reported_Idle
                     Twin_Reported_Idle -> Twin_Reported_Sending : AZ_IOT_SEND_TWIN_REPORTED
+                    Twin_Reported_Sending -> Twin_Reported_Idle : MQTT_PUB_RSP
                 }
             }
 
             ' TODO: Some of the events should be internal to allow defer/recall queues to work:
-            Subscribed : MQTT_RECV_IND/ MessageParser: 
-            Subscribed : {
-            Subscribed: ^AZ_IOT_HUB_C2D_IND || ^AZ_IOT_HUB_METHOD_REQUEST || 
-            Subscribed: ^AZ_IOT_HUB_TWIN_GET_RESPONSE || ^AZ_IOT_HUB_TWIN_REPORTED_IND || ^AZ_IOT_HUB_TWIN_ERROR
-            Subscribed : }
+            Subscribed : <b>MQTT_RECV_IND/</b> MessageParser: 
+            Subscribed : \t {
+            Subscribed : \t\t ^AZ_IOT_HUB_C2D_IND || ^AZ_IOT_HUB_METHOD_REQUEST || 
+            Subscribed : \t\t ^AZ_IOT_HUB_TWIN_GET_RESPONSE || ^AZ_IOT_HUB_TWIN_REPORTED_IND || ^AZ_IOT_HUB_TWIN_ERROR
+            Subscribed : \t }
 
             [*] -> Subscribing
             Subscribing --> Subscribed : SUBSCRIBED
         }
 
         state Disconnecting
-        Disconnecting : entry/ start timer; ^MQTT_DISCONNECT_REQ
-        Disconnecting : exit/ stop timer
+        Disconnecting : <b>entry/</b> start timer; ^MQTT_DISCONNECT_REQ
+        Disconnecting : <b>exit/</b> stop timer
 
         [*] -> Connecting
         Connecting --> Connected : CONNECT_RSP(success)

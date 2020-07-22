@@ -4,18 +4,22 @@ state MqttClient {
 
     state Disconnected
     [*] --> Disconnected
-    Disconnected : DISCONNECT_REQ / ^DISCONNECT_RSP(success)
+    Disconnected : <b>DISCONNECT_REQ</b> / ^DISCONNECT_RSP(success)
 
     state Connecting
-    Connecting : entry/ start timeoutTimer; mqtt_pal_connect_start();
-    Connecting : exit/ stop timeoutTimer;
+    Connecting : <b>entry/</b> 
+    Connecting : \t start timeoutTimer; 
+    Connecting : \t mqtt_pal_connect_start();
+    Connecting : <b>exit/</b> stop timeoutTimer;
 
     state Disconnecting
-    Disconnecting: entry/ start timeoutTimer; mqtt_pal_disconnect_start();
-    Disconnecting: exit/ stop timeoutTimer;
+    Disconnecting: <b>entry/</b> 
+    Disconnecting: \t start timeoutTimer; 
+    Disconnecting: \t mqtt_pal_disconnect_start();
+    Disconnecting: <b>exit/</b> stop timeoutTimer;
 
     state CriticalError
-    CriticalError: entry/ assert(); system_reset();
+    CriticalError: <b>entry/</b> assert(); system_reset();
 
     Disconnected -> Connecting : CONNECT_REQ
     Connecting --> Connected : ON_MQTT_PAL_CONNECTED / ^CONNECT_RSP
@@ -31,21 +35,25 @@ state MqttClient {
         Connected : ON_MQTT_PAL_RECV/ ^MQTT_RECV_IND(message)
 
         state Idle
-        Idle : entry/ recall;
+        Idle : <b>entry/</b> recall;
 
 'TODO: MQTT_PUB/SUB_RSP must be sent on error:
 
         state PUB_Sending
-        PUB_Sending : entry/ start timeoutTimer; mqtt_pal_pub_start()
-        PUB_Sending : exit/ stop timeoutTimer;
-        PUB_Sending : MQTT_PUB_REQ, MQTT_SUB_REQ/ defer;
-        PUB_Sending : ON_MQTT_PAL_PUB_ACK/ ^^SENT
+        PUB_Sending : <b>entry/</b> 
+        PUB_Sending: \t start timeoutTimer; 
+        PUB_Sending: \t mqtt_pal_pub_start()
+        PUB_Sending : <b>exit/</b> stop timeoutTimer;
+        PUB_Sending : <b>MQTT_PUB_REQ, MQTT_SUB_REQ/</b> defer;
+        PUB_Sending : <b>ON_MQTT_PAL_PUB_ACK/</b> ^^SENT
 
         state SUB_Sending
-        SUB_Sending : entry/ start timeoutTimer; mqtt_pal_sub_start()
-        SUB_Sending : exit/ stop timeoutTimer;
-        SUB_Sending : MQTT_PUB_REQ, MQTT_SUB_REQ/ defer;
-        SUB_Sending : ON_MQTT_PAL_SUB_ACK/ ^^SENT
+        SUB_Sending : <b>entry/</b> 
+        SUB_Sending : \t start timeoutTimer; 
+        SUB_Sending : \t mqtt_pal_sub_start()
+        SUB_Sending : <b>exit/</b> stop timeoutTimer;
+        SUB_Sending : <b>MQTT_PUB_REQ,</b> MQTT_SUB_REQ/ defer;
+        SUB_Sending : <b>ON_MQTT_PAL_SUB_ACK/</b> ^^SENT
 
         [*] -> Idle
 
