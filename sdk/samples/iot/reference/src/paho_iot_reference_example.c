@@ -28,6 +28,16 @@
 // TODO: can't be internal:
 #include <azure/iot/internal/az_iot_reference.h>
 
+typedef struct evt_struct
+{
+  uint8_t type;
+  char string[10];
+} evt_struct;
+
+#define Q_SIZE 2
+#define Q_TYPE evt_struct
+#include <azure/iot/internal/az_iot_queue.h>
+
 // Clients
 static az_iot_provisioning_client provisioning_client;
 
@@ -92,6 +102,38 @@ int main()
 
   test_hsm.currentState = initial_state;
   test_hsm.currentState(&test_hsm, STATE_ENTER, NULL);
+
+  az_iot_queue q;
+  az_iot_queue_init(&q);
+
+  evt_struct e1 = { 1, "Hello 1" };
+  evt_struct e2 = { 2, "Hello 2" };
+  evt_struct e3 = { 3, "Hello 3" };
+
+  az_iot_queue_enqueue(&q, &e1);
+  az_iot_queue_enqueue(&q, &e2);
+  az_iot_queue_enqueue(&q, &e3);
+
+  evt_struct* ret;
+  ret = az_iot_queue_dequeue(&q);
+  ret = az_iot_queue_dequeue(&q);
+  ret = az_iot_queue_dequeue(&q);
+
+  az_iot_queue_enqueue(&q, &e1);
+  ret = az_iot_queue_dequeue(&q);
+  az_iot_queue_enqueue(&q, &e2);
+  ret = az_iot_queue_dequeue(&q);
+  az_iot_queue_enqueue(&q, &e3);
+  ret = az_iot_queue_dequeue(&q);
+  az_iot_queue_enqueue(&q, &e1);
+  ret = az_iot_queue_dequeue(&q);
+  az_iot_queue_enqueue(&q, &e2);
+  ret = az_iot_queue_dequeue(&q);
+  az_iot_queue_enqueue(&q, &e3);
+  ret = az_iot_queue_dequeue(&q);
+
+
+
 
   return 0;
 }
