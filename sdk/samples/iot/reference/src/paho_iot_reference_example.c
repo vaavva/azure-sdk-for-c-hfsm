@@ -36,31 +36,37 @@ typedef struct evt_struct
 
 #define Q_SIZE 2
 #define Q_TYPE evt_struct
-#include <azure/iot/internal/az_iot_queue.h>
 #include <azure/iot/internal/az_iot_hsm.h>
+#include <azure/iot/internal/az_iot_queue.h>
 
 // Clients
 static az_iot_provisioning_client provisioning_client;
 
 static az_iot_hsm test_hsm;
 
-static az_result idle(az_iot_hsm* me, az_iot_hsm_event event);
-static az_result connected(az_iot_hsm* me, az_iot_hsm_event event);
-static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event);
-static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event);
+static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
 
-typedef enum 
+typedef enum
 {
   PAHO_IOT_HSM_CONNECTED = _az_IOT_HSM_EVENT(1),
   PAHO_IOT_HSM_SUBSCRIBED = _az_IOT_HSM_EVENT(2),
 } paho_iot_hsm_event_type;
 
 // TestHSM/Idle
-static az_result idle(az_iot_hsm* me, az_iot_hsm_event event)
+static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
 {
   az_result ret = AZ_OK;
-
-  switch(event.type)
+  if (super_state)
+  {
+    *super_state = NULL; // Top-level state.
+  }
+  
+  switch ((int)event.type)
   {
     case AZ_IOT_HSM_ENTRY:
       LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
@@ -72,12 +78,12 @@ static az_result idle(az_iot_hsm* me, az_iot_hsm_event event)
 
     case PAHO_IOT_HSM_CONNECTED:
       LOG_SUCCESS("%s: event PAHO_IOT_HSM_CONNECTED", __func__);
-      ret = az_iot_hsm_transition(me, connected);
+      ret = az_iot_hsm_transition(me, idle, connected);
       break;
 
     default:
       // TOP level - ignore unknown events.
-      LOG_ERROR("%s: dropped unknown event: 0x%x", event);
+      LOG_ERROR("%s: dropped unknown event: 0x%x", __func__, event.type);
       ret = AZ_OK;
   }
 
@@ -85,87 +91,199 @@ static az_result idle(az_iot_hsm* me, az_iot_hsm_event event)
 }
 
 // TestHSM/Connected
-static az_result connected(az_iot_hsm* me, az_iot_hsm_event event)
+static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
 {
   az_result ret = AZ_OK;
+  if (super_state)
+  {
+    *super_state = NULL; // Top-level state.
+  }
 
-  switch(event.type)
+  switch (event.type)
   {
     case AZ_IOT_HSM_ENTRY:
-      LOG_SUCCESS("connected: event AZ_IOT_HSM_ENTRY");
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
+      // TODO: is the subsribing state really needed?
+      ret = az_iot_hsm_transition_inner(me, connected, subscribing);
       break;
 
     case AZ_IOT_HSM_EXIT:
-      LOG_SUCCESS("connected: event AZ_IOT_HSM_EXIT");
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_EXIT", __func__);
+      break;
+
+    case AZ_IOT_HSM_ERROR:
+      LOG_ERROR("%s: event AZ_IOT_HSM_ERROR", __func__);
+      // Handled for all inner states (i.e. subscribing, subscribed).
+      ret = az_iot_hsm_transition(me, connected, disconnecting);
+
+      // TODO: move to UT :Test transition from super-class to inner.
+      //ret = az_iot_hsm_transition_inner(me, connected, subscribing);
       break;
 
     default:
       // TOP level - ignore unknown events.
-      LOG_ERROR("idle: dropped unknown event: 0x%x", event);
+      LOG_ERROR("%s: dropped unknown event: 0x%x", __func__, event.type);
       ret = AZ_OK;
   }
 
-  return ret; 
+  return ret;
 }
 
 // TestHSM/Connected/Subscribing
-static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event)
+static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
 {
   az_result ret = AZ_OK;
+  if (super_state)
+  {
+    *super_state = (void*)connected;
+  }
 
-  switch(event.type)
+  switch ((int)event.type)
   {
     case AZ_IOT_HSM_ENTRY:
-      LOG_SUCCESS("subscribing: event AZ_IOT_HSM_ENTRY");
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
       break;
 
     case AZ_IOT_HSM_EXIT:
-      LOG_SUCCESS("subscribing: event AZ_IOT_HSM_EXIT");
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_EXIT", __func__);
+      break;
+
+    case PAHO_IOT_HSM_SUBSCRIBED:
+      LOG_SUCCESS("%s: event PAHO_IOT_HSM_SUBSCRIBED", __func__);
+      ret = az_iot_hsm_transition(me, subscribing, subscribed);
       break;
 
     default:
-      // TOP level - ignore unknown events.
-      LOG_ERROR("idle: dropped unknown event: 0x%x", event);
-      ret = AZ_OK;
+      // Handle using super-state.
+      LOG_SUCCESS("%s: handling event using super-state", __func__);
+      ret = connected(me, event, NULL);
   }
 
-  return ret; 
+  return ret;
 }
 
 // TestHSM/Connected/Subscribed
-static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event)
+static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
 {
   az_result ret = AZ_OK;
+  if (super_state)
+  {
+    *super_state = (void*)connected;
+  }
 
-  switch(event.type)
+  switch (event.type)
   {
     case AZ_IOT_HSM_ENTRY:
-      LOG_SUCCESS("connected: event AZ_IOT_HSM_ENTRY");
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
       break;
 
     case AZ_IOT_HSM_EXIT:
-      LOG_SUCCESS("connected: event AZ_IOT_HSM_EXIT");
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_EXIT", __func__);
+      break;
+
+    default:
+      // Handle using super-state.
+      LOG_SUCCESS("%s: handling event using super-state", __func__);
+      ret = connected(me, event, NULL);
+  }
+
+  return ret;
+}
+
+// TestHSM/Disconnecting
+static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+{
+  az_result ret = AZ_OK;
+  if (super_state)
+  {
+    *super_state = NULL; // Top-level state.
+  }
+
+  (void)me;
+
+  switch (event.type)
+  {
+    case AZ_IOT_HSM_ENTRY:
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
+      break;
+
+    case AZ_IOT_HSM_EXIT:
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_EXIT", __func__);
       break;
 
     default:
       // TOP level - ignore unknown events.
-      LOG_ERROR("idle: dropped unknown event: 0x%x", event);
+      LOG_ERROR("%s: dropped unknown event: 0x%x", __func__, event.type);
       ret = AZ_OK;
   }
 
-  return ret; 
+  return ret;
+}
+
+// TestHSM/Disconnected
+static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+{
+  az_result ret = AZ_OK;
+  if (super_state)
+  {
+    *super_state = NULL; // Top-level state.
+  }
+
+  (void)me;
+
+  switch (event.type)
+  {
+    case AZ_IOT_HSM_ENTRY:
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
+      break;
+
+    case AZ_IOT_HSM_EXIT:
+      LOG_SUCCESS("%s: event AZ_IOT_HSM_EXIT", __func__);
+      break;
+
+    default:
+      // TOP level - ignore unknown events.
+      LOG_ERROR("%s: dropped unknown event: 0x%x", __func__, event.type);
+      ret = AZ_OK;
+  }
+
+  return ret;
 }
 
 int main()
 {
-  LOG_SUCCESS("Started.");
+  LOG_SUCCESS("--> Started.");
 
-  if (az_failed(az_iot_hsm_init(&test_hsm, NULL, initial_state)))
+  if (az_failed(az_iot_hsm_init(&test_hsm, idle)))
   {
     LOG_ERROR("Failed to init HSM");
   }
 
-  #if Q_TEST
+  LOG_SUCCESS("--> Connected event.");
+
+  // Memory must be allocated for the duration of the transition:
+  az_iot_hsm_event connected_evt = { PAHO_IOT_HSM_CONNECTED, NULL };
+  if (az_failed(az_iot_hsm_post_sync(&test_hsm, connected_evt)))
+  {
+    LOG_ERROR("Failed to post connected_evt");
+  }
+
+  LOG_SUCCESS("--> Subscribed event.");
+
+  az_iot_hsm_event subscribed_evt = { PAHO_IOT_HSM_SUBSCRIBED, NULL };
+  if (az_failed(az_iot_hsm_post_sync(&test_hsm, subscribed_evt)))
+  {
+    LOG_ERROR("Failed to post subscribed_evt");
+  }
+
+  LOG_SUCCESS("--> Simulating ERROR event.");
+  az_iot_hsm_event error_evt = { AZ_IOT_HSM_ERROR, NULL };
+  if (az_failed(az_iot_hsm_post_sync(&test_hsm, error_evt)))
+  {
+    LOG_ERROR("Failed to post subscribed_evt");
+  }
+
+#if Q_TEST
   // TODO: Move to UT
   az_iot_queue q;
   az_iot_queue_init(&q);
@@ -195,9 +313,7 @@ int main()
   ret = az_iot_queue_dequeue(&q);
   az_iot_queue_enqueue(&q, &e3);
   ret = az_iot_queue_dequeue(&q);
-  #endif
-
-
+#endif
 
   return 0;
 }
