@@ -4,7 +4,7 @@
 /**
  * @file az_iot_queue.h
  *
- * @brief Azure IoT common definitions.
+ * @brief Azure IoT circular queue.
  *
  * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
@@ -26,7 +26,7 @@
 #endif
 
 #ifndef Q_TYPE
-#define Q_TYPE uint32_t
+#define Q_TYPE int32_t
 #endif
 
 #ifndef Q_IDX_TYPE
@@ -39,33 +39,30 @@
  */
 typedef struct az_iot_queue
 {
-  struct
-  {
     Q_TYPE data[Q_SIZE];
     Q_IDX_TYPE start_idx;
     Q_IDX_TYPE end_idx;
     Q_IDX_TYPE count;
-  } _internal;
 } az_iot_queue;
 
 AZ_INLINE void az_iot_queue_init(az_iot_queue* q)
 {
     _az_PRECONDITION_NOT_NULL(q);
 
-    q->_internal.count = 0;
-    q->_internal.start_idx = 0;
-    q->_internal.end_idx = 0;
+    q->count = 0;
+    q->start_idx = 0;
+    q->end_idx = 0;
 }
 
 AZ_INLINE bool az_iot_queue_enqueue(az_iot_queue* q, Q_TYPE* element)
 {
     _az_PRECONDITION_NOT_NULL(q);
 
-    if (q->_internal.count < Q_SIZE)
+    if (q->count < Q_SIZE)
     {
-        q->_internal.data[q->_internal.end_idx] = *element;
-        q->_internal.end_idx = (q->_internal.end_idx + 1) % Q_SIZE;
-        q->_internal.count++;
+        q->data[q->end_idx] = *element;
+        q->end_idx = (q->end_idx + 1) % Q_SIZE;
+        q->count++;
 
         return true;
     }
@@ -78,11 +75,11 @@ AZ_INLINE Q_TYPE* az_iot_queue_dequeue(az_iot_queue* q)
     _az_PRECONDITION_NOT_NULL(q);
 
     Q_TYPE* ret = NULL;
-    if (q->_internal.count > 0)
+    if (q->count > 0)
     {
-        ret = &(q->_internal.data[q->_internal.start_idx]);
-        q->_internal.start_idx = (q->_internal.start_idx + 1) % Q_SIZE;
-        q->_internal.count--;
+        ret = &(q->data[q->start_idx]);
+        q->start_idx = (q->start_idx + 1) % Q_SIZE;
+        q->count--;
     }
 
     return ret;

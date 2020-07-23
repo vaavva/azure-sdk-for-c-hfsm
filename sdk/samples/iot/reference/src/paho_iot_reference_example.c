@@ -26,7 +26,7 @@
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_provisioning_client.h>
 // TODO: can't be internal:
-#include <azure/iot/internal/az_iot_reference.h>
+#include <azure/iot/internal/az_iot_sample_config.h>
 
 typedef struct evt_struct
 {
@@ -37,72 +37,71 @@ typedef struct evt_struct
 #define Q_SIZE 2
 #define Q_TYPE evt_struct
 #include <azure/iot/internal/az_iot_queue.h>
+#include <azure/iot/internal/az_iot_hsm.h>
 
 // Clients
 static az_iot_provisioning_client provisioning_client;
 
-enum
-{
-  STATE_ENTER = 0x1,
-  STATE_EXIT = 0x2,
-};
+static az_iot_hsm test_hsm;
 
-struct hsm
-{
-  struct hsm * super_hsm;
-  az_result (*currentState)(struct hsm *this, int event_type, void* event_data);
-  // no queue, one event only.
-} test_hsm;
+static az_result initial_state(az_iot_hsm* me, az_iot_hsm_event event);
+static az_result state_a(az_iot_hsm* me, az_iot_hsm_event event);
 
-static az_result initial_state(struct hsm *this, int event_type, void* event_data);
-static az_result state_a(struct hsm *this, int event_type, void* event_data);
-
-static az_result initial_state(struct hsm *this, int event_type, void* event_data)
+static az_result initial_state(az_iot_hsm* me, az_iot_hsm_event event)
 {
   az_result ret = AZ_OK;
 
-  switch(event_type)
+  switch(event.type)
   {
-    case STATE_ENTER:
-      LOG_SUCCESS("initial_state: event STATE_ENTER");
-
+    case AZ_IOT_HSM_ENTRY:
+      LOG_SUCCESS("initial_state: event AZ_IOT_HSM_ENTRY");
       // Change states w/o queue:
-      this->currentState = state_a;
-      this->currentState(this, STATE_ENTER, NULL);
+      ret = az_iot_hsm_transition(me, state_a);
+      break;
+
+    case AZ_IOT_HSM_EXIT:
+      LOG_SUCCESS("initial_state: event AZ_IOT_HSM_EXIT");
       break;
 
     default:
-      ret = this->super_hsm->currentState(this->super_hsm, event_type, event_data);
+      ret = az_iot_hsm_super(me, event); // Should assert since this is a top-level HSM.
   }
 
   return ret;
 }
 
-static az_result state_a(struct hsm *this, int event_type, void* event_data)
+static az_result state_a(az_iot_hsm* me, az_iot_hsm_event event)
 {
   az_result ret = AZ_OK;
 
-  switch(event_type)
+  switch(event.type)
   {
-    case STATE_ENTER:
-      LOG_SUCCESS("state_a: event STATE_ENTER");
+    case AZ_IOT_HSM_ENTRY:
+      LOG_SUCCESS("state_a: event AZ_IOT_HSM_ENTRY");
+      break;
+
+    case AZ_IOT_HSM_EXIT:
+      LOG_SUCCESS("state_a: event AZ_IOT_HSM_EXIT");
       break;
 
     default:
-      ret = this->super_hsm->currentState(this->super_hsm, event_type, event_data);
+      ret = az_iot_hsm_super(me, event);
   }
 
   return ret; 
 }
 
-
 int main()
 {
   LOG_SUCCESS("Started.");
 
-  test_hsm.currentState = initial_state;
-  test_hsm.currentState(&test_hsm, STATE_ENTER, NULL);
+  if (az_failed(az_iot_hsm_init(&test_hsm, NULL, initial_state)))
+  {
+    LOG_ERROR("Failed to init HSM");
+  }
 
+  #if Q_TEST
+  // TODO: Move to UT
   az_iot_queue q;
   az_iot_queue_init(&q);
 
@@ -131,7 +130,7 @@ int main()
   ret = az_iot_queue_dequeue(&q);
   az_iot_queue_enqueue(&q, &e3);
   ret = az_iot_queue_dequeue(&q);
-
+  #endif
 
 
 
