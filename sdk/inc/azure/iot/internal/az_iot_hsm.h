@@ -32,7 +32,12 @@ typedef enum
   AZ_IOT_HSM_EXIT = 2,
   AZ_IOT_HSM_ERROR = 3,
   AZ_IOT_HSM_TIMEOUT = 4,
+  _az_IOT_HSM_EVENT_BASE = 10,
 } az_iot_hsm_event_type;
+
+#define _az_IOT_HSM_EVENT(id) \
+  ((int32_t)(_az_IOT_HSM_EVENT_BASE + id))
+
 
 typedef struct az_iot_hsm_event
 {
@@ -45,7 +50,6 @@ const az_iot_hsm_event az_iot_hsm_exit_event = { AZ_IOT_HSM_EXIT, NULL };
 
 typedef struct az_iot_hsm
 {   
-  struct az_iot_hsm * super;
   az_result (*current_state)(struct az_iot_hsm *me, az_iot_hsm_event event);
 } az_iot_hsm;
 
@@ -56,7 +60,6 @@ AZ_INLINE az_result az_iot_hsm_init(az_iot_hsm* h, az_iot_hsm* super, az_result 
     // TODO - avoiding C28182 - this should be handled by the precondition.
     if (initial_state == NULL) return AZ_ERROR_ARG;
 
-    h->super = super; // if NULL, this is the top-level state machine.
     h->current_state = initial_state;
     return h->current_state(h, az_iot_hsm_entry_event);
 }
@@ -80,12 +83,12 @@ AZ_INLINE az_result az_iot_hsm_transition(az_iot_hsm* h, az_result (*next_state)
     return ret;
 }
 
-AZ_INLINE az_result az_iot_hsm_super(az_iot_hsm* h, az_iot_hsm_event event)
+AZ_INLINE az_result az_iot_hsm_super(az_iot_hsm* h, az_iot_hsm_event event, az_result (*super_state)(az_iot_hsm *me, az_iot_hsm_event event))
 {
     _az_PRECONDITION_NOT_NULL(h);
-    _az_PRECONDITION_NOT_NULL(h->super);
+    _az_PRECONDITION_NOT_NULL(super_state);
 
-    return h->super->current_state(h->super, event);
+    return super_state(h, event);
 }
 
 AZ_INLINE bool az_iot_hsm_post_sync(az_iot_hsm* h, az_iot_hsm_event event)
