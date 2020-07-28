@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <azure/core/az_span.h>
+#include <time.h>
 
 // DO NOT MODIFY: Service information
 #define ENV_GLOBAL_PROVISIONING_ENDPOINT_DEFAULT "ssl://global.azure-devices-provisioning.net:8883"
@@ -22,7 +23,7 @@
 // Logging with formatting
 #define LOG_ERROR(...) \
   { \
-    (void)fprintf(stderr, "ERROR:\t\t%s:%s():%d: ", __FILE__, __func__, __LINE__); \
+    (void)fprintf(stderr, "[%ld] ERROR:\t\t%s:%s():%d: ", (long)time(NULL), __FILE__, __func__, __LINE__); \
     (void)fprintf(stderr, __VA_ARGS__); \
     (void)fprintf(stderr, "\n"); \
     fflush(stdout); \
@@ -30,7 +31,7 @@
   }
 #define LOG_SUCCESS(...) \
   { \
-    (void)printf("SUCCESS:\t"); \
+    (void)printf("[%ld] SUCCESS:\t", (long)time(NULL)); \
     (void)printf(__VA_ARGS__); \
     (void)printf("\n"); \
   }
