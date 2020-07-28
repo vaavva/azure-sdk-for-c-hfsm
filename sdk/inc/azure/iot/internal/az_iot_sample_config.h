@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <azure/core/az_span.h>
-#include <time.h>
+#include <azure/iot/internal/az_iot_sample_log.h>
 
 // DO NOT MODIFY: Service information
 #define ENV_GLOBAL_PROVISIONING_ENDPOINT_DEFAULT "ssl://global.azure-devices-provisioning.net:8883"
@@ -19,38 +19,6 @@
 // DO NOT MODIFY: the path to a PEM file containing the server trusted CA
 // This is usually not needed on Linux or Mac but needs to be set on Windows.
 #define ENV_DEVICE_X509_TRUST_PEM_FILE_PATH "AZ_IOT_DEVICE_X509_TRUST_PEM_FILE"
-
-// Logging with formatting
-#define LOG_ERROR(...) \
-  { \
-    (void)fprintf(stderr, "[%ld] ERROR:\t\t%s:%s():%d: ", (long)time(NULL), __FILE__, __func__, __LINE__); \
-    (void)fprintf(stderr, __VA_ARGS__); \
-    (void)fprintf(stderr, "\n"); \
-    fflush(stdout); \
-    fflush(stderr); \
-  }
-#define LOG_SUCCESS(...) \
-  { \
-    (void)printf("[%ld] SUCCESS:\t", (long)time(NULL)); \
-    (void)printf(__VA_ARGS__); \
-    (void)printf("\n"); \
-  }
-#define LOG(...) \
-  { \
-    (void)printf("\t\t"); \
-    (void)printf(__VA_ARGS__); \
-    (void)printf("\n"); \
-  }
-#define LOG_AZ_SPAN(span_description, span) \
-  { \
-    (void)printf("\t\t%s ", span_description); \
-    char* buffer = (char*)az_span_ptr(span); \
-    for (int32_t i = 0; i < az_span_size(span); i++) \
-    { \
-      putchar(*buffer++); \
-    } \
-    (void)printf("\n"); \
-  }
 
 // Buffers
 static char x509_cert_pem_file_path_buffer[256];

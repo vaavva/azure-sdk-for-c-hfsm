@@ -23,7 +23,7 @@
 #include <azure/core/_az_cfg_prefix.h>
 
 /**
- * @brief Twin response type.
+ * @brief HSM event type.
  *
  */
 typedef enum
@@ -37,21 +37,26 @@ typedef enum
 
 #define _az_IOT_HSM_EVENT(id) ((int32_t)(_az_IOT_HSM_EVENT_BASE + id))
 
+typedef struct az_iot_hsm_event az_iot_hsm_event;
+typedef struct az_iot_hsm az_iot_hsm;
+
 typedef struct az_iot_hsm_event
 {
   az_iot_hsm_event_type type;
+  az_iot_hsm* src;
   void* data;
 } az_iot_hsm_event;
 
 const az_iot_hsm_event az_iot_hsm_entry_event = { AZ_IOT_HSM_ENTRY, NULL };
 const az_iot_hsm_event az_iot_hsm_exit_event = { AZ_IOT_HSM_EXIT, NULL };
+const az_iot_hsm_event az_iot_hsm_timeout_event = { AZ_IOT_HSM_TIMEOUT, NULL };
+
+typedef az_result (*state_handler)(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
 
 typedef struct az_iot_hsm
 {
-  az_result (*current_state)(struct az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+  state_handler current_state;
 } az_iot_hsm;
-
-typedef az_result (*state_handler)(az_iot_hsm* me, az_iot_hsm_event event, void** super_state );
 
 AZ_INLINE az_result az_iot_hsm_init(az_iot_hsm* h, state_handler initial_state)
 {
@@ -67,8 +72,10 @@ AZ_INLINE az_result az_iot_hsm_init(az_iot_hsm* h, state_handler initial_state)
   return h->current_state(h, az_iot_hsm_entry_event, NULL);
 }
 
-AZ_INLINE az_result
-_az_iot_hsm_recursive_exit(az_iot_hsm* h, state_handler source_state, state_handler destination_state)
+AZ_INLINE az_result _az_iot_hsm_recursive_exit(
+    az_iot_hsm* h,
+    state_handler source_state,
+    state_handler destination_state)
 {
   _az_PRECONDITION_NOT_NULL(h);
   _az_PRECONDITION_NOT_NULL(source_state);
@@ -131,7 +138,10 @@ az_iot_hsm_transition(az_iot_hsm* h, state_handler source_state, state_handler d
     - peer state transitioning to first-level inner state.
     - super state transitioning to another first-level inner state.
 */
-AZ_INLINE az_result az_iot_hsm_transition_inner(az_iot_hsm* h, state_handler source_state, state_handler destination_state)
+AZ_INLINE az_result az_iot_hsm_transition_inner(
+    az_iot_hsm* h,
+    state_handler source_state,
+    state_handler destination_state)
 {
   _az_PRECONDITION_NOT_NULL(h);
   _az_PRECONDITION_NOT_NULL(h->current_state);
