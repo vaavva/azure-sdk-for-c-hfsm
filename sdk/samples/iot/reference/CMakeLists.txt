@@ -19,8 +19,21 @@ if(NOT OpenSSL_FOUND)
   find_package(OpenSSL REQUIRED)
 endif()
 
+# State machine example
+add_executable (hsm_example 
+  src/hsm_example.c
+)
+
+# SDK deps
+target_link_libraries(hsm_example
+    PRIVATE
+      az::core
+)
+
+# Paho async based sample
 add_executable (paho_iot_reference_example 
   src/paho_iot_reference_example.c
+  src/reference/az_iot_hsm_mqtt.c
 )
 
 # SDK deps
@@ -33,7 +46,7 @@ target_link_libraries(paho_iot_reference_example
 # External deps
 target_link_libraries(paho_iot_reference_example
   PRIVATE
-    eclipse-paho-mqtt-c::paho-mqtt3cs-static
+    eclipse-paho-mqtt-c::paho-mqtt3as-static
     OpenSSL::SSL
     OpenSSL::Crypto
 )
