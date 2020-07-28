@@ -9,3 +9,32 @@
 
 #include <azure/core/_az_cfg.h>
 
+AZ_NODISCARD az_result mqtt_pal_initialize()
+{
+    
+}
+
+AZ_NODISCARD az_result mqtt_pal_connect_start(/*TODO: params*/)
+{
+    
+}
+
+AZ_NODISCARD az_result mqtt_pal_pub_start()
+{
+
+}
+
+AZ_NODISCARD az_result mqtt_pal_sub_start()
+{
+
+}
+
+AZ_NODISCARD az_result mqtt_pal_disconnect_start()
+{
+
+}
+
+AZ_NODISCARD az_result time_pal_start(int32_t ticks, az_iot_hsm* src)
+{
+    // No-op: this PAL layer is using the Paho MQTT timeout system to signal timeouts.   
+}
