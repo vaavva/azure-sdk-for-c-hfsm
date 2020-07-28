@@ -4,7 +4,6 @@ state AzureIotProvisioning {
 state Idle
     state Started {
         state Connecting
-        Connecting : <b>entry/</b> ^CONNECT_REQ
         Connecting : <b>CONNECT_RSP(error)</b> / ^ERROR
 
         state Connected {
