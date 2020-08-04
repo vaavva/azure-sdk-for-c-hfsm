@@ -33,7 +33,9 @@ target_link_libraries(hsm_example
 # Paho async based sample
 add_executable (paho_iot_reference_example 
   src/paho_iot_reference_example.c
+  src/reference/az_iot_hsm.c
   src/reference/az_iot_hsm_mqtt.c
+  src/reference/az_iot_hsm_mqtt_pal_paho.c
 )
 
 # SDK deps

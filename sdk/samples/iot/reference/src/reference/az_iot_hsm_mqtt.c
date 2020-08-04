@@ -16,6 +16,10 @@
 
 #define LOG_HSM_NAME "AZ_IOT_MQTT"
 
+/* TODO items:
+ *  - must support multiple MQTT connections at the same time.
+ *  - Dependency injection of the MQTT HSM into the other HSMs.
+ */
 az_iot_hsm az_iot_hsm_mqtt;
 
 static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
@@ -41,7 +45,6 @@ static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** sup
     case AZ_IOT_HSM_ENTRY:
       LOG_SUCCESS(LOG_HSM_NAME " %s: event AZ_IOT_HSM_ENTRY", __func__);
       // TODO: PAL initialize
-
       break;
 
     case AZ_IOT_HSM_EXIT:
