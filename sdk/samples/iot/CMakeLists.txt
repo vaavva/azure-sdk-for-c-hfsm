@@ -143,4 +143,14 @@ target_link_libraries(paho_iot_provisioning_sas_sample
     az::iot::sample::common
 )
 
+# State Machine Sample
+add_executable (paho_iot_state_machine_example
+  ${CMAKE_CURRENT_LIST_DIR}/paho_iot_state_machine_example.c
+)
+
+target_link_libraries(paho_iot_state_machine_example
+  PRIVATE
+    az::iot::sample::common
+)
+
 endif() # TRANSPORT_PAHO
