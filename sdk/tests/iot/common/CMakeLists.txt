@@ -14,6 +14,8 @@ create_map_file(az_iot_common_test.map)
 add_cmocka_test(az_iot_common_test SOURCES
                 main.c
                 test_az_iot_common.c
+                test_az_iot_queue.c
+                test_az_iot_hsm.c
                 COMPILE_OPTIONS ${DEFAULT_C_COMPILE_FLAGS} ${NO_CLOBBERED_WARNING}
                 LINK_LIBRARIES ${CMOCKA_LIBRARIES}
                     az_iot_common

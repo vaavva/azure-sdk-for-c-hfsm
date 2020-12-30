@@ -1,14 +1,16 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
+#include "test_az_iot_hsm.h"
+#include <azure/iot/internal/az_iot_common_internal.h>
+#include <azure/iot/internal/az_iot_hsm.h>
 
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include <azure/core/az_result.h>
-#include <azure/core/az_span.h>
-// TODO: can't be internal:
-#include <azure/iot/internal/az_iot_sample_config.h>
+#include <cmocka.h>
 
 typedef struct evt_struct
 {
@@ -18,7 +20,6 @@ typedef struct evt_struct
 
 #define Q_SIZE 2
 #define Q_TYPE evt_struct
-#include <azure/iot/internal/az_iot_hsm.h>
 #include <azure/iot/internal/az_iot_queue.h>
 
 static az_iot_hsm test_hsm;
@@ -35,6 +36,27 @@ typedef enum
   PAHO_IOT_HSM_CONNECTED = _az_IOT_HSM_EVENT(1),
   PAHO_IOT_HSM_SUBSCRIBED = _az_IOT_HSM_EVENT(2),
 } paho_iot_hsm_event_type;
+
+//
+// Logging
+//
+#define LOG_ERROR(...)                                                  \
+  do                                                                               \
+  {                                                                                \
+    (void)fprintf(stderr, "ERROR:\t\t%s:%s():%d: ", __FILE__, __func__, __LINE__); \
+    (void)fprintf(stderr, __VA_ARGS__);                                            \
+    (void)fprintf(stderr, "\n");                                                   \
+    fflush(stdout);                                                                \
+    fflush(stderr);                                                                \
+  } while (0)
+
+#define LOG_SUCCESS(...) \
+  do                                \
+  {                                 \
+    (void)printf("SUCCESS:\t");     \
+    (void)printf(__VA_ARGS__);      \
+    (void)printf("\n");             \
+  } while (0)
 
 // TestHSM/Idle
 static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
@@ -229,11 +251,13 @@ static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** sup
   return ret;
 }
 
-int main()
+static void test_az_iot_hsm_succeeds(void **state)
 {
+  (void)state;
+
   LOG_SUCCESS("--> Started.");
 
-  if (az_failed(az_iot_hsm_init(&test_hsm, idle)))
+  if (az_result_failed(az_iot_hsm_init(&test_hsm, idle)))
   {
     LOG_ERROR("Failed to init HSM");
   }
@@ -242,7 +266,7 @@ int main()
 
   // Memory must be allocated for the duration of the transition:
   az_iot_hsm_event connected_evt = { PAHO_IOT_HSM_CONNECTED, NULL };
-  if (az_failed(az_iot_hsm_post_sync(&test_hsm, connected_evt)))
+  if (az_result_failed(az_iot_hsm_post_sync(&test_hsm, connected_evt)))
   {
     LOG_ERROR("Failed to post connected_evt");
   }
@@ -250,49 +274,23 @@ int main()
   LOG_SUCCESS("--> Subscribed event.");
 
   az_iot_hsm_event subscribed_evt = { PAHO_IOT_HSM_SUBSCRIBED, NULL };
-  if (az_failed(az_iot_hsm_post_sync(&test_hsm, subscribed_evt)))
+  if (az_result_failed(az_iot_hsm_post_sync(&test_hsm, subscribed_evt)))
   {
     LOG_ERROR("Failed to post subscribed_evt");
   }
 
   LOG_SUCCESS("--> Simulating ERROR event.");
   az_iot_hsm_event error_evt = { AZ_IOT_HSM_ERROR, NULL };
-  if (az_failed(az_iot_hsm_post_sync(&test_hsm, error_evt)))
+  if (az_result_failed(az_iot_hsm_post_sync(&test_hsm, error_evt)))
   {
     LOG_ERROR("Failed to post subscribed_evt");
   }
+}
 
-#if Q_TEST
-  // TODO: Move to UT
-  az_iot_queue q;
-  az_iot_queue_init(&q);
-
-  evt_struct e1 = { 1, "Hello 1" };
-  evt_struct e2 = { 2, "Hello 2" };
-  evt_struct e3 = { 3, "Hello 3" };
-
-  az_iot_queue_enqueue(&q, &e1);
-  az_iot_queue_enqueue(&q, &e2);
-  az_iot_queue_enqueue(&q, &e3);
-
-  evt_struct* ret;
-  ret = az_iot_queue_dequeue(&q);
-  ret = az_iot_queue_dequeue(&q);
-  ret = az_iot_queue_dequeue(&q);
-
-  az_iot_queue_enqueue(&q, &e1);
-  ret = az_iot_queue_dequeue(&q);
-  az_iot_queue_enqueue(&q, &e2);
-  ret = az_iot_queue_dequeue(&q);
-  az_iot_queue_enqueue(&q, &e3);
-  ret = az_iot_queue_dequeue(&q);
-  az_iot_queue_enqueue(&q, &e1);
-  ret = az_iot_queue_dequeue(&q);
-  az_iot_queue_enqueue(&q, &e2);
-  ret = az_iot_queue_dequeue(&q);
-  az_iot_queue_enqueue(&q, &e3);
-  ret = az_iot_queue_dequeue(&q);
-#endif
-
-  return 0;
+int test_az_iot_hsm()
+{
+  const struct CMUnitTest tests[] = {
+    cmocka_unit_test(test_az_iot_hsm_succeeds),
+  };
+  return cmocka_run_group_tests_name("az_iot_hsm", tests, NULL, NULL);
 }

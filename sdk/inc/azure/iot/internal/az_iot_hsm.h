@@ -91,7 +91,7 @@ AZ_INLINE az_result _az_iot_hsm_recursive_exit(
 
     void* super_state;
     ret = h->current_state(h, az_iot_hsm_exit_event, &super_state);
-    if (az_failed(ret))
+    if (az_result_failed(ret))
     {
       break;
     }
@@ -122,7 +122,7 @@ az_iot_hsm_transition(az_iot_hsm* h, state_handler source_state, state_handler d
   {
     // Exit the source state.
     ret = h->current_state(h, az_iot_hsm_exit_event, NULL);
-    if (!az_failed(ret))
+    if (!az_result_failed(ret))
     {
       // Enter the destination state:
       h->current_state = destination_state;
