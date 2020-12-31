@@ -47,14 +47,14 @@ struct az_iot_hsm_event
   void* data;
 };
 
-extern const az_iot_hsm_event az_iot_hsm_entry_event;
-extern const az_iot_hsm_event az_iot_hsm_exit_event;
-extern const az_iot_hsm_event az_iot_hsm_timeout_event;
-
 struct az_iot_hsm
 {
   state_handler current_state;
 };
+
+extern const az_iot_hsm_event az_iot_hsm_entry_event;
+extern const az_iot_hsm_event az_iot_hsm_exit_event;
+extern const az_iot_hsm_event az_iot_hsm_timeout_event;
 
 AZ_INLINE az_result az_iot_hsm_init(az_iot_hsm* h, state_handler initial_state)
 {
