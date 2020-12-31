@@ -40,23 +40,36 @@ typedef enum
 typedef struct az_iot_hsm_event az_iot_hsm_event;
 typedef struct az_iot_hsm az_iot_hsm;
 
-typedef struct az_iot_hsm_event
+struct az_iot_hsm_event
 {
   az_iot_hsm_event_type type;
-  az_iot_hsm* src;
   void* data;
-} az_iot_hsm_event;
+};
 
 extern const az_iot_hsm_event az_iot_hsm_entry_event;
 extern const az_iot_hsm_event az_iot_hsm_exit_event;
 extern const az_iot_hsm_event az_iot_hsm_timeout_event;
 
-typedef az_result (*state_handler)(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+/*
+// Works:
+typedef struct super_state_t super_state_t;
 
-typedef struct az_iot_hsm
+// Def function pointer;
+struct super_state_t
+{
+  state_handler super_state;
+};
+*/
+
+// Incomplete function type (not typedef).
+
+typedef az_result (*state_handler)(az_iot_hsm* me, az_iot_hsm_event event, az_result(** super_state)());
+
+
+struct az_iot_hsm
 {
   state_handler current_state;
-} az_iot_hsm;
+};
 
 AZ_INLINE az_result az_iot_hsm_init(az_iot_hsm* h, state_handler initial_state)
 {
@@ -89,14 +102,14 @@ AZ_INLINE az_result _az_iot_hsm_recursive_exit(
     // super-state:
     _az_PRECONDITION_NOT_NULL(h->current_state);
 
-    void* super_state;
+    state_handler super_state;
     ret = h->current_state(h, az_iot_hsm_exit_event, &super_state);
     if (az_result_failed(ret))
     {
       break;
     }
 
-    h->current_state = (state_handler)super_state;
+    h->current_state = super_state;
   }
 
   return ret;

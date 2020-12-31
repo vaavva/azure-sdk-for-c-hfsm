@@ -24,12 +24,11 @@ typedef struct evt_struct
 
 static az_iot_hsm test_hsm;
 
-static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
-static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
-static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
-static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
-static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
-static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state);
+static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state);
+static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state);
+static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state);
+static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state);
+static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state);
 
 typedef enum
 {
@@ -59,7 +58,7 @@ typedef enum
   } while (0)
 
 // TestHSM/Idle
-static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state)
 {
   az_result ret = AZ_OK;
   if (super_state)
@@ -92,7 +91,7 @@ static az_result idle(az_iot_hsm* me, az_iot_hsm_event event, void** super_state
 }
 
 // TestHSM/Connected
-static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state)
 {
   az_result ret = AZ_OK;
   if (super_state)
@@ -131,12 +130,12 @@ static az_result connected(az_iot_hsm* me, az_iot_hsm_event event, void** super_
 }
 
 // TestHSM/Connected/Subscribing
-static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state)
 {
   az_result ret = AZ_OK;
   if (super_state)
   {
-    *super_state = (void*)connected;
+    *super_state = connected;
   }
 
   switch ((int)event.type)
@@ -164,12 +163,12 @@ static az_result subscribing(az_iot_hsm* me, az_iot_hsm_event event, void** supe
 }
 
 // TestHSM/Connected/Subscribed
-static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state)
 {
   az_result ret = AZ_OK;
   if (super_state)
   {
-    *super_state = (void*)connected;
+    *super_state = connected;
   }
 
   switch (event.type)
@@ -192,37 +191,7 @@ static az_result subscribed(az_iot_hsm* me, az_iot_hsm_event event, void** super
 }
 
 // TestHSM/Disconnecting
-static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
-{
-  az_result ret = AZ_OK;
-  if (super_state)
-  {
-    *super_state = NULL; // Top-level state.
-  }
-
-  (void)me;
-
-  switch (event.type)
-  {
-    case AZ_IOT_HSM_ENTRY:
-      LOG_SUCCESS("%s: event AZ_IOT_HSM_ENTRY", __func__);
-      break;
-
-    case AZ_IOT_HSM_EXIT:
-      LOG_SUCCESS("%s: event AZ_IOT_HSM_EXIT", __func__);
-      break;
-
-    default:
-      // TOP level - ignore unknown events.
-      LOG_ERROR("%s: dropped unknown event: 0x%x", __func__, event.type);
-      ret = AZ_OK;
-  }
-
-  return ret;
-}
-
-// TestHSM/Disconnected
-static az_result disconnected(az_iot_hsm* me, az_iot_hsm_event event, void** super_state)
+static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, state_handler* super_state)
 {
   az_result ret = AZ_OK;
   if (super_state)
