@@ -52,7 +52,7 @@ state Idle
         Connected --> Disconnecting : AZ_IOT_PROVISIONING_STOP
     }
 
-    Started : <b>exit/</b> 
+    Started : <b>exit/</b>
     Started: \t if(provisioningDone) ^AZ_IOT_HUB_START(endpoint, identity)
 
     [*] --> Idle
