@@ -39,6 +39,7 @@ typedef enum
 
 typedef struct az_iot_hsm_event az_iot_hsm_event;
 typedef struct az_iot_hsm az_iot_hsm;
+typedef az_result (*state_handler)(az_iot_hsm* me, az_iot_hsm_event event, az_result(** super_state)());
 
 struct az_iot_hsm_event
 {
@@ -49,22 +50,6 @@ struct az_iot_hsm_event
 extern const az_iot_hsm_event az_iot_hsm_entry_event;
 extern const az_iot_hsm_event az_iot_hsm_exit_event;
 extern const az_iot_hsm_event az_iot_hsm_timeout_event;
-
-/*
-// Works:
-typedef struct super_state_t super_state_t;
-
-// Def function pointer;
-struct super_state_t
-{
-  state_handler super_state;
-};
-*/
-
-// Incomplete function type (not typedef).
-
-typedef az_result (*state_handler)(az_iot_hsm* me, az_iot_hsm_event event, az_result(** super_state)());
-
 
 struct az_iot_hsm
 {
