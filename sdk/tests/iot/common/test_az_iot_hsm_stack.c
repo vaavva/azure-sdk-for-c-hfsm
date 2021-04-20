@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
-#include "test_az_iot_hsm.h"
+#include "test_az_iot_hsm_stack.h"
 #include <azure/iot/internal/az_iot_common_internal.h>
 #include <azure/iot/internal/az_iot_hsm.h>
 
@@ -220,7 +220,7 @@ static az_result disconnecting(az_iot_hsm* me, az_iot_hsm_event event, az_result
   return ret;
 }
 
-static void test_az_iot_hsm_succeeds(void **state)
+static void test_az_iot_hsm_stack_succeeds(void **state)
 {
   (void)state;
 
@@ -256,10 +256,10 @@ static void test_az_iot_hsm_succeeds(void **state)
   }
 }
 
-int test_az_iot_hsm()
+int test_az_iot_hsm_stack()
 {
   const struct CMUnitTest tests[] = {
-    cmocka_unit_test(test_az_iot_hsm_succeeds),
+    cmocka_unit_test(test_az_iot_hsm_stack_succeeds),
   };
-  return cmocka_run_group_tests_name("az_iot_hsm", tests, NULL, NULL);
+  return cmocka_run_group_tests_name("az_iot_hsm_stack", tests, NULL, NULL);
 }

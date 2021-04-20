@@ -11,7 +11,7 @@
 
 #include "test_az_iot_common.h"
 #include "test_az_iot_queue.h"
-#include "test_az_iot_hsm.h"
+#include "test_az_iot_hsm_stack.h"
 
 int main()
 {
@@ -19,7 +19,7 @@ int main()
 
   result += test_az_iot_common();
   result += test_az_iot_queue();
-  result += test_az_iot_hsm();
+  result += test_az_iot_hsm_stack();
 
   return result;
 }
