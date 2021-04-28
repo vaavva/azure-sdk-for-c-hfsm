@@ -161,4 +161,25 @@ target_link_libraries(paho_iot_provisioning_sas_sample
 
 create_map_file(paho_iot_provisioning_sas_sample paho_iot_provisioning_sas_sample.map)
 
+# E2E IoT Sample
+
+add_executable (paho_iot_sample
+  ${CMAKE_CURRENT_LIST_DIR}/paho_iot_sample.c
+  ${CMAKE_SOURCE_DIR}/../hsm/src/hfsm_common_events.c
+  ${CMAKE_SOURCE_DIR}/../hsm/src/hfsm_hardcoded.c
+)
+
+target_link_libraries(paho_iot_sample
+  PRIVATE
+      az::iot::sample::common
+)
+
+target_include_directories(paho_iot_sample
+  PRIVATE
+    ${CMAKE_SOURCE_DIR}/../hsm/inc
+)
+
+create_map_file(paho_iot_sample paho_iot_sample.map)
+
+
 endif() # TRANSPORT_PAHO
