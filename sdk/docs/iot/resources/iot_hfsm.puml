@@ -1,0 +1,58 @@
+@startuml
+
+state AzureIot {
+    state Provisioning
+    Provisioning: <i>See IoT Provisioning HFSM</i>
+
+    state RetryProvisioning
+    RetryProvisioning : <b>entry/</b>
+    RetryProvisioning : \t if (retriable_error()) {
+    RetryProvisioning : \t\t start delayTimer(calculate_retry_delay())
+    RetryProvisioning : \t }
+    RetryProvisioning : \t else {
+    RetryProvisioning : \t\t rotate_dps_credentials()
+    RetryProvisioning : \t\t ^^AZ_IOT_PROVISIONING_START
+    RetryProvisioning : \t }
+    RetryProvisioning :
+    RetryProvisioning : <b>TIMEOUT/</b>
+    RetryProvisioning : \t {
+    RetryProvisioning : \t\t stop delayTimer
+    RetryProvisioning : \t\t ^^AZ_IOT_PROVISIONING_START
+    RetryProvisioning : \t }
+
+    state Hub
+    Hub: <i>See IoT Hub HFSM</i>
+
+    state RetryHub
+    RetryHub : <b>entry/</b>
+    RetryHub : \t if (retriable_error) {
+    RetryHub : \t\t start delayTimer(calculate_retry_delay)
+    RetryHub : \t }
+    RetryHub : \t else {
+    RetryHub : \t\t #if USE_PROVISIONING
+    RetryHub : \t\t\t ^^AZ_IOT_PROVISIONING_START
+    RetryHub : \t\t #else
+    RetryHub : \t\t\t rotate_hub_credentials()
+    RetryHub : \t\t #endif
+    RetryHub : \t }
+    RetryHub :
+    RetryHub : <b>TIMEOUT/</b>
+    RetryHub : \t {
+    RetryHub : \t\t stop delayTimer
+    RetryHub : \t\t ^^AZ_IOT_HUB_START
+    RetryHub : \t }
+
+    [*] -> Provisioning : AZ_IOT_PROVISIONING_START
+    Provisioning --> Hub : AZ_IOT_HUB_START
+    Provisioning -> RetryProvisioning : ERROR, TIMEOUT
+
+    RetryProvisioning -> Provisioning : AZ_IOT_PROVISIONING_START
+    Hub -> RetryHub : ERROR, TIMEOUT
+    RetryHub -> Hub : AZ_IOT_HUB_START
+    RetryHub -> Provisioning : AZ_IOT_PROVISIONING_START
+}
+
+AzureIot : <b>entry/</b> credential = provisioning_credential_1
+AzureIot : <b>ERROR/</b> reboot
+
+@enduml

@@ -1,0 +1,63 @@
+@startuml
+
+state AzureIotProvisioning {
+state Idle
+    state Started {
+        state Connecting
+        Connecting : <b>CONNECT_RSP(error)</b> / ^ERROR
+
+        state Connected {
+            state Subscribing
+            Subscribing : <b>entry/</b> ^MQTT_SUB_REQ(...)
+            Subscribing : <b>MQTT_SUB_RSP/</b> if (all_subscribed) ^^SUBSCRIBED else ^MQTT_SUB_REQ(...)
+            state Subscribed {
+                state StartRegister
+                StartRegister : MQTT_PUB_REQ(register)
+
+                state WaitRegister
+                WaitRegister : <b>entry/</b> start timer
+                WaitRegister : <b>MQTT_RECV_IND/</b> {
+                WaitRegister : \t reset timer;
+                WaitRegister : \t if (provisioningDone) ^AZ_IOT_PROVISIONING_STOP
+                WaitRegister : \t else if (!error) ^^QUERY
+                WaitRegister : \t else ^ERROR
+                WaitRegister : }
+                WaitRegister : <b>exit/</b> stop timer
+
+                state Delay
+                Delay : <b>entry/</b> start timer
+                Delay : <b>exit/</b> stop timer
+
+                state Query
+                Query : <b>entry/</b> MQTT_PUB_REQ(query)
+
+                [*] -> StartRegister
+                StartRegister --> WaitRegister : MQTT_PUB_RSP
+                WaitRegister -> Delay : QUERY
+                Delay --> Query : TIMEOUT
+                Query -> WaitRegister : MQTT_PUB_RSP
+            }
+
+            [*] -> Subscribing
+            Subscribing --> Subscribed : SUBSCRIBED
+        }
+
+        state Disconnecting
+        Disconnecting : <b>entry/</b> start timer; ^MQTT_DISCONNECT_REQ
+        Disconnecting : <b>exit/</b> stop timer
+
+        [*] -> Connecting
+        Connecting --> Connected : CONNECT_RSP(success)
+        Connecting --> Disconnecting : AZ_IOT_PROVISIONING_STOP
+        Connected --> Disconnecting : AZ_IOT_PROVISIONING_STOP
+    }
+
+    Started : <b>exit/</b>
+    Started: \t if(provisioningDone) ^AZ_IOT_HUB_START(endpoint, identity)
+
+    [*] --> Idle
+    Idle -> Started : AZ_IOT_PROVISIONING_START / ^CONNECT_REQ
+    Started --> Idle : MQTT_DISCONNECT_RSP
+    Started --> Idle : ERROR, TIMEOUT / ^ERROR}
+
+@enduml
