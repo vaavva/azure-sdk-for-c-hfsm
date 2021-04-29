@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <hfsm.h>
+#include <hfsm_hardcoded.h>
+
 #ifdef _MSC_VER
 #pragma warning(push)
 // warning C4201: nonstandard extension used: nameless struct/union
