@@ -20,11 +20,6 @@
 #include <azure/az_core.h>
 #include <azure/az_iot.h>
 
-#include "iot_sample_common.h"
-
-#define SAMPLE_TYPE PAHO_IOT_PROVISIONING
-#define SAMPLE_NAME PAHO_IOT_PROVISIONING_SAMPLE
-
 #define MQTT_TIMEOUT_RECEIVE_MS (60 * 1000)
 #define MQTT_TIMEOUT_DISCONNECT_MS (10 * 1000)
 
