@@ -30,7 +30,7 @@ static state_handler azure_iot_hfsm_get_parent(state_handler child_state)
   }
   else if (
 #ifdef USE_PROVISIONING
-      (child_state == provisioning) || (child_state == retry_provisioning)
+      (child_state == provisioning) || (child_state == retry_provisioning) ||
 #endif
       (child_state == hub) || (child_state == retry_hub) 
     )
@@ -60,7 +60,7 @@ static int azure_iot(hfsm* me, hfsm_event event)
     case HFSM_EXIT:
       break;
 
-#if USE_PROVISIONING
+#ifdef USE_PROVISIONING
     case AZ_IOT_PROVISIONING_START:
       ret = hfsm_transition_substate(me, azure_iot, provisioning);
       break;
@@ -103,13 +103,13 @@ static int provisioning(hfsm* me, hfsm_event event)
 
     case AZ_IOT_HUB_START:
       // TODO: pass-through the hfsm_event event:
-      ret = hfsm_transition_substate(me, provisioning, hub);
+      ret = hfsm_transition_peer(me, provisioning, hub);
       break;
 
     case ERROR:
     case TIMEOUT:
       // TODO: pass-through the hfsm_event event:
-      ret = hfsm_transition_substate(me, provisioning, retry_provisioning);
+      ret = hfsm_transition_peer(me, provisioning, retry_provisioning);
       break;
 
     default:
@@ -130,6 +130,15 @@ static int retry_provisioning(hfsm* me, hfsm_event event)
       break;
 
     case HFSM_EXIT:
+      break;
+
+    case AZ_IOT_PROVISIONING_START:
+      ret = hfsm_transition_peer(me, retry_provisioning, provisioning);
+      break;
+
+    case ERROR:
+      // TODO:
+
       break;
 
     case TIMEOUT:
@@ -159,7 +168,7 @@ static int hub(hfsm* me, hfsm_event event)
     case ERROR:
     case TIMEOUT:
       // TODO: pass-through the hfsm_event event:
-      ret = hfsm_transition_substate(me, hub, retry_hub);
+      ret = hfsm_transition_peer(me, hub, retry_hub);
       break;
 
     default:
@@ -177,19 +186,14 @@ static int retry_hub(hfsm* me, hfsm_event event)
   switch ((int)event.type)
   {
     case HFSM_ENTRY:
-      ref21++;
       break;
 
     case HFSM_EXIT:
-      ref21--;
       break;
 
-    case T_PEER_2:
-      ret = hfsm_transition_peer(me, S21, S22);
-      break;
-
-    case T_INTERNAL_2:
-      tinternal2++;
+    case AZ_IOT_HUB_START:
+      // TODO: pass-through the hfsm_event event:
+      ret = hfsm_transition_peer(me, hub, retry_hub);
       break;
 
     default:
