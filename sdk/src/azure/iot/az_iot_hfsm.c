@@ -11,9 +11,9 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include "az_hfsm.h"
-#include "az_hfsm_pal_timer.h"
-#include "az_iot_hfsm.h"
+#include <azure/core/az_hfsm.h>
+#include <azure/core/az_platform.h>
+#include <azure/iot/internal/az_iot_hfsm.h>
 
 // TODO: change logging to az_log_internal.
 /**************************************************/

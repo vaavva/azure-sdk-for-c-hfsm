@@ -28,6 +28,8 @@ add_library (az::iot::common ALIAS az_iot_common)
 
 # Azure IoT Hub Library
 add_library (az_iot_hub
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_hfsm.c
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_hfsm_sync_adapter.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_hub_client.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_hub_client_sas.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_hub_client_telemetry.c

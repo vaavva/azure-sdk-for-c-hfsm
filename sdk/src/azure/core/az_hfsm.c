@@ -8,9 +8,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <azure/core/internal/az_precondition_internal.h>
 
-#include "az_hfsm.h"
+#include <azure/core/az_hfsm.h>
+#include <azure/core/internal/az_precondition_internal.h>
 
 const az_hfsm_event az_hfsm_entry_event = { AZ_HFSM_ENTRY, NULL };
 const az_hfsm_event az_hfsm_exit_event = { AZ_HFSM_EXIT, NULL };

@@ -14,8 +14,8 @@
 #include <stdbool.h>
 
 #include <azure/az_core.h>
+#include <azure/core/az_hfsm.h>
 #include <azure/iot/az_iot_common.h>
-#include "az_hfsm.h"
 
 #ifndef AZ_IOT_HFSM_MIN_RETRY_DELAY_MSEC
 #define AZ_IOT_HFSM_MIN_RETRY_DELAY_MSEC 1000
