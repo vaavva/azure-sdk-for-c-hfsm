@@ -9,47 +9,11 @@
 #include <stdint.h>
 #include <azure/core/internal/az_precondition_internal.h>
 
-#include "az_hfsm.h"
-#include "az_hfsm_pal_timer.h"
-#include "az_iot_hfsm.h"
-#include "az_iot_hfsm_sync_adapter.h"
-
-// TODO: change logging to az_log_internal.
-/**************************************************/
-/******* DO NOT CHANGE the following order ********/
-/**************************************************/
-
-/* Include logging header files and define logging macros in the following order:
- * 1. Include the header file "logging_levels.h".
- * 2. Define the LIBRARY_LOG_NAME and LIBRARY_LOG_LEVEL macros depending on
- * the logging configuration for DEMO.
- * 3. Include the header file "logging_stack.h", if logging is enabled for DEMO.
- */
-
-#include "logging_levels.h"
-
-/* Logging configuration for the Demo. */
-#ifndef LIBRARY_LOG_NAME
-    #define LIBRARY_LOG_NAME    "IoT_HFSM_SYNC"
-#endif
-
-#ifndef LIBRARY_LOG_LEVEL
-    #define LIBRARY_LOG_LEVEL    LOG_INFO
-#endif
-
-/* 
- * The function prints to the console before the network is connected;
- * then a UDP port after the network has connected. */
-extern void vLoggingPrintf( const char * pcFormatString,
-                            ... );
-
-/* Map the SdkLog macro to the logging function to enable logging */
-#ifndef SdkLog
-    #define SdkLog( message )    vLoggingPrintf message
-#endif
-
-#include "logging_stack.h"
-/**************************************************/
+#include <azure/core/az_hfsm.h>
+#include <azure/core/az_platform.h>
+#include <azure/core/internal/az_log_internal.h>
+#include <azure/iot/internal/az_iot_hfsm.h>
+#include <azure/iot/internal/az_iot_hfsm_sync_adapter.h>
 
 // The retry Hierarchical Finite State Machine object.
 // A single Provisioning + Hub client is supported when syncrhonous mode is used.

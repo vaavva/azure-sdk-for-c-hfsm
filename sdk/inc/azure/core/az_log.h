@@ -58,6 +58,22 @@ enum az_log_classification_core
   AZ_LOG_HTTP_RETRY = _az_LOG_MAKE_CLASSIFICATION(
       _az_FACILITY_CORE_HTTP,
       3), ///< First HTTP request did not succeed and will be retried.
+
+  AZ_LOG_HFSM_ENTER = _az_LOG_MAKE_CLASSIFICATION(
+      _az_FACILITY_HFSM,
+      4), ///< Enter event.
+
+  AZ_LOG_HFSM_EXIT = _az_LOG_MAKE_CLASSIFICATION(
+      _az_FACILITY_HFSM,
+      5), ///< Exit event.
+
+    AZ_LOG_HFSM_TIMEOUT = _az_LOG_MAKE_CLASSIFICATION(
+      _az_FACILITY_HFSM,
+      6), ///< Timeout state event.
+
+  AZ_LOG_HFSM_ERROR = _az_LOG_MAKE_CLASSIFICATION(
+      _az_FACILITY_HFSM,
+      7), ///< Error state event.
 };
 
 /**

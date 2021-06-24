@@ -57,6 +57,12 @@ enum az_log_classification_iot
 
   AZ_LOG_IOT_AZURERTOS
   = _az_LOG_MAKE_CLASSIFICATION(_az_FACILITY_IOT, 3), ///< Azure IoT classification for Azure RTOS.
+
+  AZ_LOG_IOT_START
+  = _az_LOG_MAKE_CLASSIFICATION(_az_FACILITY_IOT, 4), ///< Azure IoT start event.
+
+  AZ_LOG_IOT_ERROR
+  = _az_LOG_MAKE_CLASSIFICATION(_az_FACILITY_IOT, 5), ///< Azure IoT error event.
 };
 
 enum

@@ -13,44 +13,8 @@
 
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_platform.h>
+#include <azure/core/internal/az_log_internal.h>
 #include <azure/iot/internal/az_iot_hfsm.h>
-
-// TODO: change logging to az_log_internal.
-/**************************************************/
-/******* DO NOT CHANGE the following order ********/
-/**************************************************/
-
-/* Include logging header files and define logging macros in the following order:
- * 1. Include the header file "logging_levels.h".
- * 2. Define the LIBRARY_LOG_NAME and LIBRARY_LOG_LEVEL macros depending on
- * the logging configuration for DEMO.
- * 3. Include the header file "logging_stack.h", if logging is enabled for DEMO.
- */
-
-#include "logging_levels.h"
-
-/* Logging configuration for the Demo. */
-#ifndef LIBRARY_LOG_NAME
-    #define LIBRARY_LOG_NAME    "IoT_HFSM"
-#endif
-
-#ifndef LIBRARY_LOG_LEVEL
-    #define LIBRARY_LOG_LEVEL    LOG_INFO
-#endif
-
-/* 
- * The function prints to the console before the network is connected;
- * then a UDP port after the network has connected. */
-extern void vLoggingPrintf( const char * pcFormatString,
-                            ... );
-
-/* Map the SdkLog macro to the logging function to enable logging */
-#ifndef SdkLog
-    #define SdkLog( message )    vLoggingPrintf message
-#endif
-
-#include "logging_stack.h"
-/**************************************************/
 
 const az_hfsm_event az_hfsm_event_az_iot_start = { AZ_IOT_START, NULL };
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
@@ -95,20 +59,29 @@ static az_hfsm_state_handler azure_iot_hfsm_get_parent(az_hfsm_state_handler chi
 static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = 0;
-  int32_t operation_msec;
+  int64_t operation_msec;
 
   az_iot_hfsm_type* this_iothfsm = (az_iot_hfsm_type*)me;
 
   switch ((int32_t)event.type)
   {
     case AZ_HFSM_ENTRY:
-      LogInfo( ("AzureIoT: Entry") );
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTER))
+      {
+        _az_LOG_WRITE(AZ_LOG_HFSM_ENTER, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
+      }
+
       this_iothfsm->_use_secondary_credentials = false;
       break;
 
     case AZ_IOT_ERROR:
-      LogInfo( ("AzureIoT: AZ_IOT_ERROR") );
-      operation_msec = az_hfsm_pal_timer_get_milliseconds() - this_iothfsm->_start_time_msec;
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
+      {
+        _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
+      }
+
+      az_platform_clock_msec(&operation_msec);
+      operation_msec -= this_iothfsm->_start_time_msec;
 
       if (this_iothfsm->_retry_attempt < INT16_MAX)
       {
@@ -132,19 +105,18 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
         int32_t random_jitter_msec = az_iot_hfsm_pal_get_random_jitter_msec(me);
 
         int32_t retry_delay_msec = az_iot_calculate_retry_delay(
-          operation_msec, 
+          (int32_t)operation_msec, 
           this_iothfsm->_retry_attempt,
           AZ_IOT_HFSM_MIN_RETRY_DELAY_MSEC,
           AZ_IOT_HFSM_MAX_RETRY_DELAY_MSEC,
           random_jitter_msec);
 
-        LogWarn( ("AzureIoT: AZ_IOT_ERROR retrying after %" PRId32 "ms", retry_delay_msec) );
-        ret = az_hfsm_pal_timer_start(me, this_iothfsm->_timer_handle, retry_delay_msec, true);
+        ret = az_platform_timer_start(this_iothfsm->_timer_handle, retry_delay_msec, true);
       }
       else
       {
         this_iothfsm->_use_secondary_credentials = !this_iothfsm->_use_secondary_credentials;
-        this_iothfsm->_start_time_msec = az_hfsm_pal_timer_get_milliseconds();
+        az_platform_clock_msec(&this_iothfsm->_start_time_msec);
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
           ret = az_hfsm_post_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
@@ -160,7 +132,11 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_ERROR:
     case AZ_HFSM_TIMEOUT:
     default:
-      LogInfo( ("AzureIoT: PANIC!") );
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
+      {
+        _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
+      }
+
       az_iot_hfsm_pal_critical_error(me);
       break;
   }
@@ -176,20 +152,28 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
   switch ((int32_t)event.type)
   {
     case AZ_HFSM_ENTRY:
-      LogInfo( ("idle: Entry") );
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTER))
+      {
+        _az_LOG_WRITE(AZ_LOG_HFSM_ENTER, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/idle"));
+      }
       break;
 
     case AZ_HFSM_EXIT:
-      LogInfo( ("idle: Exit") );
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
+      {
+        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/idle"));
+      }
       break;
     
     case AZ_IOT_START:
-      LogInfo( ("idle: AZ_IOT_START") );
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_IOT_START))
+      {
+        _az_LOG_WRITE(AZ_LOG_IOT_START, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/idle"));
+      }
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
       if(az_hfsm_post_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start))
       {
-        LogError( ("idle: az_hfsm_post_event to _provisioning_hfsm failed.") );
         ret = az_hfsm_post_event(me, az_hfsm_errork_unknown_event);
       }
       else
@@ -199,7 +183,6 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
 #else
       if(az_hfsm_post_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start))
       {
-        LogError( ("idle: az_hfsm_post_event to _iothub_hfsm failed.") );
         ret = az_hfsm_post_event(me, az_hfsm_errork_unknown_event);
       }
       else

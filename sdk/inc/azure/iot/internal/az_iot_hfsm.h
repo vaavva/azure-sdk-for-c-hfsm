@@ -36,7 +36,7 @@ typedef struct
   az_hfsm hfsm;
   bool _use_secondary_credentials;
   int16_t _retry_attempt;
-  uint64_t _start_time_msec;
+  int64_t _start_time_msec;
   void* _timer_handle;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
   az_hfsm* _provisioning_hfsm;
