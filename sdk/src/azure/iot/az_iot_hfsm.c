@@ -154,6 +154,8 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_ENTRY:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTER))
       {
+        // AZ_LOG_HFSM_ENTER - common events (enter/exit/timeout/error) are standardized across state machines.
+        // The string span should be standardized to represent the full path to the state (including any superstates and the state machine as root)
         _az_LOG_WRITE(AZ_LOG_HFSM_ENTER, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/idle"));
       }
       break;

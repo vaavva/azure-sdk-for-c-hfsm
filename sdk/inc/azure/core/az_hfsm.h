@@ -73,6 +73,9 @@ int32_t az_hfsm_transition_superstate(
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state);
 
+// TODO: Send message
 int32_t az_hfsm_post_event(az_hfsm* h, az_hfsm_event event);
+
+// TODO: Post --> PAL for queue
 
 #endif //_az_HFSM_H

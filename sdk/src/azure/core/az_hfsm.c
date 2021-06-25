@@ -14,6 +14,8 @@
 
 const az_hfsm_event az_hfsm_entry_event = { AZ_HFSM_ENTRY, NULL };
 const az_hfsm_event az_hfsm_exit_event = { AZ_HFSM_EXIT, NULL };
+
+// Timer ID.
 const az_hfsm_event az_hfsm_timeout_event = { AZ_HFSM_TIMEOUT, NULL };
 const az_hfsm_event az_hfsm_errork_unknown_event = { AZ_HFSM_ERROR, NULL };
 
