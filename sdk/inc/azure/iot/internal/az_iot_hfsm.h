@@ -3,7 +3,7 @@
 
 /**
  * @file az_iot_hfsm.c
- * @brief HFSM for Azure IoT Operations.
+ * @brief Hierarchical Finite State Machine (HFSM) for Azure IoT Operations.
  * 
  * @details Implements fault handling for Device Provisioning + IoT Hub operations
  */

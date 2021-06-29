@@ -131,7 +131,7 @@ static int32_t running(az_hfsm* me, az_hfsm_event event)
         status = az_iot_hfsm_sync_adapter_pal_run_provisioning();
         if (status.type == AZ_IOT_OK)
         {
-          ret = az_hfsm_post_event((az_hfsm*)(&iot_hfsm), az_hfsm_event_az_iot_provisioning_done);
+          ret = az_hfsm_send_event((az_hfsm*)(&iot_hfsm), az_hfsm_event_az_iot_provisioning_done);
         }
       }
       else
@@ -150,7 +150,7 @@ static int32_t running(az_hfsm* me, az_hfsm_event event)
       if (status.type != AZ_IOT_OK)
       {
         az_hfsm_sync_event_error.data = &status;
-        ret = az_hfsm_post_event((az_hfsm*)(&iot_hfsm), az_hfsm_sync_event_error);
+        ret = az_hfsm_send_event((az_hfsm*)(&iot_hfsm), az_hfsm_sync_event_error);
       }
 
       break;
@@ -181,7 +181,7 @@ static int32_t timeout(az_hfsm* me, az_hfsm_event event)
       LogInfo( ("timeout: AZ_IOT_HFSM_SYNC_DO_WORK") );
       az_iot_hfsm_sync_adapter_sleep(delay_milliseconds);
       az_hfsm_transition_peer(me, timeout, idle);
-      ret = az_hfsm_post_event((az_hfsm*)(&iot_hfsm), az_hfsm_timeout_event);
+      ret = az_hfsm_send_event((az_hfsm*)(&iot_hfsm), az_hfsm_timeout_event);
       break;
 
     default:
@@ -205,7 +205,7 @@ int32_t az_hfsm_pal_timer_start(az_hfsm* src, void* timer_handle, int32_t millis
     (void) timer_handle;
     _az_PRECONDITION(oneshot == true);
     delay_milliseconds = milliseconds;
-    az_hfsm_post_event(active_hfsm, az_hfsm_event_do_delay);
+    az_hfsm_send_event(active_hfsm, az_hfsm_event_do_delay);
     return 0;
 }
 
@@ -264,10 +264,10 @@ int32_t az_iot_hfsm_sync_adapter_sync_initialize()
  */
 void az_iot_hfsm_sync_adapter_sync_do_work()
 {
-    az_hfsm_post_event((az_hfsm*)(&iot_hfsm), az_hfsm_event_az_iot_start);
+    az_hfsm_send_event((az_hfsm*)(&iot_hfsm), az_hfsm_event_az_iot_start);
 
     for ( ; ; )
     {
-        az_hfsm_post_event(active_hfsm, az_hfsm_event_do_work);
+        az_hfsm_send_event(active_hfsm, az_hfsm_event_do_work);
     }
 }

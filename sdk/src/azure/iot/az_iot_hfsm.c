@@ -119,10 +119,10 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
         az_platform_clock_msec(&this_iothfsm->_start_time_msec);
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-          ret = az_hfsm_post_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
+          ret = az_hfsm_send_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
           ret = az_hfsm_transition_substate(me, azure_iot, provisioning);
 #else
-          ret = az_hfsm_post_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
+          ret = az_hfsm_send_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
           ret = az_hfsm_transition_substate(me, azure_iot, hub);
 #endif
       }
@@ -174,18 +174,18 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
       }
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-      if(az_hfsm_post_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start))
+      if(az_hfsm_send_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start))
       {
-        ret = az_hfsm_post_event(me, az_hfsm_errork_unknown_event);
+        ret = az_hfsm_send_event(me, az_hfsm_error_event);
       }
       else
       {
         ret = az_hfsm_transition_peer(me, idle, provisioning);
       }
 #else
-      if(az_hfsm_post_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start))
+      if(az_hfsm_send_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start))
       {
-        ret = az_hfsm_post_event(me, az_hfsm_errork_unknown_event);
+        ret = az_hfsm_send_event(me, az_hfsm_error_event);
       }
       else
       {
@@ -225,12 +225,12 @@ static int32_t provisioning(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_TIMEOUT:
       LogInfo( ("provisioning: Timeout") );
       this_iothfsm->_start_time_msec = az_hfsm_pal_timer_get_milliseconds();
-      ret = az_hfsm_post_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
+      ret = az_hfsm_send_event(this_iothfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
       break;
     
     case AZ_IOT_PROVISIONING_DONE:
       LogInfo( ("provisioning: Done") );
-      ret = az_hfsm_post_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
+      ret = az_hfsm_send_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
       ret = az_hfsm_transition_peer(me, provisioning, hub);
       break;
 
@@ -265,7 +265,7 @@ static int32_t hub(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_TIMEOUT:
       LogInfo( ("hub: Timeout") );
       this_iothfsm->_start_time_msec = az_hfsm_pal_timer_get_milliseconds();
-      ret = az_hfsm_post_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
+      ret = az_hfsm_send_event(this_iothfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
       break;
 
     default:

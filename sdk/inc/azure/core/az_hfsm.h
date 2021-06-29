@@ -26,6 +26,13 @@ typedef enum
 
 #define AZ_HFSM_EVENT(id) ((int32_t)(AZ_HFSM_EVENT_BASE + id))
 
+typedef enum
+{
+  // ASCII "SUPR"
+  AZ_HFSM_RET_HANDLED = 1,
+  AZ_HFSM_RET_HANDLE_BY_SUPERSTATE = 2,
+} az_hfsm_return_type;
+
 struct az_hfsm_event
 {
   az_hfsm_event_type type;
@@ -37,7 +44,7 @@ typedef struct az_hfsm_event az_hfsm_event;
 extern const az_hfsm_event az_hfsm_entry_event;
 extern const az_hfsm_event az_hfsm_exit_event;
 extern const az_hfsm_event az_hfsm_timeout_event;
-extern const az_hfsm_event az_hfsm_errork_unknown_event;
+extern const az_hfsm_event az_hfsm_error_event;
 
 typedef struct az_hfsm az_hfsm;
 typedef int32_t (*az_hfsm_state_handler)(az_hfsm* me, az_hfsm_event event);
@@ -48,9 +55,6 @@ struct az_hfsm
   az_hfsm_state_handler current_state;
   az_hfsm_get_parent get_parent_func;
 };
-
-// ASCII "SUPR"
-#define AZ_HFSM_RET_HANDLE_BY_SUPERSTATE 0x53555052
 
 int32_t az_hfsm_init(
     az_hfsm* h,
@@ -73,9 +77,8 @@ int32_t az_hfsm_transition_superstate(
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state);
 
-// TODO: Send message
-int32_t az_hfsm_post_event(az_hfsm* h, az_hfsm_event event);
+int32_t az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
 
-// TODO: Post --> PAL for queue
+// TODO: az_hfsm_post_event - in-line with other HFSM systems (WinGUI, QT, etc) where send means syncrhonous, post means enqueue.
 
 #endif //_az_HFSM_H
