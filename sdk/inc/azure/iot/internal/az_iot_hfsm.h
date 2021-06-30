@@ -5,7 +5,7 @@
  * @file az_iot_hfsm.c
  * @brief Hierarchical Finite State Machine (HFSM) for Azure IoT Operations.
  * 
- * @details Implements fault handling for Device Provisioning + IoT Hub operations
+ * @details Implements fault handling for Azure Device Provisioning + IoT Hub operations.
  */
 #ifndef _az_IOT_HFSM_H
 #define _az_IOT_HFSM_H
@@ -45,12 +45,12 @@ typedef struct
 } az_iot_hfsm_type;
 
 // AzIoTHFSM-specific events.
-typedef enum
+enum az_hfsm_event_type_iot
 {
   AZ_IOT_ERROR = AZ_HFSM_EVENT(1),
   AZ_IOT_START = AZ_HFSM_EVENT(2),
   AZ_IOT_PROVISIONING_DONE = AZ_HFSM_EVENT(3),
-} az_iot_hfsm_event_type;
+};
 
 extern const az_hfsm_event az_hfsm_event_az_iot_start;
 
@@ -79,6 +79,7 @@ int32_t az_iot_hfsm_initialize(
   az_hfsm* hub_hfsm);
 
 // Platform Adaptation Layer (PAL)
+// TODO: move to az_platform
 
 /**
  * @brief Critical error. This function should not return.

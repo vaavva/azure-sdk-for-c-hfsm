@@ -2,8 +2,8 @@
 /* SPDX-License-Identifier: MIT */
 
 /**
- * @file az_iot_hfsm_pal_freertos_sync.c
- * @brief HFSM Platform Adaptation Layer for FreeRTOS syncrhonous (single threaded) code.
+ * @file az_iot_hfsm_sync_adapter.c
+ * @brief Synchronous adapter for the Azure IoT state machine
  */
 
 #include <stdint.h>
@@ -16,17 +16,14 @@
 #include <azure/iot/internal/az_iot_hfsm_sync_adapter.h>
 
 // The retry Hierarchical Finite State Machine object.
-// A single Provisioning + Hub client is supported when syncrhonous mode is used.
+// A single Provisioning + Hub client is supported when synchronous mode is used.
 static az_iot_hfsm_type iot_hfsm;
 
-// HFSM adapters for Provisioning and Hub operations.
-#ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-static az_hfsm provisioning_hfsm;
-#endif
 static az_hfsm hub_hfsm;
 
 // The two HFSM objects share the same implementation. Only one is active at any time.
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
+static az_hfsm provisioning_hfsm;
 static az_hfsm* active_hfsm = &provisioning_hfsm;
 #else
 static az_hfsm* active_hfsm = &hub_hfsm;
@@ -52,26 +49,15 @@ static int32_t timeout(az_hfsm* me, az_hfsm_event event);
 
 static az_hfsm_state_handler provisioning_and_hub_get_parent(az_hfsm_state_handler child_state)
 {
-  az_hfsm_state_handler parent_state;
-
-  if ((child_state == azure_iot_sync))
-  {
-    parent_state = NULL;
-  }
-  else 
-  {
-    parent_state = azure_iot_sync;
-  }
-
-  return parent_state;
+  return (child_state == azure_iot_sync) ? NULL : azure_iot_sync;
 }
 
 static int32_t azure_iot_sync(az_hfsm* me, az_hfsm_event event)
 {
   switch ((int32_t)event.type)
   {
-    case AZ_HFSM_ENTRY:
-    case AZ_HFSM_EXIT:
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
       break;
     
     default:
@@ -89,8 +75,8 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
 
   switch ((int32_t)event.type)
   {
-    case AZ_HFSM_ENTRY:
-    case AZ_HFSM_EXIT:
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
     case AZ_IOT_HFSM_SYNC_DO_WORK:
       break;
 
@@ -116,11 +102,13 @@ static int32_t running(az_hfsm* me, az_hfsm_event event)
 
   switch ((int32_t)event.type)
   {
-    case AZ_HFSM_ENTRY:
-    case AZ_HFSM_EXIT:
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
      break;
 
     case AZ_IOT_HFSM_SYNC_DO_WORK:
+      // TODO: BUGBUG - the flow doesn't work for both provisionign and hub.
+
       LogInfo( ("running: AZ_IOT_HFSM_SYNC_DO_WORK") );
       az_iot_hfsm_event_data_error status;
       az_hfsm_transition_peer(me, running, idle);
@@ -173,8 +161,8 @@ static int32_t timeout(az_hfsm* me, az_hfsm_event event)
 
   switch ((int32_t)event.type)
   {
-    case AZ_HFSM_ENTRY:
-    case AZ_HFSM_EXIT:
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
       break;
 
     case AZ_IOT_HFSM_SYNC_DO_WORK:
@@ -224,11 +212,6 @@ void az_hfsm_pal_timer_destroy(az_hfsm* src, void* timer_handle)
     // NOOP.
 }
 
-/**
- * @brief Constructor
- * 
- * @return int32_t non-zero on error.
- */
 int32_t az_iot_hfsm_sync_adapter_sync_initialize()
 {
   int32_t ret;
@@ -258,15 +241,11 @@ int32_t az_iot_hfsm_sync_adapter_sync_initialize()
   return ret;
 }
 
-/**
- * @brief Message pump for syncronous operations.
- * 
- */
 void az_iot_hfsm_sync_adapter_sync_do_work()
 {
     az_hfsm_send_event((az_hfsm*)(&iot_hfsm), az_hfsm_event_az_iot_start);
 
-    for ( ; ; )
+    while (true)
     {
         az_hfsm_send_event(active_hfsm, az_hfsm_event_do_work);
     }

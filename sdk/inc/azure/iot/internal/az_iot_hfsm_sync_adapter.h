@@ -2,12 +2,12 @@
 /* SPDX-License-Identifier: MIT */
 
 /**
- * @file az_iot_hfsm_sync_adapter.h
- * @brief Adapter for HFSM syncrhonous operation.
+ * @file az_iot_hfsm_sync_adapter.c
+ * @brief Synchronous adapter for the Azure IoT state machine
  * 
- * @details This adapter provides a way to convert from syncrhonous IoT Provisioning and Hub
- *          operations to asyncrhonous HFSM events. The application must implement the PAL functions.
- *          A single Provisioning + Hub client is supported in syncrhonous mode.
+ * @details This adapter provides a way to convert from synchronous IoT Provisioning and Hub
+ *          operations to asynchronous HFSM events. The application must implement the PAL functions.
+ *          A single Provisioning + Hub client is supported in sync mode.
  */
 
 #ifndef _az_IOT_HFSM_SYNC_ADAPTER_H

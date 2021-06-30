@@ -55,7 +55,7 @@ AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds);
 
 // TODO: documentation:
 AZ_NODISCARD az_result az_platform_timer_create(void* in_user_data, void** out_timer_handle);
-AZ_NODISCARD az_result az_platform_timer_start(void* timer_handle, int32_t milliseconds, bool oneshot);
+AZ_NODISCARD az_result az_platform_timer_start(void* timer_handle, int32_t milliseconds);
 AZ_NODISCARD az_result az_platform_timer_stop(void* timer_handle);
 AZ_NODISCARD void az_platform_timer_destroy(void* timer_handle);
 
