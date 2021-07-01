@@ -132,8 +132,8 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-    case AZ_HFSM_ERROR:
-    case AZ_HFSM_TIMEOUT:
+    case AZ_HFSM_EVENT_ERROR:
+    case AZ_HFSM_EVENT_TIMEOUT:
     default:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
       {
@@ -198,7 +198,7 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      ret = AZ_HFSM_RET_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
   }
 
   return ret;
@@ -225,7 +225,7 @@ static int32_t provisioning(az_hfsm* me, az_hfsm_event event)
       az_hfsm_pal_timer_destroy(me, this_iot_hfsm->_timer_handle);
       break;
 
-    case AZ_HFSM_TIMEOUT:
+    case AZ_HFSM_EVENT_TIMEOUT:
       LogInfo( ("provisioning: Timeout") );
       this_iot_hfsm->_start_time_msec = az_hfsm_pal_timer_get_milliseconds();
       ret = az_hfsm_send_event(this_iot_hfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
@@ -238,7 +238,7 @@ static int32_t provisioning(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      ret = AZ_HFSM_RET_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
   }
 
   return ret;
@@ -265,14 +265,14 @@ static int32_t hub(az_hfsm* me, az_hfsm_event event)
       az_hfsm_pal_timer_destroy(me, this_iot_hfsm->_timer_handle);
       break;
 
-    case AZ_HFSM_TIMEOUT:
+    case AZ_HFSM_EVENT_TIMEOUT:
       LogInfo( ("hub: Timeout") );
       this_iot_hfsm->_start_time_msec = az_hfsm_pal_timer_get_milliseconds();
       ret = az_hfsm_send_event(this_iot_hfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
       break;
 
     default:
-      ret = AZ_HFSM_RET_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
   }
 
   return ret;

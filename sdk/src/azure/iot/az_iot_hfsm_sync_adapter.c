@@ -90,7 +90,7 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
         break;
         
     default:
-      ret = AZ_HFSM_RET_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
   }
 
   return ret;
@@ -149,7 +149,7 @@ static int32_t running(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      ret = AZ_HFSM_RET_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
   }
 
   return ret;
@@ -173,7 +173,7 @@ static int32_t timeout(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      ret = AZ_HFSM_RET_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
   }
 
   return ret;
