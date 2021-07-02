@@ -75,10 +75,9 @@ AZ_NODISCARD az_result az_platform_get_random(int32_t* random);
 /**
  * @brief Timer callback.
  *
- * @param timer_handle The handle to the timer that elapsed.
  * @param sdk_data Data passed by the SDK during the #az_platform_timer_create call.
  */
-typedef void (*az_platform_timer_callback)(void const* timer_handle, void* sdk_data);
+typedef void (*az_platform_timer_callback)(void* sdk_data);
 
 /**
  * @brief Create a timer object.

@@ -6,7 +6,12 @@
  * @brief Definition of #az_hfsm and related types describing a Hierarchical Finite State Machine
  *        (HFSM).
  *
- * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
+ *  @note All HFSM operations must be made thread-safe by the application. The code may execute on
+ *        any thread as long as they are serialized.
+ * 
+ *  @note All operations must be non-blocking.
+ * 
+ *  @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
  * are part of Azure SDK's internal implementation; we do not document these symbols
  * and they are subject to change in future versions of the SDK which would break your code.
@@ -46,8 +51,11 @@ enum az_hfsm_event_type_core
   /// #az_hfsm_error_data
   AZ_HFSM_EVENT_ERROR = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 3),
 
-  /// Generic timeout event: must use a data field containing a structure derived from
-  /// #az_hfsm_timeout_data.
+  /**
+   * @brief Generic timeout event: if multiple timers are necessary it's recommended to create
+   * separate timeout events.
+   *
+   */
   AZ_HFSM_EVENT_TIMEOUT = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 4),
 };
 
@@ -100,19 +108,6 @@ typedef struct
 } az_hfsm_event_data_error;
 
 /**
- * @brief The type representing the minimum data required for an #AZ_HFSM_EVENT_TIMEOUT event.
- *
- */
-typedef struct
-{
-  /**
-   * @brief The timer handle that triggered this #AZ_HFSM_EVENT_TIMEOUT event.
-   *
-   */
-  void* timer_handle;
-} az_hfsm_event_data_timeout;
-
-/**
  * @brief The generic state entry event.
  *
  * @note The entry and exit events must not expect a `data` field.
@@ -151,7 +146,7 @@ typedef az_hfsm_state_handler (*az_hfsm_get_parent)(az_hfsm_state_handler child_
 // Avoiding a circular dependency between az_hfsm, az_hfsm_state_handler and az_hfsm_get_parent.
 struct az_hfsm
 {
-  struct 
+  struct
   {
     az_hfsm_state_handler current_state;
     az_hfsm_get_parent get_parent_func;
@@ -167,18 +162,16 @@ struct az_hfsm
  *            defining this HFSM's hierarchy.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_hfsm_init(
-    az_hfsm* h,
-    az_hfsm_state_handler root_state,
-    az_hfsm_get_parent get_parent_func);
+AZ_NODISCARD az_result
+az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent get_parent_func);
 
 /**
  * @brief Transition to a peer state.
- * 
+ *
  * @note  Calling this as a result of AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE is supported.
  *        The application developer is responsible with ensuring the hierarchy is properly defined
  *        and no invalid calls are made.
- * 
+ *
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] source_state The source state.
  * @param[in] destination_state The destination state.
@@ -190,11 +183,11 @@ void az_hfsm_transition_peer(
 
 /**
  * @brief Transition to a sub state.
- * 
+ *
  * @note  Calling this as a result of AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE is supported.
  *        The application developer is responsible with ensuring the hierarchy is properly defined
  *        and no invalid calls are made.
- * 
+ *
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] source_state The source state.
  * @param[in] destination_state The destination state.
@@ -206,7 +199,7 @@ void az_hfsm_transition_substate(
 
 /**
  * @brief Transition to a super state.
- * 
+ *
  * @note  Calling this as a result of AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE is supported.
  *        The application developer is responsible with ensuring the hierarchy is properly defined
  *        and no invalid calls are made.
@@ -222,15 +215,86 @@ void az_hfsm_transition_superstate(
 
 /**
  * @brief Synchronously sends an event to a HFSM object.
- * 
+ *
  * @note The lifetime of the event's `data` argument must be guaranteed until this function returns.
  *       All state handlers related to this event will execute on the current stack. In most cases
  *       it is recommended that a queue together with a message pump is used as an intermediary to
- *       avoid recursive calls. 
- * 
+ *       avoid recursive calls.
+ *
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] event The event being sent.
  */
 void az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
+
+/**
+ * @brief The type representing a HFSM with dispatch capabilities. Derived from #az_hfsm.
+ *
+ */
+typedef struct
+{
+  struct
+  {
+    az_hfsm* hfsm;
+    void* queue_handle;
+  } _internal;
+} az_hfsm_dispatch;
+
+/**
+ * @brief Adds dispatch capabilities to an existing HFSM.
+ *
+ * @param[out] h The #az_hfsm to use for this call.
+ * @param[in] hfsm The HFSM.
+ * @param[in] queue_handle The handle to the queue object.
+ * @return An #az_result value indicating the result of the operation.
+ */
+AZ_NODISCARD az_result
+az_hfsm_dispatch_init(az_hfsm_dispatch* h, az_hfsm const* hfsm, void const* queue_handle);
+
+/**
+ * @brief Queues an event to a HFSM object.
+ *
+ * @note The lifetime of the `event_reference` must be maintained until the event is consumed by the
+ *       HFSM. No threading guarantees exist for dispatching.
+ *
+ * @param[in] h The #az_hfsm to use for this call.
+ * @param[in] event_reference A reference to the event being sent.
+ * @return An #az_result value indicating the result of the operation.
+ */
+AZ_NODISCARD az_result
+az_hfsm_dispatch_post_event(az_hfsm_dispatch* h, az_hfsm_event* event_reference);
+
+/**
+ * @brief Dispatches one event from the queue to a HFSM object using the current stack / thread.
+ *
+ * @note This function is to be used in conjunction with #az_hfsm_post_event. The HFSM is
+ *       responsible with queue maintenance as well as destruction of the events after being
+ *       consumed.
+ *
+ * @param[in] h The #az_hfsm to use for this call.
+ */
+AZ_NODISCARD az_result az_hfsm_dispatch_one(az_hfsm_dispatch* h);
+
+typedef struct
+{
+  struct
+  {
+    az_hfsm* target_hfsm;
+    az_hfsm_event* event;
+  } _internal;
+} az_hfsm_timer_sdk_data;
+
+/**
+ * @brief Creates a timer and associates it with the given HFSM.
+ *
+ * @param[in] hfsm The target HFSM for this timer.
+ * @param[in] timer_data The #az_hfsm_event_data_timeout that will be sent when the timer elapses.
+ * @param out_timer_handle The timer handle.
+ * @return An #az_result value indicating the result of the operation.
+ *
+ * @note The lifetime of timer_data must be maintained until the timer elapses and the target HFSM
+ *       processed the event.
+ */
+AZ_NODISCARD az_result
+az_hfsm_timer_create(az_hfsm* hfsm, az_hfsm_timer_sdk_data* timer_data, void** out_timer_handle);
 
 #endif //_az_HFSM_H
