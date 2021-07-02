@@ -10,11 +10,11 @@ state AzureIoTSync {
     Running : \t\t error_data = prvDeviceProvisioningRun(); 
     Running : \t\t if (error_data.type == AZ_IOT_OK)
     Running : \t\t {
-    Running : \t\t\t post_event(iot_hfsm, AZ_HFSM_IOT_PROVISIONING_DONE);
+    Running : \t\t\t post_event(iot_hfsm, AZ_HFSM_IOT_EVENT_PROVISIONING_DONE);
     Running : \t\t }
     Running : \t\t else
     Running : \t\t {
-    Running : \t\t\t post_event(iot_hfsm, AZ_HFSM_IOT_ERROR);
+    Running : \t\t\t post_event(iot_hfsm, AZ_HFSM_IOT_EVENT_ERROR);
     Running : \t\t }
     Running : \t }
     Running : \t else // me == hub_hfsm
@@ -23,7 +23,7 @@ state AzureIoTSync {
     Running : \t\t\t error_data = prvIotHubRun(); 
     Running : \t\t } while (error_data.type == AZ_IOT_OK);
     Running :
-    Running : \t\t post_event(iot_hfsm, AZ_HFSM_IOT_ERROR);
+    Running : \t\t post_event(iot_hfsm, AZ_HFSM_IOT_EVENT_ERROR);
     Running : \t }
     Running :
     Running : \t transition(idle);
@@ -35,7 +35,7 @@ state AzureIoTSync {
     Timeout : \t transition(idle)
     
     [*] -> Idle
-    Idle -> Running : AZ_HFSM_IOT_START / SetupNetworkCredentials
+    Idle -> Running : AZ_HFSM_IOT_EVENT_START / SetupNetworkCredentials
     Running -> Timeout : DO_DELAY / <i>!! save</i> delay_milliseconds
     Timeout --> Idle : DO_WORK
     Running -> Idle : DO_WORK

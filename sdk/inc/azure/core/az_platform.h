@@ -70,7 +70,7 @@ void az_platform_critical_error();
  * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
  * function.
  */
-AZ_NODISCARD az_result az_platform_get_random(uint32_t* random);
+AZ_NODISCARD az_result az_platform_get_random(int32_t* random);
 
 /**
  * @brief Timer callback.

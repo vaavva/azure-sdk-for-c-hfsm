@@ -18,21 +18,22 @@
 #include <azure/iot/az_iot_common.h>
 
 #ifndef AZ_IOT_HFSM_MIN_RETRY_DELAY_MSEC
-#define AZ_IOT_HFSM_MIN_RETRY_DELAY_MSEC 1000
+#define AZ_IOT_HFSM_MIN_RETRY_DELAY_MSEC AZ_IOT_DEFAULT_MIN_RETRY_DELAY_MSEC
 #endif 
 
 #ifndef AZ_IOT_HFSM_MAX_RETRY_DELAY_MSEC
-#define AZ_IOT_HFSM_MAX_RETRY_DELAY_MSEC 100000
+#define AZ_IOT_HFSM_MAX_RETRY_DELAY_MSEC AZ_IOT_DEFAULT_MAX_RETRY_DELAY_MSEC
 #endif 
 
 #ifndef AZ_IOT_HFSM_MAX_RETRY_JITTER_MSEC
-#define AZ_IOT_HFSM_MAX_RETRY_JITTER_MSEC 5000
+#define AZ_IOT_HFSM_MAX_RETRY_JITTER_MSEC AZ_IOT_DEFAULT_MAX_RETRY_JITTER_MSEC
 #endif 
 
 #ifndef AZ_IOT_HFSM_MAX_HUB_RETRY
-#define AZ_IOT_HFSM_MAX_HUB_RETRY 10
+#define AZ_IOT_HFSM_MAX_HUB_RETRY AZ_IOT_DEFAULT_MAX_HUB_RETRY
 #endif 
 
+// TODO
 #define AZ_IOT_HFSM_PROVISIONING_ENABLED
 
 typedef struct
@@ -57,7 +58,7 @@ typedef struct
  */
 enum az_hfsm_event_type_iot
 {
-  /// Azure IoT error event.
+  /// Azure IoT error event. Data is of type #az_iot_hfsm_event_data_error.
   AZ_HFSM_IOT_EVENT_ERROR = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT, 1),
 
   /// Azure IoT start event. The data field is always NULL.

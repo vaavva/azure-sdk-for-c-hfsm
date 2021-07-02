@@ -43,7 +43,7 @@ enum az_hfsm_event_type_core
   AZ_HFSM_EVENT_EXIT = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 2),
 
   /// Generic error event: must use a data field containing a structure derived from
-  /// #az_hfsm_error_data.
+  /// #az_hfsm_error_data
   AZ_HFSM_EVENT_ERROR = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 3),
 
   /// Generic timeout event: must use a data field containing a structure derived from

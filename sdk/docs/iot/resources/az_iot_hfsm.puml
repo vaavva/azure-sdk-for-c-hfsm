@@ -14,7 +14,7 @@ state AzureIot {
     Provisioning :
     Provisioning : <b>TIMEOUT/</b>
     Provisioning : \t _start_time_msec = get_miliseconds()
-    Provisioning : \t post_event(hfsm_provisioning, AZ_HFSM_IOT_START)
+    Provisioning : \t post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
 
     state Hub
     Hub : <b>entry/</b>
@@ -30,16 +30,16 @@ state AzureIot {
     Hub : \t start_hub()
     
     [*] -> Idle
-    Idle --> Provisioning : AZ_HFSM_IOT_START / post_event(hfsm_provisioning, AZ_HFSM_IOT_START)
-    Provisioning --> Hub : AZ_HFSM_IOT_PROVISIONING_DONE / post_event(hfsm_iothub, AZ_HFSM_IOT_START)
+    Idle --> Provisioning : AZ_HFSM_IOT_EVENT_START / post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
+    Provisioning --> Hub : AZ_HFSM_IOT_EVENT_PROVISIONING_DONE / post_event(hfsm_iothub, AZ_HFSM_IOT_EVENT_START)
 
-    Hub -> Provisioning : AZ_HFSM_IOT_ERROR
+    Hub -> Provisioning : AZ_HFSM_IOT_EVENT_ERROR
 }
 
 AzureIot : <b>entry/</b> 
 AzureIot : \t _use_secondary_credentials = false
 AzureIot :
-AzureIot : <b>AZ_HFSM_IOT_ERROR/</b>
+AzureIot : <b>AZ_HFSM_IOT_EVENT_ERROR/</b>
 AzureIot : \t _retry_attempt++
 AzureIot : \t operation_msec = get_miliseconds() - _start_time_msec
 AzureIot : \t should_retry = 
@@ -54,7 +54,7 @@ AzureIot : \t }
 AzureIot : \t else {
 AzureIot : \t\t _use_secondary_credentials = !_use_secondary_credentials
 AzureIot:  \t\t operation_msec = get_miliseconds() - _start_time_msec
-AzureIot : \t\t post_event(hfsm_provisioning, AZ_HFSM_IOT_START)
+AzureIot : \t\t post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
 AzureIot : \t\t transition(provisioning)
 AzureIot : \t }
 AzureIot :
