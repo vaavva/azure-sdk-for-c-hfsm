@@ -141,7 +141,7 @@ typedef struct az_hfsm az_hfsm;
 typedef az_hfsm_return_type (*az_hfsm_state_handler)(az_hfsm* me, az_hfsm_event event);
 
 /**
- * @brief The function signature for the function returning the parent of any given child state.
+ * @brief The type of the function returning the parent of any given child state.
  *
  * @note All HFSMs must define a `get_parent` function. A top-level state is mandatory.
  *       `get_parent(top_level_state)` must always return `NULL`.
@@ -151,8 +151,11 @@ typedef az_hfsm_state_handler (*az_hfsm_get_parent)(az_hfsm_state_handler child_
 // Avoiding a circular dependency between az_hfsm, az_hfsm_state_handler and az_hfsm_get_parent.
 struct az_hfsm
 {
-  az_hfsm_state_handler current_state;
-  az_hfsm_get_parent get_parent_func;
+  struct 
+  {
+    az_hfsm_state_handler current_state;
+    az_hfsm_get_parent get_parent_func;
+  } _internal;
 };
 
 /**
@@ -229,16 +232,5 @@ void az_hfsm_transition_superstate(
  * @param[in] event The event being sent.
  */
 void az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
-
-/**
- * @brief Queues an event to a HFSM object.
- * 
- * @note The lifetime of the event's `data` must be maintained until the event is consumed by the
- *       HFSM. The state handlers related to this event may execute on other threads.
- * 
- * @param[in] h The #az_hfsm to use for this call.
- * @param[in] event The event being sent.
- */
-void az_hfsm_post_event(az_hfsm* h, az_hfsm_event event);
 
 #endif //_az_HFSM_H

@@ -111,6 +111,24 @@ AZ_NODISCARD az_result az_platform_timer_start(void* timer_handle, int32_t milli
  */
 void az_platform_timer_destroy(void* timer_handle);
 
+/**
+ * @brief Enqueue an element in an already initialized queue.
+ * 
+ * @param queue_handle The queue handle. This must be initialized by the application.
+ * @param element The queue element.
+ * @return An #az_result value indicating the result of the operation.
+ */
+AZ_NODISCARD az_result az_platform_queue_push(void const* queue_handle, void* element);
+
+/**
+ * @brief Dequeue an element from a queue.
+ * 
+ * @param queue_handle The queue handle. This must be initialized by the application.
+ * @param element The queue element.
+ * @return An #az_result value indicating the result of the operation.
+ */
+AZ_NODISCARD az_result az_platform_queue_pop(void const* queue_handle, void** element);
+
 #include <azure/core/_az_cfg_suffix.h>
 
 #endif // _az_PLATFORM_H
