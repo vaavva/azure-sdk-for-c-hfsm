@@ -36,18 +36,18 @@ typedef int32_t az_hfsm_event_type;
  */
 enum az_hfsm_event_type_core
 {
-  // Entry event: must not set or use the data field, must be handled by each state.
+  /// Entry event: must not set or use the data field, must be handled by each state.
   AZ_HFSM_EVENT_ENTRY = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 1),
 
-  // Exit event: must not set or use the data field, must be handled by each state.
+  /// Exit event: must not set or use the data field, must be handled by each state.
   AZ_HFSM_EVENT_EXIT = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 2),
 
-  // Generic error event: must use a data field containing a structure derived from
-  // #az_hfsm_error_data.
+  /// Generic error event: must use a data field containing a structure derived from
+  /// #az_hfsm_error_data.
   AZ_HFSM_EVENT_ERROR = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 3),
 
-  // Generic timeout event: must use a data field containing a structure derived from
-  // #az_hfsm_timeout_data.
+  /// Generic timeout event: must use a data field containing a structure derived from
+  /// #az_hfsm_timeout_data.
   AZ_HFSM_EVENT_TIMEOUT = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 4),
 };
 
@@ -97,7 +97,7 @@ typedef struct
    *
    */
   az_result error_type;
-} az_hfsm_error_data;
+} az_hfsm_event_data_error;
 
 /**
  * @brief The type representing the minimum data required for an #AZ_HFSM_EVENT_TIMEOUT event.
@@ -110,7 +110,7 @@ typedef struct
    *
    */
   void* timer_handle;
-} az_hfsm_timeout_data;
+} az_hfsm_event_data_timeout;
 
 /**
  * @brief The generic state entry event.
@@ -164,7 +164,7 @@ struct az_hfsm
  *            defining this HFSM's hierarchy.
  * @return An #az_result value indicating the result of the operation.
  */
-az_result az_hfsm_init(
+AZ_NODISCARD az_result az_hfsm_init(
     az_hfsm* h,
     az_hfsm_state_handler root_state,
     az_hfsm_get_parent get_parent_func);

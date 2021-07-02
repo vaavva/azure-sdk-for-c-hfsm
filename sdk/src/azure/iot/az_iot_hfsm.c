@@ -17,9 +17,9 @@
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/iot/internal/az_iot_hfsm.h>
 
-const az_hfsm_event az_hfsm_event_az_iot_start = { AZ_IOT_START, NULL };
+const az_hfsm_event az_hfsm_event_az_iot_start = { AZ_HFSM_IOT_START, NULL };
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-const az_hfsm_event az_hfsm_event_az_iot_provisioning_done = { AZ_IOT_PROVISIONING_DONE, NULL };
+const az_hfsm_event az_hfsm_event_az_iot_provisioning_done = { AZ_HFSM_IOT_PROVISIONING_DONE, NULL };
 #endif
 
 static int32_t azure_iot(az_hfsm* me, az_hfsm_event event);
@@ -76,7 +76,7 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
       this_iot_hfsm->_use_secondary_credentials = false;
       break;
 
-    case AZ_IOT_ERROR:
+    case AZ_HFSM_IOT_ERROR:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
       {
         _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
@@ -93,11 +93,11 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
       az_iot_hfsm_event_data_error* error_data = (az_iot_hfsm_event_data_error*)(event.data);
 
       bool should_retry = false;
-      if (error_data->type == AZ_IOT_ERROR_TYPE_SERVICE)
+      if (error_data->type == AZ_HFSM_IOT_ERROR_TYPE_SERVICE)
       {
         should_retry = az_iot_status_retriable(error_data->iot_status);
       }
-      else if (error_data->type == AZ_IOT_ERROR_TYPE_NETWORK)
+      else if (error_data->type == AZ_HFSM_IOT_ERROR_TYPE_NETWORK)
       {
         should_retry = true;
       }
@@ -117,7 +117,7 @@ static int32_t azure_iot(az_hfsm* me, az_hfsm_event event)
       }
       else
       {
-        _az_PRECONDITION(error_data->type == AZ_IOT_ERROR_TYPE_SECURITY);
+        _az_PRECONDITION(error_data->type == AZ_HFSM_IOT_ERROR_TYPE_SECURITY);
         this_iot_hfsm->_use_secondary_credentials = !this_iot_hfsm->_use_secondary_credentials;
         az_platform_clock_msec(&this_iot_hfsm->_start_time_msec);
 
@@ -170,7 +170,7 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
       }
       break;
     
-    case AZ_IOT_START:
+    case AZ_HFSM_IOT_START:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_IOT_START))
       {
         _az_LOG_WRITE(AZ_LOG_IOT_START, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/idle"));
@@ -231,7 +231,7 @@ static int32_t provisioning(az_hfsm* me, az_hfsm_event event)
       ret = az_hfsm_send_event(this_iot_hfsm->_provisioning_hfsm, az_hfsm_event_az_iot_start);
       break;
     
-    case AZ_IOT_PROVISIONING_DONE:
+    case AZ_HFSM_IOT_PROVISIONING_DONE:
       LogInfo( ("provisioning: Done") );
       ret = az_hfsm_send_event(this_iot_hfsm->_iothub_hfsm, az_hfsm_event_az_iot_start);
       ret = az_hfsm_transition_peer(me, provisioning, hub);

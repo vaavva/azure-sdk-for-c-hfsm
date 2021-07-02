@@ -38,7 +38,7 @@ typedef enum
 static const az_hfsm_event az_hfsm_event_do_work = { AZ_IOT_HFSM_SYNC_DO_WORK, NULL };
 static const az_hfsm_event az_hfsm_event_do_delay = { AZ_IOT_HFSM_SYNC_DO_DELAY, NULL };
 
-static az_hfsm_event az_hfsm_sync_event_error = { AZ_IOT_ERROR, NULL };
+static az_hfsm_event az_hfsm_sync_event_error = { AZ_HFSM_IOT_ERROR, NULL };
 
 static int32_t delay_milliseconds;
 
@@ -80,8 +80,8 @@ static int32_t idle(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HFSM_SYNC_DO_WORK:
       break;
 
-    case AZ_IOT_START:
-        LogInfo( ("idle: AZ_IOT_START") );
+    case AZ_HFSM_IOT_START:
+        LogInfo( ("idle: AZ_HFSM_IOT_START") );
 
         active_hfsm = me;
         // TODO: remove internals access by moving to the start event data.

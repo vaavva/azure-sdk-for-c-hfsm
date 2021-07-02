@@ -29,74 +29,79 @@
 #define AZ_IOT_HFSM_MAX_RETRY_JITTER_MSEC 5000
 #endif 
 
+#ifndef AZ_IOT_HFSM_MAX_HUB_RETRY
+#define AZ_IOT_HFSM_MAX_HUB_RETRY 10
+#endif 
+
 #define AZ_IOT_HFSM_PROVISIONING_ENABLED
 
 typedef struct
 {
-  az_hfsm hfsm;
-  bool _use_secondary_credentials;
-  int16_t _retry_attempt;
-  int64_t _start_time_msec;
-  void* _timer_handle;
+  struct
+  {
+    az_hfsm hfsm;
+    bool use_secondary_credentials;
+    int16_t retry_attempt;
+    int64_t start_time_msec;
+    void* timer_handle;
+    az_hfsm* hub_hfsm;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-  az_hfsm* _provisioning_hfsm;
+    az_hfsm* provisioning_hfsm;
 #endif
-  az_hfsm* _iothub_hfsm;
+  } _internal;
 } az_iot_hfsm_type;
 
-// AzIoTHFSM-specific events.
+/**
+ * @brief Azure IoT HFSM event types.
+ * 
+ */
 enum az_hfsm_event_type_iot
 {
-  AZ_IOT_ERROR = AZ_HFSM_EVENT(1),
-  AZ_IOT_START = AZ_HFSM_EVENT(2),
-  AZ_IOT_PROVISIONING_DONE = AZ_HFSM_EVENT(3),
+  /// Azure IoT error event.
+  AZ_HFSM_IOT_EVENT_ERROR = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT, 1),
+
+  /// Azure IoT start event. The data field is always NULL.
+  AZ_HFSM_IOT_EVENT_START = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT, 2),
+
+  /// Azure IoT provisioning complete event. The data field is always NULL.
+  AZ_HFSM_IOT_EVENT_PROVISIONING_DONE = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT, 3),
 };
 
+/**
+ * @brief The generic IoT start event.
+ * 
+ */
 extern const az_hfsm_event az_hfsm_event_az_iot_start;
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
+/**
+ * @brief The generic provisioning done event.
+ * 
+ */
 extern const az_hfsm_event az_hfsm_event_az_iot_provisioning_done;
 #endif
 
-typedef enum
-{
-  AZ_IOT_OK,
-  AZ_IOT_ERROR_TYPE_NETWORK,
-  AZ_IOT_ERROR_TYPE_SECURITY,
-  AZ_IOT_ERROR_TYPE_SERVICE,
-} az_iot_hfsm_event_data_error_type;
-
+/**
+ * @brief IoT error event data. Extends #az_hfsm_event_data_error.
+ * 
+ */
 typedef struct {
-  az_iot_hfsm_event_data_error_type type;
+  az_hfsm_event_data_error error;
   az_iot_status iot_status;
 } az_iot_hfsm_event_data_error;
 
-int32_t az_iot_hfsm_initialize(
+/**
+ * @brief Initializes an IoT HFSM object.
+ * 
+ * @param[out] iot_hfsm The #az_hfsm to use for this call.
+ * @param[in] provisioning_hfsm The #az_hfsm implementing #az_iot_provisioning_client operations.
+ * @param[in] hub_hfsm The #az_hfsm implementing #az_iot_hub_client operations.
+ */
+AZ_NODISCARD az_result az_iot_hfsm_initialize(
   az_iot_hfsm_type* iot_hfsm, 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
   az_hfsm* provisioning_hfsm, 
 #endif
   az_hfsm* hub_hfsm);
-
-// Platform Adaptation Layer (PAL)
-// TODO: move to az_platform
-
-/**
- * @brief Critical error. This function should not return.
- * 
- * @param me The calling HFSM object.
- */
-void az_iot_hfsm_pal_critical_error(az_hfsm* hfsm);
-
-/**
- * @brief Get random jitter in milliseconds.
- * 
- * @details This function must return a random number representing the milliseconds of jitter applied during
- *          Azure IoT retries. The recommended maximum jitter is 5000ms (5 seconds).
- * 
- * @param hfsm The requesting HFSM.
- * @return int32_t The random jitter in milliseconds.
- */
-int32_t az_iot_hfsm_pal_get_random_jitter_msec(az_hfsm* hfsm);
 
 #endif //_az_IOT_HFSM_H

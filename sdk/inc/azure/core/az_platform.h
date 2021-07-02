@@ -53,11 +53,63 @@ AZ_NODISCARD az_result az_platform_clock_msec(int64_t* out_clock_msec);
  */
 AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds);
 
-// TODO: documentation:
-AZ_NODISCARD az_result az_platform_timer_create(void* in_user_data, void** out_timer_handle);
+/**
+ * @brief Called on critical error. This function should not return.
+ *
+ * @details In general, this function should cause the device to reboot or the main process to
+ *          crash or exit.
+ */
+void az_platform_critical_error();
+
+/**
+ * @brief Gets a positive random integer.
+ * 
+ * @param[out] random A random number greater than 0.
+ *
+ * @retval #AZ_OK Success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_get_random(uint32_t* random);
+
+/**
+ * @brief Timer callback.
+ *
+ * @param timer_handle The handle to the timer that elapsed.
+ * @param sdk_data Data passed by the SDK during the #az_platform_timer_create call.
+ */
+typedef void (*az_platform_timer_callback)(void const* timer_handle, void* sdk_data);
+
+/**
+ * @brief Create a timer object.
+ *
+ * @param callback SDK callback to call when timer elapses.
+ * @param sdk_data SDK data associated with the timer.
+ * @param out_timer_handle The timer handle.
+ * @return An #az_result value indicating the result of the operation.
+ */
+AZ_NODISCARD az_result az_platform_timer_create(
+    az_platform_timer_callback callback,
+    void* sdk_data,
+    void** out_timer_handle);
+
+/**
+ * @brief Starts the timer. This function can be called multiple times. The timer should call the
+ *        callback at most once.
+ *
+ * @param timer_handle The timer handle.
+ * @param milliseconds Time in milliseconds after which the platform must call the associated
+ *                     #az_platform_timer_callback.
+ * @return An #az_result value indicating the result of the operation.
+ */
 AZ_NODISCARD az_result az_platform_timer_start(void* timer_handle, int32_t milliseconds);
-AZ_NODISCARD az_result az_platform_timer_stop(void* timer_handle);
-AZ_NODISCARD void az_platform_timer_destroy(void* timer_handle);
+
+/**
+ * @brief Destroys a timer.
+ * 
+ * @param timer_handle The timer handle.
+ */
+void az_platform_timer_destroy(void* timer_handle);
 
 #include <azure/core/_az_cfg_suffix.h>
 

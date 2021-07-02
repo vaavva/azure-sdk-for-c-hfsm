@@ -17,13 +17,13 @@ state AzureIot {
     Hub : \t start_hub()
     
     [*] -> Idle
-    Idle --> Hub : AZ_IOT_START / post_event(hfsm_hub, AZ_IOT_START)
+    Idle --> Hub : AZ_HFSM_IOT_START / post_event(hfsm_hub, AZ_HFSM_IOT_START)
 }
 
 AzureIot : <b>entry/</b> 
 AzureIot : \t _use_secondary_credentials = false
 AzureIot :
-AzureIot : <b>AZ_IOT_ERROR/</b>
+AzureIot : <b>AZ_HFSM_IOT_ERROR/</b>
 AzureIot : \t _retry_attempt++
 AzureIot : \t operation_msec = get_miliseconds() - _start_time_msec
 AzureIot : \t should_retry = false;
@@ -40,7 +40,7 @@ AzureIot : \t }
 AzureIot : \t else {
 AzureIot : \t\t _use_secondary_credentials = !_use_secondary_credentials
 AzureIot:  \t\t operation_msec = get_miliseconds() - _start_time_msec
-AzureIot : \t\t post_event(hfsm_hub, AZ_IOT_START)
+AzureIot : \t\t post_event(hfsm_hub, AZ_HFSM_IOT_START)
 AzureIot : \t\t transition(hub)
 AzureIot : \t }
 AzureIot :

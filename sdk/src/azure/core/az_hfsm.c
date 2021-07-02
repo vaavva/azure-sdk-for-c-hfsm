@@ -22,7 +22,7 @@
 const az_hfsm_event az_hfsm_event_entry = { AZ_HFSM_EVENT_ENTRY, NULL };
 const az_hfsm_event az_hfsm_event_exit = { AZ_HFSM_EVENT_EXIT, NULL };
 
-az_result az_hfsm_init(
+AZ_NODISCARD az_result az_hfsm_init(
     az_hfsm* h,
     az_hfsm_state_handler root_state,
     az_hfsm_get_parent get_parent_func)
