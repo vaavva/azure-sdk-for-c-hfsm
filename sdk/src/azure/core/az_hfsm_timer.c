@@ -26,8 +26,10 @@ static void _az_hfsm_timer_callback(void* sdk_data)
   az_hfsm_send_event(data->_internal.target_hfsm, *data->_internal.event);
 }
 
-AZ_NODISCARD az_result
-az_hfsm_timer_create(az_hfsm* hfsm, az_hfsm_timer_sdk_data* timer_data, void** out_timer_handle)
+AZ_NODISCARD az_result az_hfsm_timer_create(
+    az_hfsm* hfsm,
+    az_hfsm_timer_sdk_data* timer_data,
+    void** out_timer_handle)
 {
   timer_data->_internal.target_hfsm = hfsm;
   return az_platform_timer_create(_az_hfsm_timer_callback, timer_data, out_timer_handle);

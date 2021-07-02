@@ -29,6 +29,10 @@ state AzureIot {
     Hub : \t _start_time_msec = get_miliseconds()
     Hub : \t start_hub()
     
+    state Faulted
+    Faulted : <b>entry/</b> critical_error()
+
+
     [*] -> Idle
     Idle --> Provisioning : AZ_HFSM_IOT_EVENT_START / post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
     Provisioning --> Hub : AZ_HFSM_IOT_EVENT_PROVISIONING_DONE / post_event(hfsm_iothub, AZ_HFSM_IOT_EVENT_START)
@@ -63,5 +67,7 @@ AzureIot : <b>exit/</b>
 AzureIot : <b>TIMEOUT/</b>
 AzureIot : <b>ERROR/</b>
 AzureIot : \t critical_error()
+
+AzureIot --> Faulted : TIMEOUT|ERROR|exit
 
 @enduml

@@ -45,9 +45,10 @@ typedef struct
     int16_t retry_attempt;
     int64_t start_time_msec;
     void* timer_handle;
-    az_hfsm* hub_hfsm;
+    az_hfsm_timer_sdk_data timer_data;
+    az_hfsm_dispatch* hub_hfsm;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-    az_hfsm* provisioning_hfsm;
+    az_hfsm_dispatch* provisioning_hfsm;
 #endif
   } _internal;
 } az_iot_hfsm_type;
@@ -101,8 +102,8 @@ typedef struct {
 AZ_NODISCARD az_result az_iot_hfsm_initialize(
   az_iot_hfsm_type* iot_hfsm, 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-  az_hfsm* provisioning_hfsm, 
+  az_hfsm_dispatch* provisioning_hfsm, 
 #endif
-  az_hfsm* hub_hfsm);
+  az_hfsm_dispatch* hub_hfsm);
 
 #endif //_az_IOT_HFSM_H

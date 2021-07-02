@@ -127,22 +127,48 @@ static az_hfsm_return_type azure_iot(az_hfsm* me, az_hfsm_event event)
         _az_PRECONDITION(az_result_succeeded(az_ret));
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-        az_hfsm_post_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
-        az_hfsm_transition_substate(me, azure_iot, provisioning);
+        az_ret = az_hfsm_dispatch_post_event(
+            this_iot_hfsm->_internal.provisioning_hfsm, &az_hfsm_event_az_iot_start);
 #else
-        az_hfsm_send_event(this_iot_hfsm->_internal.iothub_hfsm, az_hfsm_event_az_iot_start);
-        az_hfsm_transition_substate(me, azure_iot, hub);
+        az_ret = az_hfsm_dispatch_post_event(
+            this_iot_hfsm->_internal.iothub_hfsm, &az_hfsm_event_az_iot_start);
 #endif
+
+        if (az_result_succeeded(az_ret))
+        {
+#ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
+          az_hfsm_transition_substate(me, azure_iot, provisioning);
+#else
+          az_hfsm_transition_substate(me, azure_iot, hub);
+#endif
+        }
+        else
+        {
+          az_hfsm_event_data_error e = { .error_type = az_ret };
+          az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &e });
+        }
       }
       break;
 
-    case AZ_HFSM_EVENT_EXIT:
     case AZ_HFSM_EVENT_ERROR:
-    case AZ_HFSM_EVENT_TIMEOUT:
-    default:
+      az_hfsm_event_data_error* e = (az_hfsm_event_data_error*)event.data;
+
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
       {
         _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
+        // TODO: log az_result code.
+        e->error_type;
+      }
+      // Exitting the top-level state to cause a critical error.
+      az_hfsm_send_event(me, az_hfsm_event_exit);
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_EVENT_TIMEOUT:
+    default:
+      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
+      {
+        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
       }
 
       az_platform_critical_error();
@@ -179,13 +205,28 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
         _az_LOG_WRITE(AZ_LOG_HFSM_IOT_START, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/idle"));
       }
 
+      az_result az_ret;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-      az_hfsm_post_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
-      az_hfsm_transition_peer(me, idle, provisioning);
+      az_ret = az_hfsm_dispatch_post_event(
+          this_iot_hfsm->_internal.provisioning_hfsm, &az_hfsm_event_az_iot_start);
 #else
-      az_hfsm_post_event(this_iot_hfsm->_internal.iothub_hfsm, az_hfsm_event_az_iot_start);
-      az_hfsm_transition_peer(me, idle, hub);
+      az_hfsm_dispatch_post_event(
+          this_iot_hfsm->_internal.iothub_hfsm, &az_hfsm_event_az_iot_start);
 #endif
+
+      if (az_result_succeeded(az_ret))
+      {
+#ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
+        az_hfsm_transition_peer(me, idle, provisioning);
+#else
+        az_hfsm_transition_peer(me, idle, hub);
+#endif
+      }
+      else
+      {
+        az_hfsm_event_data_error e = { .error_type = az_ret };
+        az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &e });
+      }
       break;
 
     default:
@@ -214,7 +255,8 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
       az_result az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
-      az_ret = az_platform_timer_create(TODO, me, &this_iot_hfsm->_internal.timer_handle);
+      az_ret = az_hfsm_timer_create(
+          me, &this_iot_hfsm->_internal.timer_data, &this_iot_hfsm->_internal.timer_handle);
       if (az_result_failed(az_ret))
       {
         az_hfsm_event_data_error d = { az_ret };
@@ -240,7 +282,14 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
       az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
-      az_hfsm_post_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
+      az_ret = az_hfsm_dispatch_post_event(
+          this_iot_hfsm->_internal.provisioning_hfsm, &az_hfsm_event_az_iot_start);
+      if (az_result_failed(az_ret))
+      {
+        az_hfsm_event_data_error d = { az_ret };
+        az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
+      }
+
       break;
 
     case AZ_HFSM_IOT_EVENT_PROVISIONING_DONE:
@@ -251,8 +300,17 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
             AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/provisioning"));
       }
 
-      az_hfsm_post_event(this_iot_hfsm->_internal.hub_hfsm, az_hfsm_event_az_iot_start);
-      az_hfsm_transition_peer(me, provisioning, hub);
+      az_ret = az_hfsm_dispatch_post_event(
+          this_iot_hfsm->_internal.hub_hfsm, &az_hfsm_event_az_iot_start);
+      if (az_result_failed(az_ret))
+      {
+        az_hfsm_event_data_error d = { az_ret };
+        az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
+      }
+      else
+      {
+        az_hfsm_transition_peer(me, provisioning, hub);
+      }
       break;
 
     default:
@@ -282,7 +340,8 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
       az_result az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
-      az_ret = az_platform_timer_create(TODO, me, &this_iot_hfsm->_internal.timer_handle);
+      az_ret = az_hfsm_timer_create(
+          me, &this_iot_hfsm->_internal.timer_data, &this_iot_hfsm->_internal.timer_handle);
       if (az_result_failed(az_ret))
       {
         az_hfsm_event_data_error d = { az_ret };
@@ -296,7 +355,7 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
         _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/hub"));
       }
 
-      az_hfsm_pal_timer_destroy(me, this_iot_hfsm->_internal.timer_handle);
+      az_platform_timer_destroy(this_iot_hfsm->_internal.timer_handle);
       break;
 
     case AZ_HFSM_EVENT_TIMEOUT:
@@ -308,7 +367,8 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
       az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
-      az_hfsm_post_event(this_iot_hfsm->_internal.hub_hfsm, az_hfsm_event_az_iot_start);
+      az_ret = az_hfsm_dispatch_post_event(
+          this_iot_hfsm->_internal.hub_hfsm, &az_hfsm_event_az_iot_start);
       break;
 
     default:
@@ -318,20 +378,12 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-/**
- * @brief
- *
- * @param iot_hfsm
- * @param provisioning_hfsm
- * @param hub_hfsm
- * @return int32_t
- */
-az_result az_iot_hfsm_initialize(
+AZ_NODISCARD az_result az_iot_hfsm_initialize(
     az_iot_hfsm_type* iot_hfsm,
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-    az_hfsm* provisioning_hfsm,
+    az_hfsm_dispatch* provisioning_hfsm,
 #endif
-    az_hfsm* hub_hfsm)
+    az_hfsm_dispatch* hub_hfsm)
 {
   az_result ret;
 

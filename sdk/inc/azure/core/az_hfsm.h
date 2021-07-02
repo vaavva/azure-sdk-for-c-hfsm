@@ -8,9 +8,9 @@
  *
  *  @note All HFSM operations must be made thread-safe by the application. The code may execute on
  *        any thread as long as they are serialized.
- * 
+ *
  *  @note All operations must be non-blocking.
- * 
+ *
  *  @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
  * are part of Azure SDK's internal implementation; we do not document these symbols
@@ -248,7 +248,7 @@ typedef struct
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_dispatch_init(az_hfsm_dispatch* h, az_hfsm const* hfsm, void const* queue_handle);
+az_hfsm_dispatch_init(az_hfsm_dispatch* h, az_hfsm* hfsm, void const* queue_handle);
 
 /**
  * @brief Queues an event to a HFSM object.
@@ -261,7 +261,7 @@ az_hfsm_dispatch_init(az_hfsm_dispatch* h, az_hfsm const* hfsm, void const* queu
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_dispatch_post_event(az_hfsm_dispatch* h, az_hfsm_event* event_reference);
+az_hfsm_dispatch_post_event(az_hfsm_dispatch* h, az_hfsm_event const* event_reference);
 
 /**
  * @brief Dispatches one event from the queue to a HFSM object using the current stack / thread.
@@ -294,7 +294,9 @@ typedef struct
  * @note The lifetime of timer_data must be maintained until the timer elapses and the target HFSM
  *       processed the event.
  */
-AZ_NODISCARD az_result
-az_hfsm_timer_create(az_hfsm* hfsm, az_hfsm_timer_sdk_data* timer_data, void** out_timer_handle);
+AZ_NODISCARD az_result az_hfsm_timer_create(
+    az_hfsm* hfsm,
+    az_hfsm_timer_sdk_data* timer_data,
+    void** out_timer_handle);
 
 #endif //_az_HFSM_H

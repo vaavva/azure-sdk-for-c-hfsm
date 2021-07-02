@@ -117,7 +117,7 @@ void az_platform_timer_destroy(void* timer_handle);
  * @param element The queue element.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_platform_queue_push(void const* queue_handle, void* element);
+AZ_NODISCARD az_result az_platform_queue_push(void* queue_handle, void const* element);
 
 /**
  * @brief Dequeue an element from a queue.
@@ -126,7 +126,7 @@ AZ_NODISCARD az_result az_platform_queue_push(void const* queue_handle, void* el
  * @param element The queue element.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_platform_queue_pop(void const* queue_handle, void** element);
+AZ_NODISCARD az_result az_platform_queue_pop(void* queue_handle, void** element);
 
 #include <azure/core/_az_cfg_suffix.h>
 
