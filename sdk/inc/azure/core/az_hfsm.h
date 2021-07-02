@@ -220,8 +220,7 @@ void az_hfsm_transition_superstate(
 /**
  * @brief Synchronously sends an event to a HFSM object.
  * 
- * @note The lifetime of the event's `data` argument is dependent on the particular implementation 
- *       of the HFSM class.
+ * @note The lifetime of the event's `data` argument must be guaranteed until this function returns.
  *       All state handlers related to this event will execute on the current stack. In most cases
  *       it is recommended that a queue together with a message pump is used as an intermediary to
  *       avoid recursive calls. 
@@ -231,7 +230,15 @@ void az_hfsm_transition_superstate(
  */
 void az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
 
-// TODO: az_hfsm_post_event - in-line with other HFSM systems (WinGUI, QT, etc) where send means
-// sync, post means enqueue.
+/**
+ * @brief Queues an event to a HFSM object.
+ * 
+ * @note The lifetime of the event's `data` must be maintained until the event is consumed by the
+ *       HFSM. The state handlers related to this event may execute on other threads.
+ * 
+ * @param[in] h The #az_hfsm to use for this call.
+ * @param[in] event The event being sent.
+ */
+void az_hfsm_post_event(az_hfsm* h, az_hfsm_event event);
 
 #endif //_az_HFSM_H

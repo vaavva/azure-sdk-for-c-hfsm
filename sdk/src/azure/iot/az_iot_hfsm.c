@@ -127,7 +127,7 @@ static az_hfsm_return_type azure_iot(az_hfsm* me, az_hfsm_event event)
         _az_PRECONDITION(az_result_succeeded(az_ret));
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-        az_hfsm_send_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
+        az_hfsm_post_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
         az_hfsm_transition_substate(me, azure_iot, provisioning);
 #else
         az_hfsm_send_event(this_iot_hfsm->_internal.iothub_hfsm, az_hfsm_event_az_iot_start);
@@ -180,10 +180,10 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
       }
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-      az_hfsm_send_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
+      az_hfsm_post_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
       az_hfsm_transition_peer(me, idle, provisioning);
 #else
-      az_hfsm_send_event(this_iot_hfsm->_internal.iothub_hfsm, az_hfsm_event_az_iot_start);
+      az_hfsm_post_event(this_iot_hfsm->_internal.iothub_hfsm, az_hfsm_event_az_iot_start);
       az_hfsm_transition_peer(me, idle, hub);
 #endif
       break;
@@ -240,7 +240,7 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
       az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
-      az_hfsm_send_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
+      az_hfsm_post_event(this_iot_hfsm->_internal.provisioning_hfsm, az_hfsm_event_az_iot_start);
       break;
 
     case AZ_HFSM_IOT_EVENT_PROVISIONING_DONE:
@@ -251,7 +251,7 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
             AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot/provisioning"));
       }
 
-      az_hfsm_send_event(this_iot_hfsm->_internal.hub_hfsm, az_hfsm_event_az_iot_start);
+      az_hfsm_post_event(this_iot_hfsm->_internal.hub_hfsm, az_hfsm_event_az_iot_start);
       az_hfsm_transition_peer(me, provisioning, hub);
       break;
 
@@ -308,7 +308,7 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
       az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
-      az_hfsm_send_event(this_iot_hfsm->_internal.hub_hfsm, az_hfsm_event_az_iot_start);
+      az_hfsm_post_event(this_iot_hfsm->_internal.hub_hfsm, az_hfsm_event_az_iot_start);
       break;
 
     default:
