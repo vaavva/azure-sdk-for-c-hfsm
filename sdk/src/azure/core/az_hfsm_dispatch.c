@@ -12,6 +12,8 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 
+#include <azure/core/_az_cfg.h>
+
 AZ_NODISCARD az_result
 az_hfsm_dispatch_post_event(az_hfsm_dispatch* h, az_hfsm_event const* event)
 {

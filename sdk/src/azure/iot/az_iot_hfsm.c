@@ -17,6 +17,8 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/iot/internal/az_iot_hfsm.h>
 
+#include <azure/core/_az_cfg.h>
+
 const az_hfsm_event az_hfsm_event_az_iot_start = { AZ_HFSM_IOT_EVENT_START, NULL };
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
 const az_hfsm_event az_hfsm_event_az_iot_provisioning_done

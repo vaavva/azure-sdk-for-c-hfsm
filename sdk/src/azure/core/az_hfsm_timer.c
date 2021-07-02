@@ -12,6 +12,8 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 
+#include <azure/core/_az_cfg.h>
+
 static void _az_hfsm_timer_callback(void* sdk_data)
 {
   _az_PRECONDITION_NOT_NULL(sdk_data);

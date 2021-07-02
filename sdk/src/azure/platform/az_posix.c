@@ -5,9 +5,10 @@
 #include <azure/core/internal/az_config_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 
+#include <stdlib.h>
 #include <time.h>
-
 #include <unistd.h>
+
 
 #include <azure/core/_az_cfg.h>
 
@@ -24,5 +25,11 @@ AZ_NODISCARD az_result az_platform_clock_msec(int64_t* out_clock_msec)
 AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds)
 {
   (void)usleep((useconds_t)milliseconds * _az_TIME_MICROSECONDS_PER_MILLISECOND);
-  return AZ_OK;
+  return AZ_OK;dsdsdd
+}
+
+AZ_NODISCARD az_result az_platform_get_random(int32_t* random)
+{
+  (void)random;
+  return AZ_ERROR_DEPENDENCY_NOT_PROVIDED;
 }

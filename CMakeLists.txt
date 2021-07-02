@@ -12,6 +12,10 @@ option(UNIT_TESTING_MOCKS "wrap PAL functions with mock implementation for tests
 option(TRANSPORT_PAHO "Build IoT Samples with Paho MQTT support" OFF)
 option(PRECONDITIONS "Build SDK with preconditions enabled" ON)
 option(LOGGING "Build SDK with logging support" ON)
+option(AZ_CUSTOM_PLATFORM_IMPL_NAME "If AZ_PLATFORM_IMPL is CUSTOM, set the custom implementation name" "")
+
+set(AZ_PLATFORM_IMPL "POSIX" CACHE STRING "Platform")
+set_property(CACHE AZ_PLATFORM_IMPL PROPERTY STRINGS "WIN32" "POSIX" "CUSTOM") 
 
 # disable preconditions when it's set to OFF
 if (NOT PRECONDITIONS)
