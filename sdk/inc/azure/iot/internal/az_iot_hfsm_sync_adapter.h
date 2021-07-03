@@ -3,11 +3,14 @@
 
 /**
  * @file az_iot_hfsm_sync_adapter.c
- * @brief Synchronous adapter for the Azure IoT state machine
+ * @brief Synchronous adapter for the Azure IoT state machine.
  * 
  * @details This adapter provides a way to convert from synchronous IoT Provisioning and Hub
- *          operations to asynchronous HFSM events. The application must implement the PAL functions.
- *          A single Provisioning + Hub client is supported in sync mode.
+ *          operations to asynchronous HFSM events. The application must implement both provisioning
+ *          and hub operations within syncrhonous functions that return the 
+ *          #az_iot_hfsm_event_data_error data type.
+ * 
+ * @note A single IoT Provisioning together with a single IoT Hub client are supported in sync mode.
  */
 
 #ifndef _az_IOT_HFSM_SYNC_ADAPTER_H

@@ -46,6 +46,7 @@ typedef struct
     int64_t start_time_msec;
     void* timer_handle;
     az_hfsm_timer_sdk_data timer_data;
+    az_hfsm_event start_event;
     az_hfsm_dispatch* hub_hfsm;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
     az_hfsm_dispatch* provisioning_hfsm;
@@ -68,12 +69,6 @@ enum az_hfsm_event_type_iot
   /// Azure IoT provisioning complete event. The data field is always NULL.
   AZ_HFSM_IOT_EVENT_PROVISIONING_DONE = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT, 3),
 };
-
-/**
- * @brief The generic IoT start event.
- * 
- */
-extern const az_hfsm_event az_hfsm_event_az_iot_start;
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
 /**

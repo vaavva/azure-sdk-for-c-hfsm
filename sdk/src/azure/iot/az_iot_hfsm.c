@@ -130,10 +130,10 @@ static az_hfsm_return_type azure_iot(az_hfsm* me, az_hfsm_event event)
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
         az_ret = az_hfsm_dispatch_post_event(
-            this_iot_hfsm->_internal.provisioning_hfsm, &az_hfsm_event_az_iot_start);
+            this_iot_hfsm->_internal.provisioning_hfsm, &this_iot_hfsm->_internal.start_event);
 #else
         az_ret = az_hfsm_dispatch_post_event(
-            this_iot_hfsm->_internal.iothub_hfsm, &az_hfsm_event_az_iot_start);
+            this_iot_hfsm->_internal.iothub_hfsm, &this_iot_hfsm->_internal.start_event);
 #endif
 
         if (az_result_succeeded(az_ret))
@@ -401,6 +401,10 @@ AZ_NODISCARD az_result az_iot_hfsm_initialize(
   {
     az_hfsm_transition_substate((az_hfsm*)(iot_hfsm), azure_iot, idle);
   }
+  
+  // Configure the AZ_HFSM_IOT_EVENT_START data.
+  iot_hfsm->_internal.start_event.type = AZ_HFSM_IOT_EVENT_START;
+  iot_hfsm->_internal.start_event.data = &iot_hfsm->_internal.use_secondary_credentials;
 
   return ret;
 }
