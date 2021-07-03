@@ -62,29 +62,31 @@ AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds);
 void az_platform_critical_error();
 
 /**
- * @brief Gets a positive random integer.
+ * @brief Gets a positive pseudo-random integer.
  * 
- * @param[out] random A random number greater than 0.
- *
+ * @param[out] out_random A pseudo-random number greater than 0.
+ *  *
  * @retval #AZ_OK Success.
  * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
  * function.
+ * 
+ * @note This is NOT cryptographically secure.
  */
-AZ_NODISCARD az_result az_platform_get_random(int32_t* random);
+AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random);
 
 /**
  * @brief Timer callback.
  *
- * @param sdk_data Data passed by the SDK during the #az_platform_timer_create call.
+ * @param[in] sdk_data Data passed by the SDK during the #az_platform_timer_create call.
  */
 typedef void (*az_platform_timer_callback)(void* sdk_data);
 
 /**
  * @brief Create a timer object.
  *
- * @param callback SDK callback to call when timer elapses.
- * @param sdk_data SDK data associated with the timer.
- * @param out_timer_handle The timer handle.
+ * @param[in] callback SDK callback to call when timer elapses.
+ * @param[in] sdk_data SDK data associated with the timer.
+ * @param[out] out_timer_handle The timer handle.
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result az_platform_timer_create(
@@ -96,8 +98,8 @@ AZ_NODISCARD az_result az_platform_timer_create(
  * @brief Starts the timer. This function can be called multiple times. The timer should call the
  *        callback at most once.
  *
- * @param timer_handle The timer handle.
- * @param milliseconds Time in milliseconds after which the platform must call the associated
+ * @param[in] timer_handle The timer handle.
+ * @param[in] milliseconds Time in milliseconds after which the platform must call the associated
  *                     #az_platform_timer_callback.
  * @return An #az_result value indicating the result of the operation.
  */
@@ -106,15 +108,15 @@ AZ_NODISCARD az_result az_platform_timer_start(void* timer_handle, int32_t milli
 /**
  * @brief Destroys a timer.
  * 
- * @param timer_handle The timer handle.
+ * @param[in] timer_handle The timer handle.
  */
 void az_platform_timer_destroy(void* timer_handle);
 
 /**
  * @brief Enqueue an element in an already initialized queue.
  * 
- * @param queue_handle The queue handle. This must be initialized by the application.
- * @param element The queue element.
+ * @param[in] queue_handle The queue handle. This must be initialized by the application.
+ * @param[in] element The queue element.
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result az_platform_queue_push(void* queue_handle, void const* element);
@@ -122,11 +124,11 @@ AZ_NODISCARD az_result az_platform_queue_push(void* queue_handle, void const* el
 /**
  * @brief Dequeue an element from a queue.
  * 
- * @param queue_handle The queue handle. This must be initialized by the application.
- * @param element The queue element.
+ * @param[in] queue_handle The queue handle. This must be initialized by the application.
+ * @param[out] out_element The queue element.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_platform_queue_pop(void* queue_handle, void** element);
+AZ_NODISCARD az_result az_platform_queue_pop(void* queue_handle, void** out_element);
 
 #include <azure/core/_az_cfg_suffix.h>
 

@@ -15,15 +15,33 @@
 
 #include "az_iot_hfsm.h"
 
-int32_t az_iot_hfsm_sync_adapter_sync_initialize();
-void az_iot_hfsm_sync_adapter_sync_do_work();
+/**
+ * @brief The type of function callback performing syncrhonous Azure IoT operations (either 
+ *        Provisioning or Hub operations).
+ * 
+ */
+typedef az_iot_hfsm_event_data_error (*iot_service_sync_function)( bool use_secondary_credentials );
 
-// PAL:
-void az_iot_hfsm_sync_adapter_pal_set_credentials( bool use_secondary );
+/**
+ * @brief Initializes the syncrhonous Azure IoT adapter.
+ * 
+ * @param[in] do_syncrhonous_provisioning The #iot_service_sync_function performing device 
+ *                                        provisioning.
+ * @param[in] do_syncrhonous_hub The #iot_service_sync_function performing hub operations.
+ * @return An #az_result value indicating the result of the operation.
+ */
+az_result az_iot_hfsm_sync_adapter_initialize(
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-az_iot_hfsm_event_data_error az_iot_hfsm_sync_adapter_pal_run_provisioning( );
+    iot_service_sync_function do_syncrhonous_provisioning,
 #endif
-az_iot_hfsm_event_data_error az_iot_hfsm_sync_adapter_pal_run_hub( );
-void az_iot_hfsm_sync_adapter_sleep( int32_t milliseconds );
+    iot_service_sync_function do_syncrhonous_hub);
+
+/**
+ * @brief Single dispatching function for the syncrhonous adapter.
+ * 
+ * @note This dispatcher runs operations for both az_iot_hfsm, provisioning, hub and timers.
+ * 
+ */
+void az_iot_hfsm_sync_adapter_do_work();
 
 #endif //_az_IOT_HFSM_SYNC_ADAPTER_H

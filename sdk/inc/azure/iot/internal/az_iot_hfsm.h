@@ -98,6 +98,7 @@ typedef struct {
  * @param[out] iot_hfsm The #az_hfsm to use for this call.
  * @param[in] provisioning_hfsm The #az_hfsm implementing #az_iot_provisioning_client operations.
  * @param[in] hub_hfsm The #az_hfsm implementing #az_iot_hub_client operations.
+ * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result az_iot_hfsm_initialize(
   az_iot_hfsm_type* iot_hfsm, 

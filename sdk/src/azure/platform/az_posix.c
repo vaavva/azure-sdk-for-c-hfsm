@@ -25,11 +25,12 @@ AZ_NODISCARD az_result az_platform_clock_msec(int64_t* out_clock_msec)
 AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds)
 {
   (void)usleep((useconds_t)milliseconds * _az_TIME_MICROSECONDS_PER_MILLISECOND);
-  return AZ_OK;dsdsdd
+  return AZ_OK;
 }
 
-AZ_NODISCARD az_result az_platform_get_random(int32_t* random)
+AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random)
 {
-  (void)random;
-  return AZ_ERROR_DEPENDENCY_NOT_PROVIDED;
+  _az_PRECONDITION_NOT_NULL(out_random);
+  *out_random = (int32_t)random();
+  return AZ_OK;
 }

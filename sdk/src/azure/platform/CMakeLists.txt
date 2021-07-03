@@ -10,6 +10,7 @@ if(AZ_PLATFORM_IMPL STREQUAL "WIN32")
   # build windows platform
   add_library(az_win32 STATIC
     ${CMAKE_CURRENT_LIST_DIR}/az_win32.c
+    ${CMAKE_CURRENT_LIST_DIR}/az_platform_sync.c
   )
 
   target_link_libraries(az_win32
@@ -20,6 +21,7 @@ elseif(AZ_PLATFORM_IMPL STREQUAL "POSIX")
   # build linux platform
   add_library(az_posix STATIC
       ${CMAKE_CURRENT_LIST_DIR}/az_posix.c
+      ${CMAKE_CURRENT_LIST_DIR}/az_platform_sync.c
   )
 
   target_link_libraries(az_posix
