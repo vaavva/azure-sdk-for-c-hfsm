@@ -22,9 +22,7 @@ static const az_span str_get_iotdps_get_operationstatus
 // https://docs.microsoft.com/azure/iot-dps/iot-dps-mqtt-support#registering-a-device
 static const az_span prov_registration_id_label = AZ_SPAN_LITERAL_FROM_STR("registrationId");
 static const az_span prov_payload_label = AZ_SPAN_LITERAL_FROM_STR("payload");
-static const az_span prov_trust_bundle_label = AZ_SPAN_LITERAL_FROM_STR("trustBundle");
 static const az_span prov_csr_request_label = AZ_SPAN_LITERAL_FROM_STR("clientCertificateCsr");
-static const az_span prov_csr_response_label = AZ_SPAN_LITERAL_FROM_STR("issuedClientCertificate");
 
 // $dps/registrations/res/
 AZ_INLINE az_span _az_iot_provisioning_get_dps_registrations_res()
@@ -288,6 +286,7 @@ AZ_INLINE az_result _az_iot_provisioning_client_payload_registration_state_parse
     return AZ_ERROR_UNEXPECTED_CHAR;
   }
 
+  // TODO: this optimization must be removed now that we need to find payload, trustBundle and issued cert.
   bool found_assigned_hub = false;
   bool found_device_id = false;
 
@@ -314,6 +313,18 @@ AZ_INLINE az_result _az_iot_provisioning_client_payload_registration_state_parse
       }
       out_state->device_id = jr->token.slice;
       found_device_id = true;
+    }
+    else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("payload")))
+    {
+        // TODO
+    }
+    else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("trustBundle")))
+    {
+        // TODO
+    }
+    else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("issuedClientCertificate")))
+    {
+        // TODO
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("errorMessage")))
     {
