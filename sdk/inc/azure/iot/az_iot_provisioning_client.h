@@ -29,7 +29,7 @@
 /**
  * @brief The client is fixed to a specific version of the Azure IoT Provisioning service.
  */
-#define AZ_IOT_PROVISIONING_SERVICE_VERSION "2019-03-31"
+#define AZ_IOT_PROVISIONING_SERVICE_VERSION "2021-11-01-preview"  // API_REVIEW: Review.
 
 /**
  * @brief Azure IoT Provisioning Client options.
@@ -262,6 +262,22 @@ typedef struct
    * Submit this timestamp when asking for Azure IoT service-desk help.
    */
   az_span error_timestamp;
+
+  /**
+   * An optional custom payload received from the service.  // API_REVIEW: Review.
+   */
+  az_span payload;
+
+  /**
+   * An optional set of X509 Certification Authorities received from the service. // API_REVIEW: Review.
+   */
+  az_span trust_bundle;
+
+  /**
+   * An optional response to a Certificate Signing Request containing a signed X509 Certificate. // API_REVIEW: Review.
+   */
+  az_span issued_client_certificate;
+
 } az_iot_provisioning_client_registration_state;
 
 /**
@@ -332,6 +348,7 @@ typedef struct
    * and device id in case of success.
    */
   az_iot_provisioning_client_registration_state registration_state;
+
 } az_iot_provisioning_client_register_response;
 
 /**
@@ -425,12 +442,16 @@ AZ_NODISCARD az_result az_iot_provisioning_client_query_status_get_publish_topic
     size_t* out_mqtt_topic_length);
 
 /**
- * @brief Azure IoT Provisioning Client options for
- * az_iot_provisioning_client_get_request_payload(). Not currently used.  Reserved for future use.
- *
+ * @brief Azure IoT Provisioning Client options for 
+ * az_iot_provisioning_client_get_request_payload().
  */
 typedef struct
 {
+  /**
+   * An optional X.509 Certificate Signing Request formatted as PEM PKCS#10.
+   */
+  az_span certificate_signing_request;  // API_REVIEW: Review.
+
   struct
   {
     /// Currently, this is unused, but needed as a placeholder since we can't have an empty struct.
@@ -466,7 +487,7 @@ typedef struct
  * @retval #AZ_OK The payload was created successfully.
  * @retval #AZ_ERROR_NOT_ENOUGH_SPACE The buffer is too small.
  */
-AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
+AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(    // API_REVIEW: az_iot_provisioning_client_REGISTER_get_request_payload
     az_iot_provisioning_client const* client,
     az_span custom_payload_property,
     az_iot_provisioning_client_payload_options const* options,
@@ -475,5 +496,8 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
     size_t* out_mqtt_payload_length);
 
 #include <azure/core/_az_cfg_suffix.h>
+
+// API_REVIEW: Review.
+// TODO: API to parse TrustBundle.
 
 #endif // _az_IOT_PROVISIONING_CLIENT_H
