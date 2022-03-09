@@ -55,6 +55,8 @@ static char iot_sample_provisioning_sas_key_buffer[128];
 static char iot_sample_x509_cert_pem_file_path_buffer[256];
 static char iot_sample_x509_trust_pem_file_path_buffer[256];
 
+static char iot_sample_x509_csr_pem_file_path_buffer[256];
+
 //
 // MQTT endpoints
 //
@@ -242,6 +244,7 @@ void iot_sample_read_environment_variables(
 
     switch (name)
     {
+      case PAHO_IOT_CSR_TRUSTBUNDLE_SAMPLE:
       case PAHO_IOT_PNP_WITH_PROVISIONING_SAMPLE:
       case PAHO_IOT_PROVISIONING_SAMPLE:
         out_env_vars->provisioning_registration_id
