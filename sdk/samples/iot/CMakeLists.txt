@@ -176,15 +176,15 @@ target_link_libraries(paho_iot_provisioning_sas_sample
 create_map_file(paho_iot_provisioning_sas_sample paho_iot_provisioning_sas_sample.map)
 
 # Provisioning CSR and TrustBundle Sample
-add_executable (paho_iot_csr_trustbundle_sample.c
-  ${CMAKE_CURRENT_LIST_DIR}/paho_iot_csr_trustbundle_sample.c.c
+add_executable (paho_iot_csr_trustbundle_sample
+  ${CMAKE_CURRENT_LIST_DIR}/paho_iot_csr_trustbundle_sample.c
 )
 
-target_link_libraries(paho_iot_csr_trustbundle_sample.c
+target_link_libraries(paho_iot_csr_trustbundle_sample
   PRIVATE
     az::iot::sample::common
 )
 
-create_map_file(paho_iot_csr_trustbundle_sample.c paho_iot_csr_trustbundle_sample.c.map)
+create_map_file(paho_iot_csr_trustbundle_sample paho_iot_csr_trustbundle_sample.map)
 
 endif() # TRANSPORT_PAHO

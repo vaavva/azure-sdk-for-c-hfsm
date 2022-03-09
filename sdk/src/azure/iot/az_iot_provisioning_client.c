@@ -22,7 +22,7 @@ static const az_span str_get_iotdps_get_operationstatus
 // https://docs.microsoft.com/azure/iot-dps/iot-dps-mqtt-support#registering-a-device
 static const az_span prov_registration_id_label = AZ_SPAN_LITERAL_FROM_STR("registrationId");
 static const az_span prov_payload_label = AZ_SPAN_LITERAL_FROM_STR("payload");
-static const az_span prov_csr_request_label = AZ_SPAN_LITERAL_FROM_STR("clientCertificateCsr");
+// CPOP_TODO: static const az_span prov_csr_request_label = AZ_SPAN_LITERAL_FROM_STR("clientCertificateCsr");
 
 // $dps/registrations/res/
 AZ_INLINE az_span _az_iot_provisioning_get_dps_registrations_res()
@@ -238,7 +238,11 @@ _az_iot_provisioning_registration_state_default()
                                                           .extended_error_code = 0,
                                                           .error_message = AZ_SPAN_EMPTY,
                                                           .error_tracking_id = AZ_SPAN_EMPTY,
-                                                          .error_timestamp = AZ_SPAN_EMPTY };
+                                                          .error_timestamp = AZ_SPAN_EMPTY,
+                                                          .payload = AZ_SPAN_EMPTY,
+                                                          .trust_bundle = AZ_SPAN_EMPTY, 
+                                                          .issued_client_certificate = AZ_SPAN_EMPTY
+                                                        };
 }
 
 AZ_INLINE az_iot_status _az_iot_status_from_extended_status(uint32_t extended_status)
@@ -286,7 +290,7 @@ AZ_INLINE az_result _az_iot_provisioning_client_payload_registration_state_parse
     return AZ_ERROR_UNEXPECTED_CHAR;
   }
 
-  // TODO: this optimization must be removed now that we need to find payload, trustBundle and issued cert.
+  // CPOP_TODO: this optimization must be removed now that we need to find payload, trustBundle and issued cert.
   bool found_assigned_hub = false;
   bool found_device_id = false;
 
@@ -316,15 +320,15 @@ AZ_INLINE az_result _az_iot_provisioning_client_payload_registration_state_parse
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("payload")))
     {
-        // TODO
+        // CPOP_TODO
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("trustBundle")))
     {
-        // TODO
+        // CPOP_TODO
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("issuedClientCertificate")))
     {
-        // TODO
+        // CPOP_TODO
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("errorMessage")))
     {

@@ -459,6 +459,8 @@ typedef struct
   } _internal;
 } az_iot_provisioning_client_payload_options;
 
+// CPOP_TODO: missing az_iot_provisioning_client_payload_options defaults?
+
 /**
  * @brief Builds the optional payload for a provisioning request.
  * @remark Use this API to build an MQTT payload during registration.
@@ -497,7 +499,6 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(    // API
 
 #include <azure/core/_az_cfg_suffix.h>
 
-// API_REVIEW: Review.
-// TODO: API to parse TrustBundle.
+// CPOP_TODO: API to parse TrustBundle.
 
 #endif // _az_IOT_PROVISIONING_CLIENT_H

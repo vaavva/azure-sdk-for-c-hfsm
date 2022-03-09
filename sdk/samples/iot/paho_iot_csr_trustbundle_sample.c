@@ -297,9 +297,9 @@ static void parse_device_registration_status_message(
   IOT_SAMPLE_LOG_AZ_SPAN("Payload:", message_span);
   IOT_SAMPLE_LOG("Status: %d", out_register_response->status);
 
-  // TODO: Parse TrustBundle.
-  // TODO: Parse Payload
-  // TODO: Parse Client Certificate - Use in the IoT connection.
+  // CPOP_TODO: Parse TrustBundle.
+  // CPOP_TODO: Parse Payload
+  // CPOP_TODO: Parse Client Certificate - Use in the IoT connection.
 }
 
 // handle_device_registration_status_message parses the response from Device Provisioning
@@ -567,13 +567,13 @@ int main(void)
   IOT_SAMPLE_LOG_SUCCESS("Client received registration status message.");
 
 
-  // TODO: Option 1: Maintain the DPS client alive to configure Hub with the certificates.
+  // CPOP_TODO: Option 1: Maintain the DPS client alive to configure Hub with the certificates.
   //       Option 2: Copy the Certificate.
   disconnect_mqtt_client_from_provisioning_service();
   IOT_SAMPLE_LOG_SUCCESS("Client disconnected from provisioning service.");
 
 
-  // TODO: create the public key as a file on disk (local folder). - use STDIO's tmpfile()
+  // CPOP_TODO: create the public key as a file on disk (local folder). - use STDIO's tmpfile()
 
   // Now that we have been provisioned by DPS, create an MQTT connection to
   // Azure IoT Hub.
