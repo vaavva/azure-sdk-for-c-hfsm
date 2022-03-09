@@ -566,12 +566,10 @@ int main(void)
   receive_device_registration_status_message();
   IOT_SAMPLE_LOG_SUCCESS("Client received registration status message.");
 
-
   // CPOP_TODO: Option 1: Maintain the DPS client alive to configure Hub with the certificates.
   //       Option 2: Copy the Certificate.
   disconnect_mqtt_client_from_provisioning_service();
   IOT_SAMPLE_LOG_SUCCESS("Client disconnected from provisioning service.");
-
 
   // CPOP_TODO: create the public key as a file on disk (local folder). - use STDIO's tmpfile()
 
@@ -591,4 +589,3 @@ int main(void)
 
   return 0;
 }
-

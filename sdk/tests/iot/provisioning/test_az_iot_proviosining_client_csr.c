@@ -29,12 +29,17 @@
 #define TEST_ID_SCOPE "0neFEEDC0DE"
 #define TEST_OPERATION_ID "4.d0a671905ea5b2c8.42d78160-4c78-479e-8be7-61d5e55dac0d"
 
+static const az_span test_global_device_hostname
+    = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
 
-// CPOP_TODO: Integrate payload jsons.
+// CPOP_TODO: Integrate CSR jsons.
 #if 0
+        // Request OK
+        const char* EXPECTED_REQUEST_PAYLOAD = "{\"registrationId\":\"A87FA22F-828B-46CA-BA37-D574C32E423E\"," \
+        "\"tpm\":{\"endorsementKey\":\"key\",\"storageRootKey\":\"key\"},\"clientCertificateCsr\":""\"--BEGIN_CERT 12345 END_CERT--\"}";
 
-        // Payload contents OK.
-        static const char* TEST_JSON_PAYLOAD_REPLY = 
+        // Response OK
+        static const char* TEST_JSON_CSR_REPLY = 
         "{" \
         "    \"operationId\": \"string\"," \
         "    \"status\": \"assigned\"," \
@@ -52,16 +57,59 @@
         "        \"errorMessage\": \"string\"," \
         "        \"lastUpdatedDateTimeUtc\": \"2019-08-24T14:15:22Z\"," \
         "        \"etag\": \"string\"," \
-        "        \"payload\": { \"json_cust_data\": 123456 }" \
+        "        \"issuedClientCertificate\": \"--BEGIN_CERT 12345 END_CERT--\"" \
         "    }" \
         "}";
 
+        // Response null
+        static const char* TEST_JSON_CSR_REPLY = 
+        "{" \
+        "    \"operationId\": \"string\"," \
+        "    \"status\": \"assigned\"," \
+        "    \"registrationState\": {" \
+        "        \"tpm\": {" \
+        "            \"authenticationKey\": \"dGVzdF9hdXRoX2tleQ==\"" \
+        "        }," \
+        "        \"registrationId\": \"string\"," \
+        "        \"createdDateTimeUtc\": \"2019-08-24T14:15:22Z\"," \
+        "        \"assignedHub\": \"string\"," \
+        "        \"deviceId\": \"string\"," \
+        "        \"status\": \"assigned\"," \
+        "        \"substatus\": \"initialAssignment\"," \
+        "        \"errorCode\": -2147483648," \
+        "        \"errorMessage\": \"string\"," \
+        "        \"lastUpdatedDateTimeUtc\": \"2019-08-24T14:15:22Z\"," \
+        "        \"etag\": \"string\"," \
+        "        \"issuedClientCertificate\": \"\"" \
+        "    }" \
+        "}";
+
+        // Wrong data type
+        static const char* TEST_JSON_CSR_REPLY = 
+        "{" \
+        "    \"operationId\": \"string\"," \
+        "    \"status\": \"assigned\"," \
+        "    \"registrationState\": {" \
+        "        \"tpm\": {" \
+        "            \"authenticationKey\": \"dGVzdF9hdXRoX2tleQ==\"" \
+        "        }," \
+        "        \"registrationId\": \"string\"," \
+        "        \"createdDateTimeUtc\": \"2019-08-24T14:15:22Z\"," \
+        "        \"assignedHub\": \"string\"," \
+        "        \"deviceId\": \"string\"," \
+        "        \"status\": \"assigned\"," \
+        "        \"substatus\": \"initialAssignment\"," \
+        "        \"errorCode\": -2147483648," \
+        "        \"errorMessage\": \"string\"," \
+        "        \"lastUpdatedDateTimeUtc\": \"2019-08-24T14:15:22Z\"," \
+        "        \"etag\": \"string\"," \
+        "        \"issuedClientCertificate\": 5" \
+        "    }" \
+        "}";
+
+
 #endif
 
-
-
-static const az_span test_global_device_hostname
-    = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
 
 static const az_span test_custom_payload = AZ_SPAN_LITERAL_FROM_STR(TEST_CUSTOM_PAYLOAD);
 
