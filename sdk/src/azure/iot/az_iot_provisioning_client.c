@@ -22,8 +22,7 @@ static const az_span str_get_iotdps_get_operationstatus
 // https://docs.microsoft.com/azure/iot-dps/iot-dps-mqtt-support#registering-a-device
 static const az_span prov_registration_id_label = AZ_SPAN_LITERAL_FROM_STR("registrationId");
 static const az_span prov_payload_label = AZ_SPAN_LITERAL_FROM_STR("payload");
-// CPOP_TODO: static const az_span prov_csr_request_label =
-// AZ_SPAN_LITERAL_FROM_STR("clientCertificateCsr");
+static const az_span prov_csr_request_label = AZ_SPAN_LITERAL_FROM_STR("clientCertificateCsr");
 
 // $dps/registrations/res/
 AZ_INLINE az_span _az_iot_provisioning_get_dps_registrations_res()
