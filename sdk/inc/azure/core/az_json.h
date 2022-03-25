@@ -731,6 +731,25 @@ AZ_NODISCARD az_result az_json_reader_init(
     az_span json_buffer,
     az_json_reader_options const* options);
 
+// API_REVIEW: az_json_reader copy constructor.
+
+/**
+ * @brief Creates a copy of an #az_json_reader.
+ *
+ * @param[out] out_json_reader A pointer to an #az_json_reader instance to initialize.
+ * @param[in] in_json_reader A pointer to an #az_json_reader to copy.
+ *
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK The #az_json_reader is initialized successfully.
+ * @retval other Initialization failed.
+ *
+ * @remarks An instance of #az_json_reader must not outlive the lifetime of the JSON payload within
+ * the \p json_buffer.
+ */
+AZ_NODISCARD az_result az_json_reader_clone(
+    az_json_reader* out_json_reader,
+    az_json_reader* in_json_reader);
+
 /**
  * @brief Initializes an #az_json_reader to read the JSON payload contained within the provided
  * set of discontiguous buffers.

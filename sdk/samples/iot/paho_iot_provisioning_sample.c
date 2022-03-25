@@ -47,7 +47,7 @@ static void parse_device_registration_status_message(
     MQTTClient_message const* message,
     az_iot_provisioning_client_register_response* out_register_response);
 static void handle_device_registration_status_message(
-    az_iot_provisioning_client_register_response const* register_response,
+    az_iot_provisioning_client_register_response* register_response,
     bool* ref_is_operation_complete);
 static void send_operation_query_message(
     az_iot_provisioning_client_register_response const* response);
@@ -298,7 +298,7 @@ static void parse_device_registration_status_message(
 }
 
 static void handle_device_registration_status_message(
-    az_iot_provisioning_client_register_response const* register_response,
+    az_iot_provisioning_client_register_response* register_response,
     bool* ref_is_operation_complete)
 {
   *ref_is_operation_complete
@@ -323,6 +323,14 @@ static void handle_device_registration_status_message(
           "Hub Hostname:", register_response->registration_state.assigned_hub_hostname);
       IOT_SAMPLE_LOG_AZ_SPAN("Device Id:", register_response->registration_state.device_id);
       IOT_SAMPLE_LOG(" "); // Formatting
+
+      // CPOP_TODO: if (register_response->registration_state.trust_bundle)
+      IOT_SAMPLE_LOG("Trust Bundle:");
+      az_json_reader* jr = &register_response->registration_state.trust_bundle;
+      while(az_result_succeeded(az_json_reader_next_token(jr)))
+      {
+        IOT_SAMPLE_LOG_AZ_SPAN("Token:", jr->token.slice);
+      }
     }
     else // Unsuccessful assignment (unassigned, failed or disabled states)
     {

@@ -17,6 +17,7 @@
 #ifndef _az_IOT_PROVISIONING_CLIENT_H
 #define _az_IOT_PROVISIONING_CLIENT_H
 
+#include <azure/core/az_json.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_common.h>
@@ -266,13 +267,13 @@ typedef struct
   /**
    * An optional custom payload received from the service.
    */
-  az_json_reader payload;
+  az_json_reader payload; //CPOP_TODO: az_json_reader?
 
   /**
    * An optional set of X509 Certification Authorities received from the service.
    * Review.
    */
-  az_json_reader trust_bundle;
+  az_json_reader trust_bundle; //CPOP_TODO: az_json_reader?
 
   /**
    * An optional response to a Certificate Signing Request containing a signed X509 Certificate.
@@ -451,13 +452,7 @@ typedef struct
   /**
    * An optional X.509 Certificate Signing Request formatted as PEM PKCS#10.
    */
-  az_span certificate_signing_request; // API_REVIEW: Review.
-
-  struct
-  {
-    /// Currently, this is unused, but needed as a placeholder since we can't have an empty struct.
-    bool unused;
-  } _internal;
+  az_span certificate_signing_request;
 } az_iot_provisioning_client_payload_options;
 
 /**

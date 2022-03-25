@@ -11,6 +11,14 @@
 
 #include <azure/core/_az_cfg.h>
 
+AZ_NODISCARD az_result az_json_reader_clone(
+    az_json_reader* out_json_reader,
+    az_json_reader* in_json_reader)
+{
+  *out_json_reader = *in_json_reader;
+  return AZ_OK;
+}
+
 AZ_NODISCARD az_result az_json_reader_init(
     az_json_reader* out_json_reader,
     az_span json_buffer,
