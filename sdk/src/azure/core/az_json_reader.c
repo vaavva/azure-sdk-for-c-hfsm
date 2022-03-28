@@ -4,6 +4,7 @@
 #include "az_json_private.h"
 #include "az_span_private.h"
 #include <azure/core/az_precondition.h>
+#include <azure/core/internal/az_json_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
 
@@ -11,11 +12,11 @@
 
 #include <azure/core/_az_cfg.h>
 
-AZ_NODISCARD az_result az_json_reader_clone(
-    az_json_reader* out_json_reader,
-    az_json_reader* in_json_reader)
+AZ_NODISCARD az_result _az_json_reader_clone(
+    az_json_reader in_json_reader,
+    az_json_reader* out_json_reader)
 {
-  *out_json_reader = *in_json_reader;
+  *out_json_reader = in_json_reader;
   return AZ_OK;
 }
 

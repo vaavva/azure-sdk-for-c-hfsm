@@ -4,6 +4,7 @@
 #include <azure/core/az_json.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+#include <azure/core/internal/az_json_internal.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
@@ -313,11 +314,11 @@ AZ_INLINE az_result _az_iot_provisioning_client_payload_registration_state_parse
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("payload")))
     {
-      _az_RETURN_IF_FAILED(az_json_reader_clone(&out_state->payload, jr));
+      _az_RETURN_IF_FAILED(_az_json_reader_clone(*jr, &out_state->payload));
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("trustBundle")))
     {
-      _az_RETURN_IF_FAILED(az_json_reader_clone(&out_state->trust_bundle, jr));
+      _az_RETURN_IF_FAILED(_az_json_reader_clone(*jr, &out_state->trust_bundle));
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("issuedClientCertificate")))
     {
