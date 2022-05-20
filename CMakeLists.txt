@@ -10,6 +10,7 @@ option(TRANSPORT_CURL "Build internal http transport implementation with CURL fo
 option(UNIT_TESTING "Build unit test projects" OFF)
 option(UNIT_TESTING_MOCKS "wrap PAL functions with mock implementation for tests" OFF)
 option(TRANSPORT_PAHO "Build IoT Samples with Paho MQTT support" OFF)
+option(TRANSPORT_MOSQUITTO "Build IoT Samples with Paho Mosquitto support" OFF)
 option(PRECONDITIONS "Build SDK with preconditions enabled" ON)
 option(LOGGING "Build SDK with logging support" ON)
 
@@ -91,6 +92,13 @@ add_subdirectory(sdk/src/azure/platform)
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
   if(TRANSPORT_PAHO)
     add_subdirectory(sdk/samples/iot)
+  endif()
+endif()
+
+# User can disable samples generation by setting env variable AZ_SDK_C_NO_SAMPLES
+if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
+  if(TRANSPORT_MOSQUITTO)
+    add_subdirectory(sdk/samples/iot_mosquitto)
   endif()
 endif()
 
