@@ -19,19 +19,44 @@ if(NOT OpenSSL_FOUND)
   find_package(OpenSSL REQUIRED)
 endif()
 
+find_package(pthread CONFIG)
+if(NOT pthread_FOUND)
+  find_package(pthread REQUIRED)
+endif()
 # Azure IoT Samples Executables
 
 # Azure IoT Sample
 add_executable (mosquitto_iot_sample
   ${CMAKE_CURRENT_LIST_DIR}/mosquitto_iot_sample.c
 )
+add_compile_definitions(mosquitto_iot_sample
+  LIBMOSQUITTO_STATIC
+)
+
+target_include_directories(mosquitto_iot_sample
+  PRIVATE
+    ${MOSQUITTO_INCLUDE_DIR}
+)
 
 target_link_libraries(mosquitto_iot_sample
   PRIVATE
+    ${MOSQUITTO_LIBRARIES}
+    ${PTHREAD_LIBRARIES}
+    #${MOSQUITTO_LIBRARY}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
     az::iot::hub
     az::iot::provisioning
-    mosquitto
+    # Windows only:
 )
+
+if(WIN32)
+target_link_libraries(mosquitto_iot_sample
+  PRIVATE
+  crypt32
+  Ws2_32
+)
+endif()
 
 create_map_file(mosquitto_iot_sample mosquitto_iot_sample.map)
 
