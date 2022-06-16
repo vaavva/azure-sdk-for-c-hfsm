@@ -4,6 +4,8 @@
 
 // Mosquitto Lib documentation is available at: https://mosquitto.org/api/files/mosquitto-h.html
 
+volatile bool running = true;
+
 /* Callback called when the client receives a CONNACK message from the broker. */
 void on_connect(struct mosquitto *mosq, void *obj, int reason_code)
 {
@@ -26,6 +28,7 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code)
 void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
 	printf("MOSQ: DISCONNECT reason=%d\n", rc);
+	running = false;
 }
 
 /* Callback called when the client knows to the best of its abilities that a
@@ -38,7 +41,7 @@ void on_publish(struct mosquitto *mosq, void *obj, int mid)
 	printf("MOSQ: Message with mid %d has been published.\n", mid);
 }
 
-void *on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos)
+void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos)
 {
 	printf("MOSQ: Subscribed with mid %d; %d topics.\n", mid, qos_count);
 	for(int i = 0; i < qos_count; i++)
@@ -54,7 +57,38 @@ void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
 
 void on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
 {
-	printf("MOSQ: %d %s\n", level, str);
+	char* log_level;
+
+	switch (level)
+	{
+		case MOSQ_LOG_INFO:
+			log_level = "INFO";
+			break;
+		case MOSQ_LOG_NOTICE:
+			log_level = "NOTI";
+			break;
+		case MOSQ_LOG_WARNING:
+			log_level = "WARN";
+			break;
+		case MOSQ_LOG_ERR:
+			log_level = "ERR ";
+			break;
+		case MOSQ_LOG_DEBUG:
+			log_level = "DBUG";
+			break;
+		case MOSQ_LOG_SUBSCRIBE:
+			log_level = "SUB ";
+			break;
+		case MOSQ_LOG_UNSUBSCRIBE:
+			log_level = "USUB";
+			break;
+		case MOSQ_LOG_WEBSOCKETS:
+			log_level = "WSCK";
+			break;
+		default:
+			log_level = "UNKN";
+	}
+	printf("MOSQ [%s] %s\n", log_level, str);
 }
 
 int main(int argc, char *argv[])
@@ -70,7 +104,7 @@ int main(int argc, char *argv[])
 	 * clean session = true -> the broker should remove old sessions when we connect
 	 * obj = NULL -> we aren't passing any of our private data for callbacks
 	 */
-	mosq = mosquitto_new(NULL, true, NULL);
+	mosq = mosquitto_new("dev1-ecc", true, NULL);
 	if(mosq == NULL){
 		fprintf(stderr, "Error: Out of memory.\n");
 		return 1;
@@ -85,18 +119,31 @@ int main(int argc, char *argv[])
 	mosquitto_subscribe_callback_set(mosq, on_subscribe);
 	mosquitto_unsubscribe_callback_set(mosq, on_unsubscribe);
 	
-	//mosquitto_tls_set(
-	//	mosq,
+	rc = mosquitto_tls_set(
+		mosq,
+		"S:\\test\\rsa_baltimore_ca.pem",
+		NULL, //"S:\\cert\\RootCAs",
+		"S:\\test\\dev1-ecc_cert.pem",
+		"S:\\test\\dev1-ecc_key.pem",
+		NULL);
+	if (rc != MOSQ_ERR_SUCCESS)
+	{
+		mosquitto_destroy(mosq);
+		fprintf(stderr, "TLS Config Error: %s\n", mosquitto_strerror(rc));
+		return 1;
+	}
 
-	)
+	rc = mosquitto_username_pw_set(mosq, "crispop-iothub1.azure-devices.net/dev1-ecc/?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1", "");
+	if (rc != MOSQ_ERR_SUCCESS)
+	{
+		mosquitto_destroy(mosq);
+		fprintf(stderr, "User/pass Config Error: %s\n", mosquitto_strerror(rc));
+		return 1;
+	}
 
-
-	/* Connect to test.mosquitto.org on port 1883, with a keepalive of 60 seconds.
-	 * This call makes the socket connection only, it does not complete the MQTT
-	 * CONNECT/CONNACK flow, you should use mosquitto_loop_start() or
-	 * mosquitto_loop_forever() for processing net traffic. */
-	rc = mosquitto_connect(mosq, "test.mosquitto.org", 1883, 60);
-	if(rc != MOSQ_ERR_SUCCESS){
+	rc = mosquitto_connect(mosq, "crispop-iothub1.azure-devices.net", 8883, 60);
+	if(rc != MOSQ_ERR_SUCCESS)
+	{
 		mosquitto_destroy(mosq);
 		fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));
 		return 1;
@@ -104,7 +151,8 @@ int main(int argc, char *argv[])
 
 	/* Run the network loop in a background thread, this call returns quickly. */
 	rc = mosquitto_loop_start(mosq);
-	if(rc != MOSQ_ERR_SUCCESS){
+	if(rc != MOSQ_ERR_SUCCESS)
+	{
 		mosquitto_destroy(mosq);
 		fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));
 		return 1;
@@ -117,11 +165,10 @@ int main(int argc, char *argv[])
 	 * the connect callback.
 	 * In this case we know it is 1 second before we start publishing.
 	 */
-	while(1){
+	while(running){
 		//publish_sensor_data(mosq);
 	}
 
 	mosquitto_lib_cleanup();
 	return 0;
 }
-
