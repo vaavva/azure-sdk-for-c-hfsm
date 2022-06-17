@@ -75,3 +75,58 @@ if (TRANSPORT_CURL)
   target_include_directories(az_curl INTERFACE ${CURL_INCLUDE_DIR})
 
 endif()
+
+
+# Mosquitto Platform
+
+if (TRANSPORT_MOSQUITTO)
+  find_package(mosquitto  CONFIG)
+  if(NOT mosquitto_FOUND)
+    find_package(mosquitto REQUIRED)
+  endif()
+
+  find_package(OpenSSL CONFIG)
+  if(NOT OpenSSL_FOUND)
+    find_package(OpenSSL REQUIRED)
+  endif()
+
+  find_package(pthread CONFIG)
+  if(NOT pthread_FOUND)
+    find_package(pthread REQUIRED)
+  endif()
+
+  add_library (
+    az_mosquitto
+      STATIC
+      ${CMAKE_CURRENT_LIST_DIR}/az_mosquitto.c
+  )
+
+  add_compile_definitions(mosquitto_iot_sample
+    LIBMOSQUITTO_STATIC
+  )
+
+  target_link_libraries(az_mosquitto PRIVATE az_core)
+
+  # make sure that users can consume the project as a library.
+  add_library (az::mosquitto ALIAS az_mosquitto)
+
+  target_link_libraries(az_mosquitto 
+    PUBLIC 
+      ${MOSQUITTO_LIBRARIES}
+      ${PTHREAD_LIBRARIES}
+      #${MOSQUITTO_LIBRARY}
+      OpenSSL::SSL 
+      OpenSSL::Crypto
+  )
+  
+  if(WIN32)
+  target_link_libraries(az_mosquitto
+    PUBLIC
+      crypt32
+      Ws2_32
+  )
+  endif()
+
+  target_include_directories(az_mosquitto INTERFACE ${CURL_INCLUDE_DIR})
+
+endif()

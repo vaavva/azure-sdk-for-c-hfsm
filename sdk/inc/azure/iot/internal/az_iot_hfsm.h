@@ -52,7 +52,7 @@ typedef struct
     az_hfsm_dispatch* provisioning_hfsm;
 #endif
   } _internal;
-} caz_iot_hfsm_type;
+} az_iot_hfsm_type;
 
 /**
  * @brief Azure IoT HFSM event types.

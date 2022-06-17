@@ -30,11 +30,22 @@
 // CPOP_TODO: we may want to add enums for the various MQTT status codes. These could be used to 
 //            simplify logging.
 
+/**
+ * @brief Azure MQTT HFSM.
+ * @details Derives from az_hfsm.
+ * 
+ */
 typedef struct
 {
   struct
   {
     az_hfsm hfsm;
+    az_span host;
+    int16_t port;
+    void* tls_settings;
+    az_span username;
+    az_span password;
+    az_span client_id;
   } _internal;
 } az_mqtt_hfsm_type;
 
@@ -65,7 +76,16 @@ enum az_hfsm_event_type_mqtt
   AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
 };
 
-AZ_NODISCARD az_result az_mqtt_initialize(az_mqtt_hfsm_type* mqtt_hfsm);
+//CPOP_TODO: add standard Options support. tls_settings should be in options.
+
+AZ_NODISCARD az_result az_mqtt_initialize(
+  az_mqtt_hfsm_type* mqtt_hfsm,
+  az_span host,
+  int16_t port,
+  void* tls_settings,
+  az_span username,
+  az_span password,
+  az_span client_id);
 
 #include <azure/core/_az_cfg_suffix.h>
 
