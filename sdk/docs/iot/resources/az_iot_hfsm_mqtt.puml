@@ -32,7 +32,7 @@ state MqttClient {
     ' Note: the following state machine definition does not support MQTT send pipeline
     ' (i.e. sending PUB SUB without waiting for the respective ACKs).
     state Connected {
-        Connected : ON_MQTT_PAL_RECV/ ^MQTT_RECV_IND(message)
+        Connected : ON_MQTT_PAL_PUB_RECV/ ^MQTT_PUB_RECV_IND(message)
 
         state Idle
         Idle : <b>entry/</b> recall;
@@ -59,8 +59,8 @@ state MqttClient {
 
         Idle --> PUB_Sending : MQTT_PUB_REQ
         Idle --> SUB_Sending : MQTT_SUB_REQ
-        PUB_Sending -> Idle : SENT / ^MQTT_PUB_RSP(success)
-        SUB_Sending -> Idle : SENT/ ^MQTT_SUB_RSP(success)
+        PUB_Sending -> Idle : SENT / ^MQTT_PUBACK_RSP(success)
+        SUB_Sending -> Idle : SENT / ^MQTT_SUBACK_RSP(success)
     }
 }
 

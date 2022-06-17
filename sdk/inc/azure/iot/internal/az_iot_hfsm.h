@@ -33,7 +33,7 @@
 #define AZ_IOT_HFSM_MAX_HUB_RETRY AZ_IOT_DEFAULT_MAX_HUB_RETRY
 #endif 
 
-// TODO
+// CPOP_TODO: Move to configuration
 #define AZ_IOT_HFSM_PROVISIONING_ENABLED
 
 typedef struct
@@ -52,7 +52,7 @@ typedef struct
     az_hfsm_dispatch* provisioning_hfsm;
 #endif
   } _internal;
-} az_iot_hfsm_type;
+} caz_iot_hfsm_type;
 
 /**
  * @brief Azure IoT HFSM event types.

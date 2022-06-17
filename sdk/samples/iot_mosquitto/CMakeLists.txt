@@ -25,7 +25,42 @@ if(NOT pthread_FOUND)
 endif()
 # Azure IoT Samples Executables
 
-# Azure IoT Sample
+# Azure IoT Mosquitto Connect Sample
+add_executable (mosquitto_iot_sample_connect
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_iot_sample_connect.c
+)
+add_compile_definitions(mosquitto_iot_sample_connect
+  LIBMOSQUITTO_STATIC
+)
+
+target_include_directories(mosquitto_iot_sample_connect
+  PRIVATE
+    ${MOSQUITTO_INCLUDE_DIR}
+)
+
+target_link_libraries(mosquitto_iot_sample_connect
+  PRIVATE
+    ${MOSQUITTO_LIBRARIES}
+    ${PTHREAD_LIBRARIES}
+    #${MOSQUITTO_LIBRARY}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
+    az::iot::hub
+    az::iot::provisioning
+    # Windows only:
+)
+
+if(WIN32)
+target_link_libraries(mosquitto_iot_sample_connect
+  PRIVATE
+  crypt32
+  Ws2_32
+)
+endif()
+
+create_map_file(mosquitto_iot_sample_connect mosquitto_iot_sample_connect.map)
+
+# Azure IoT Mosquitto HFSM Sample
 add_executable (mosquitto_iot_sample
   ${CMAKE_CURRENT_LIST_DIR}/mosquitto_iot_sample.c
 )
@@ -60,4 +95,4 @@ endif()
 
 create_map_file(mosquitto_iot_sample mosquitto_iot_sample.map)
 
-endif() # TRANSPORT_PAHO
+endif() # TRANSPORT_MOSQUITTO

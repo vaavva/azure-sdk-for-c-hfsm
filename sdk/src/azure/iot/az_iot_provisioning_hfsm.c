@@ -5,8 +5,7 @@
  * @file az_iot_hfsm.c
  * @brief HFSM for Azure IoT Operations.
  *
- * @details Implements fault handling for Device Provisioning + IoT Hub operations
- * @see az_iot_hfsm.puml
+ * @details Implements the state machine for for Azure IoT Device Provisioning.
  */
 
 #include <inttypes.h>

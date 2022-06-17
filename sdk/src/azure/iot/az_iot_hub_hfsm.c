@@ -2,11 +2,10 @@
 /* SPDX-License-Identifier: MIT */
 
 /**
- * @file az_iot_hfsm.c
- * @brief HFSM for Azure IoT Operations.
+ * @file az_iot_hub_hfsm.c
+ * @brief HFSM for Azure IoT Hub Operations.
  *
- * @details Implements fault handling for Device Provisioning + IoT Hub operations
- * @see az_iot_hfsm.puml
+ * @details Implements connectivity and fault handling for an IoT Hub Client
  */
 
 #include <inttypes.h>
