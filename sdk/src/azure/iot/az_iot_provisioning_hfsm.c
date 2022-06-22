@@ -158,7 +158,7 @@ static az_hfsm_return_type azure_iot(az_hfsm* me, az_hfsm_event event)
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
       {
         _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/azure_iot"));
-        // TODO: log az_result code.
+        // HFSM_TODO: log az_result code.
         e->error_type;
       }
       // Exitting the top-level state to cause a critical error.

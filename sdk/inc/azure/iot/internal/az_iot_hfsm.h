@@ -33,7 +33,7 @@
 #define AZ_IOT_HFSM_MAX_HUB_RETRY AZ_IOT_DEFAULT_MAX_HUB_RETRY
 #endif 
 
-// CPOP_TODO: Move to configuration
+// HFSM_TODO: Move to configuration
 #define AZ_IOT_HFSM_PROVISIONING_ENABLED
 
 typedef struct

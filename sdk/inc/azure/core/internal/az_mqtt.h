@@ -27,8 +27,20 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
-// CPOP_TODO: we may want to add enums for the various MQTT status codes. These could be used to 
+// HFSM_TODO: we may want to add enums for the various MQTT status codes. These could be used to 
 //            simplify logging.
+
+typedef void* az_mqtt_impl;
+
+typedef struct
+{
+  /**
+   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
+   */
+  az_span certificate_authority_trusted_roots;
+  az_span client_certificate;
+  az_span client_private_key;
+} az_mqtt_options;
 
 /**
  * @brief Azure MQTT HFSM.
@@ -37,15 +49,18 @@
  */
 typedef struct
 {
+  az_span host;
+  int16_t port;
+  az_span username;
+  az_span password;
+  az_span client_id;
+
   struct
   {
     az_hfsm hfsm;
-    az_span host;
-    int16_t port;
-    void* tls_settings;
-    az_span username;
-    az_span password;
-    az_span client_id;
+    az_hfsm_dispatch iot_client;
+    az_mqtt_impl mqtt;
+    az_mqtt_options options;
   } _internal;
 } az_mqtt_hfsm_type;
 
@@ -76,16 +91,26 @@ enum az_hfsm_event_type_mqtt
   AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
 };
 
-//CPOP_TODO: add standard Options support. tls_settings should be in options.
+typedef struct {
+  az_span topic;
+  az_span data;
+} az_hfsm_mqtt_pub_data;
+
+typedef struct {
+  int32_t connack_reason;
+} az_hfsm_mqtt_connect_data;
+
+AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
 AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_hfsm_type* mqtt_hfsm,
+  az_hfsm_dispatch* iot_client,
   az_span host,
   int16_t port,
-  void* tls_settings,
   az_span username,
   az_span password,
-  az_span client_id);
+  az_span client_id,
+  az_mqtt_options const* options);
 
 #include <azure/core/_az_cfg_suffix.h>
 
