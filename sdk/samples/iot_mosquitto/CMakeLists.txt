@@ -77,12 +77,11 @@ target_link_libraries(mosquitto_iot_sample
   PRIVATE
     ${MOSQUITTO_LIBRARIES}
     ${PTHREAD_LIBRARIES}
-    #${MOSQUITTO_LIBRARY}
     OpenSSL::SSL 
     OpenSSL::Crypto
+    az::mosquitto
     az::iot::hub
     az::iot::provisioning
-    # Windows only:
 )
 
 if(WIN32)

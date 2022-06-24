@@ -53,10 +53,12 @@ state Idle
     }
 
     Started : <b>exit/</b>
-    Started: \t if(provisioningDone) ^AZ_IOT_HUB_START(endpoint, identity)
+    Started: \t if(provisioningDone) {
+    Started: \t\t SaveIoTHubEndpointInformation(endpoint, identity)
+    Started: \t\t post_event(hfsm_iot, AZ_HFSM_IOT_EVENT_PROVISIONING_DONE)
 
     [*] --> Idle
-    Idle -> Started : AZ_IOT_START / ^MQTT_CONNECT_REQ
+    Idle -> Started : AZ_HFSM_IOT_EVENT_START / ^MQTT_CONNECT_REQ
     Started --> Idle : MQTT_DISCONNECT_RSP
     Started --> Idle : AZ_HFSM_IOT_EVENT_ERROR, ERROR, TIMEOUT / ^ERROR}
 

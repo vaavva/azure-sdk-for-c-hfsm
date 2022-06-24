@@ -70,6 +70,8 @@ enum az_hfsm_event_type_iot
 
   /// Azure IoT provisioning complete event. The data field is always NULL.
   AZ_HFSM_IOT_EVENT_PROVISIONING_DONE = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT, 3),
+
+  //HFSM_TODO: Add AZ_HFSM_IOT_EVENT_STOP
 };
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
