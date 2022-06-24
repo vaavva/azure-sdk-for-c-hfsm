@@ -4,7 +4,7 @@ state AzureIotProvisioning {
 state Idle
     state Started {
         state Connecting
-        Connecting : <b>CONNECT_RSP(error)</b> / ^ERROR
+        Connecting : <b>MQTT_CONNECT_RSP(error)</b> / ^AZ_HFSM_IOT_EVENT_ERROR
 
         state Connected {
             state Subscribing
@@ -18,7 +18,7 @@ state Idle
                 WaitRegister : <b>entry/</b> start timer
                 WaitRegister : <b>MQTT_RECV_IND/</b> {
                 WaitRegister : \t reset timer;
-                WaitRegister : \t if (provisioningDone) ^AZ_IOT_PROVISIONING_STOP
+                WaitRegister : \t if (provisioningDone) ^AZ_IOT_STOP
                 WaitRegister : \t else if (!error) ^^QUERY
                 WaitRegister : \t else ^ERROR
                 WaitRegister : }
@@ -47,17 +47,17 @@ state Idle
         Disconnecting : <b>exit/</b> stop timer
 
         [*] -> Connecting
-        Connecting --> Connected : CONNECT_RSP(success)
-        Connecting --> Disconnecting : AZ_IOT_PROVISIONING_STOP
-        Connected --> Disconnecting : AZ_IOT_PROVISIONING_STOP
+        Connecting --> Connected : MQTT_CONNECT_RSP(success)
+        Connecting --> Disconnecting : AZ_IOT_STOP
+        Connected --> Disconnecting : AZ_IOT_STOP
     }
 
     Started : <b>exit/</b>
     Started: \t if(provisioningDone) ^AZ_IOT_HUB_START(endpoint, identity)
 
     [*] --> Idle
-    Idle -> Started : AZ_IOT_PROVISIONING_START / ^CONNECT_REQ
+    Idle -> Started : AZ_IOT_START / ^MQTT_CONNECT_REQ
     Started --> Idle : MQTT_DISCONNECT_RSP
-    Started --> Idle : ERROR, TIMEOUT / ^ERROR}
+    Started --> Idle : AZ_HFSM_IOT_EVENT_ERROR, ERROR, TIMEOUT / ^ERROR}
 
 @enduml

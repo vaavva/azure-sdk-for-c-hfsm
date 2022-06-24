@@ -51,8 +51,6 @@ typedef struct
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
     az_hfsm_dispatch* provisioning_hfsm;
 #endif
-
-    // HFSM_TODO: Pointers to configuration and memory to store IoT Hub endpoints.
   } _internal;
 } az_iot_hfsm_type;
 

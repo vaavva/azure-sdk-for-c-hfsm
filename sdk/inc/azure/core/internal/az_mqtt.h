@@ -6,6 +6,9 @@
  *
  * @brief This header defines the types and functions your application uses to leverage MQTT pub/sub
  * functionality.
+ * 
+ * @details For more details on Azure IoT MQTT requirements please see 
+ * https://docs.microsoft.com/azure/iot-hub/iot-hub-mqtt-support.
  *
  * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
@@ -31,6 +34,8 @@
 //            simplify logging.
 
 typedef void* az_mqtt_impl;
+
+#define AZ_MQTT_KEEPALIVE_SECONDS 240
 
 typedef struct
 {
@@ -93,8 +98,14 @@ enum az_hfsm_event_type_mqtt
 
 typedef struct {
   az_span topic;
-  az_span data;
+  az_span payload;
+  int8_t qos;
+  int32_t* id;
 } az_hfsm_mqtt_pub_data;
+
+typedef struct {
+  int32_t* id;
+} az_hfsm_mqtt_puback_data;
 
 typedef struct {
   int32_t connack_reason;
@@ -102,6 +113,20 @@ typedef struct {
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
+/**
+ * @brief 
+ * 
+ * @param mqtt_hfsm The #az_hfsm MQTT state machine instance.
+ * @param iot_client The IoT client state machine dispatcher that will receive events from this 
+ *                   machine.
+ * @param host 
+ * @param port 
+ * @param username 
+ * @param password 
+ * @param client_id 
+ * @param options 
+ * @return AZ_NODISCARD 
+ */
 AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_hfsm_type* mqtt_hfsm,
   az_hfsm_dispatch* iot_client,

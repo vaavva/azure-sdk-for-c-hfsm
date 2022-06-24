@@ -15,7 +15,7 @@
 
 #include <azure/core/_az_cfg.h>
 
-static az_hfsm_return_type az_mosquitto(az_hfsm* me, az_hfsm_event event);
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
 
 static az_hfsm_state_handler azure_mqtt_hfsm_get_parent(az_hfsm_state_handler child_state)
 {
@@ -51,17 +51,17 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   mqtt_hfsm->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
 
   // HFSM_DESIGN: AZ_HFSM is good to have for simpler MQTT stacks such as an external modems.
-  //              For the Mosquitto implmentation, this is used only to convert from parameters to
+  //              For the Mosquitto implementation, this is used only to convert from parameters to
   //              events.
 
-  return az_hfsm_init(&mqtt_hfsm->_internal.hfsm, az_mosquitto, azure_mqtt_hfsm_get_parent);
+  return az_hfsm_init(&mqtt_hfsm->_internal.hfsm, root, azure_mqtt_hfsm_get_parent);
 }
 
 static void _az_mosqitto_on_connect(struct mosquitto *mosq, void *obj, int reason_code)
 {
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
-  
+
 
 	/* Print out the connection result. mosquitto_connack_string() produces an
 	 * appropriate string for MQTT v3.x clients, the equivalent for MQTT v5.0
@@ -144,7 +144,7 @@ static void _az_mosqitto_on_log(struct mosquitto *mosq, void *obj, int level, co
 	printf("MOSQ [%s] %s\n", log_level, str);
 }
 
-AZ_INLINE void _az_mosquitto_init(az_mqtt_hfsm_type* me)
+AZ_INLINE int _az_mosquitto_init(az_mqtt_hfsm_type* me)
 {
   int rc;
 
@@ -171,24 +171,66 @@ AZ_INLINE void _az_mosquitto_init(az_mqtt_hfsm_type* me)
 		(const char*)az_span_ptr(me->_internal.options.client_private_key),
 		NULL);  // HFSM_TODO: Key callback for cases where the PEM files are encrypted at rest.
 
-	if (rc != MOSQ_ERR_SUCCESS)
+	if (rc == MOSQ_ERR_SUCCESS)
 	{
-    az_hfsm_event_data_error d = {.error_type = rc};
-    az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
-	}
+    rc = mosquitto_username_pw_set(
+      me->_internal.mqtt, 
+      (const char*) az_span_ptr(me->username), 
+      (const char*) az_span_ptr(me->password));
+  }
 
-	rc = mosquitto_username_pw_set(
+	if (rc == MOSQ_ERR_SUCCESS)
+	{
+    rc = mosquitto_loop_start(me->_internal.mqtt);
+  }
+
+  return rc;
+}
+
+AZ_INLINE int _az_mosquitto_connect(az_mqtt_hfsm_type* me)
+{
+  return mosquitto_connect_async(
     me->_internal.mqtt, 
-    (const char*) az_span_ptr(me->username), 
-    (const char*) az_span_ptr(me->password));
-	if (rc != MOSQ_ERR_SUCCESS)
+    az_span_ptr(me->host), 
+    me->port, 
+    AZ_MQTT_KEEPALIVE_SECONDS);
+}
+
+AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_span topic, az_span payload, int8_t qos)
+{
+  // HFSM_TODO: mid
+  return mosquitto_publish(
+    me->_internal.mqtt, 
+    NULL, 
+    az_span_ptr(topic), 
+    az_span_size(payload), 
+    az_span_ptr(payload), 
+    qos, 
+    false);
+}
+
+AZ_INLINE int _az_mosquitto_sub(az_mqtt_hfsm_type* me, az_span topic, int8_t qos)
+{
+    // HFSM_TODO
+}
+
+AZ_INLINE int _az_mosquitto_deinit(az_mqtt_hfsm_type* me)
+{
+      mosquitto_loop_stop(me->_internal.mqtt);
+      mosquitto_destroy(me->_internal.mqtt);
+
+}
+
+AZ_INLINE void _az_mosquitto_error_adapter(az_mqtt_hfsm_type* me, int rc)
+{
+  if (rc != MOSQ_ERR_SUCCESS)
 	{
     az_hfsm_event_data_error d = {.error_type = rc};
     az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
 	}
 }
 
-az_hfsm_return_type az_mosquitto(az_hfsm* me, az_hfsm_event event)
+az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
 
@@ -199,43 +241,57 @@ az_hfsm_return_type az_mosquitto(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ENTRY:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTRY))
       {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ENTRY, AZ_SPAN_FROM_STR("az_mosquitto"));
+        _az_LOG_WRITE(AZ_LOG_HFSM_ENTRY, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
-      _az_mosquitto_init(this_iot_hfsm);
+      _az_mosquitto_error_adapter(
+        this_iot_hfsm, 
+        _az_mosquitto_init(this_iot_hfsm));
       break;
     
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_MQTT_EVENT_CONNECT_REQ))
       {
-        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_CONNECT_REQ, AZ_SPAN_FROM_STR("az_mosquitto"));
+        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_CONNECT_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
+      _az_mosquitto_connect(this_iot_hfsm);
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_REQ:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_MQTT_EVENT_PUB_REQ))
       {
-        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_PUB_REQ, AZ_SPAN_FROM_STR("az_mosquitto"));
+        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_PUB_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
+      //_az_mosquitto_pub(this_iot_hfsm, topic, data);
       break;
 
     case AZ_HFSM_MQTT_EVENT_SUB_REQ:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_MQTT_EVENT_SUB_REQ))
       {
-        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_SUB_REQ, AZ_SPAN_FROM_STR("az_mosquitto"));
+        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_SUB_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
+      //_az_mosquitto_pub(this_iot_hfsm, topic, qos);
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
+      if (_az_LOG_SHOULD_WRITE(AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ))
+      {
+        _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
+      }
+
+      _az_mosquitto_disconnect(this_iot_hfsm);
       break;
 
     case AZ_HFSM_EVENT_EXIT:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
       {
-        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_mosquitto"));
+        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
-      mosquitto_destroy(this_iot_hfsm->_internal.mqtt);
+      _az_mosquitto_deinit(this_iot_hfsm);
       // IMPORTANT: application must call mosquitto_lib_cleanup() 
       // after all clients have been destroyed.
 
@@ -245,7 +301,7 @@ az_hfsm_return_type az_mosquitto(az_hfsm* me, az_hfsm_event event)
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
       {
         //HFSM_TODO: Logging should print out error codes.
-        _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_mosquitto"));
+        _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
       az_platform_critical_error();
