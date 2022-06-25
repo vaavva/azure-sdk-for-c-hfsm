@@ -63,7 +63,7 @@ typedef struct
   struct
   {
     az_hfsm hfsm;
-    az_hfsm_dispatch iot_client;
+    az_hfsm_dispatch* iot_client;
     az_mqtt_impl mqtt;
     az_mqtt_options options;
   } _internal;
@@ -114,7 +114,7 @@ typedef struct {
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
 /**
- * @brief 
+ * @brief Initializes the MQTT Platform Layer.
  * 
  * @param mqtt_hfsm The #az_hfsm MQTT state machine instance.
  * @param iot_client The IoT client state machine dispatcher that will receive events from this 
@@ -136,6 +136,28 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   az_span password,
   az_span client_id,
   az_mqtt_options const* options);
+
+/**
+ * @brief Creates an MQTT PUB message.
+ * 
+ * @details The MQTT platform implementation will allocate and correctly set the structures within
+ *          this struct to point to valid memory. The application is then responsible with filling
+ *          in the required information.
+ * 
+ * @param data 
+ * @return AZ_NODISCARD 
+ */
+AZ_NODISCARD az_result az_mqtt_pub_data_create(az_hfsm_mqtt_pub_data* data);
+
+/**
+ * @brief Destroys an MQTT PUB message.
+ * @details The MQTT platform may need to release or dispose of the underlying MQTT structures that
+ *          this #az_hfsm_mqtt_pub_data points to.
+ * 
+ * @param data 
+ * @return AZ_NODISCARD 
+ */
+AZ_NODISCARD az_result az_mqtt_pub_data_destroy(az_hfsm_mqtt_pub_data* data);
 
 #include <azure/core/_az_cfg_suffix.h>
 

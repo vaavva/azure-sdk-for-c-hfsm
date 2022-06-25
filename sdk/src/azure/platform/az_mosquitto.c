@@ -9,8 +9,8 @@
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
 
+#include <stdio.h>
 #include <stdlib.h>
-
 #include <mosquitto.h>
 
 #include <azure/core/_az_cfg.h>
@@ -31,7 +31,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 
 AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_hfsm_type* mqtt_hfsm,
-
+  az_hfsm_dispatch* iot_client,
   az_span host,
   int16_t port,
   az_span username,
@@ -43,6 +43,7 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   // CPOP_TODO: Preconditions
 
   mqtt_hfsm->host = host;
+  mqtt_hfsm->_internal.iot_client = iot_client;
   mqtt_hfsm->port = port;
   mqtt_hfsm->username = username;
   mqtt_hfsm->password = password;
@@ -60,8 +61,6 @@ AZ_NODISCARD az_result az_mqtt_initialize(
 static void _az_mosqitto_on_connect(struct mosquitto *mosq, void *obj, int reason_code)
 {
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
-
-
 
 	/* Print out the connection result. mosquitto_connack_string() produces an
 	 * appropriate string for MQTT v3.x clients, the equivalent for MQTT v5.0
@@ -141,6 +140,9 @@ static void _az_mosqitto_on_log(struct mosquitto *mosq, void *obj, int level, co
 		default:
 			log_level = "UNKN";
 	}
+
+  // HFSM_TODO: Temporary direct use of print. All messages will be routed through az_log, under  
+  //            dedicated AZ_LOG_MQTT_* classifications.
 	printf("MOSQ [%s] %s\n", log_level, str);
 }
 
