@@ -1,174 +1,128 @@
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <azure/core/az_log.h>
+#include <azure/core/az_mqtt.h>
 #include "mosquitto.h"
 
-// Mosquitto Lib documentation is available at: https://mosquitto.org/api/files/mosquitto-h.html
+az_mqtt_hfsm_type mqtt_client;
 
-volatile bool running = true;
+//HFSM_TODO: replace with az_mqtt_pipeline?
+az_hfsm_dispatch feedback_client;
 
-/* Callback called when the client receives a CONNACK message from the broker. */
-void on_connect(struct mosquitto *mosq, void *obj, int reason_code)
+
+void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
-	/* Print out the connection result. mosquitto_connack_string() produces an
-	 * appropriate string for MQTT v3.x clients, the equivalent for MQTT v5.0
-	 * clients is mosquitto_reason_string().
-	 */
-	printf("on_connect: %s\n", mosquitto_connack_string(reason_code));
-	if(reason_code != 0){
-		/* If the connection fails for any reason, we don't want to keep on
-		 * retrying in this example, so disconnect. Without this, the client
-		 * will attempt to reconnect. */
-		mosquitto_disconnect(mosq);
-	}
+  const char* class_str;
 
-	/* You may wish to set a flag here to indicate to your application that the
-	 * client is now connected. */
+  switch(classification)
+  {
+    case AZ_LOG_HFSM_ENTRY:
+      class_str = "HFSM_ENTRY";
+      break;
+    case AZ_LOG_HFSM_EXIT:
+      class_str = "HFSM_EXIT";
+      break;
+    case AZ_LOG_HFSM_TIMEOUT:
+      class_str = "HFSM_TIMEOUT";
+      break;
+    case AZ_LOG_HFSM_ERROR:
+      class_str = "HFSM_ERROR";
+      break;
+    case AZ_LOG_HFSM_ERROR_DETAILS:
+      class_str = "HFSM_ERROR_DETAILS";
+      break;
+    case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUB_RECV_IND";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUB_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUBACK_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_SUB_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
+      break;
+	case AZ_LOG_HFSM_MQTT_STACK:
+	  class_str = "AZ_LOG_HFSM_MQTT_STACK";
+	  break;
+    default:
+      class_str = NULL;
+  }
+
+  if (class_str == NULL)
+  {
+    printf("AZSDK [UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
+  }
+  else
+  {
+    printf("AZSDK [%s] %s\n", class_str, az_span_ptr(message));
+  }
 }
 
-void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
+bool az_sdk_log_filter_callback(az_log_classification classification)
 {
-	printf("MOSQ: DISCONNECT reason=%d\n", rc);
-	running = false;
+  // Enable all logging.
+  return true;
 }
 
-/* Callback called when the client knows to the best of its abilities that a
- * PUBLISH has been successfully sent. For QoS 0 this means the message has
- * been completely written to the operating system. For QoS 1 this means we
- * have received a PUBACK from the broker. For QoS 2 this means we have
- * received a PUBCOMP from the broker. */
-void on_publish(struct mosquitto *mosq, void *obj, int mid)
+void az_platform_critical_error()
 {
-	printf("MOSQ: Message with mid %d has been published.\n", mid);
+  printf("AZSDK PANIC!\n");
+
+  while(1);
 }
 
-void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos)
-{
-	printf("MOSQ: Subscribed with mid %d; %d topics.\n", mid, qos_count);
-	for(int i = 0; i < qos_count; i++)
-	{
-		printf("MOSQ: \t QoS %d\n", granted_qos[i]);
-	}
-}
-
-void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
-{
-	printf("MOSQ: Unsubscribing using message with mid %d.\n", mid);
-}
-
-void on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
-{
-	char* log_level;
-
-	switch (level)
-	{
-		case MOSQ_LOG_INFO:
-			log_level = "INFO";
-			break;
-		case MOSQ_LOG_NOTICE:
-			log_level = "NOTI";
-			break;
-		case MOSQ_LOG_WARNING:
-			log_level = "WARN";
-			break;
-		case MOSQ_LOG_ERR:
-			log_level = "ERR ";
-			break;
-		case MOSQ_LOG_DEBUG:
-			log_level = "DBUG";
-			break;
-		case MOSQ_LOG_SUBSCRIBE:
-			log_level = "SUB ";
-			break;
-		case MOSQ_LOG_UNSUBSCRIBE:
-			log_level = "USUB";
-			break;
-		case MOSQ_LOG_WEBSOCKETS:
-			log_level = "WSCK";
-			break;
-		default:
-			log_level = "UNKN";
-	}
-	printf("MOSQ [%s] %s\n", log_level, str);
-}
-
+// HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char *argv[])
 {
-	struct mosquitto *mosq;
-	int rc;
+  /* Required before calling other mosquitto functions */
+  mosquitto_lib_init();
+  az_log_set_message_callback(az_sdk_log_callback);
+  az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-	/* Required before calling other mosquitto functions */
-	mosquitto_lib_init();
+  az_mqtt_options mqtt_options = { 
+    .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("S:\\test\\rsa_baltimore_ca.pem"),
+                             .client_certificate = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_cert.pem"),
+                             .client_private_key = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_key.pem") };
 
-	/* Create a new client instance.
-	 * id = NULL -> ask the broker to generate a client id for us
-	 * clean session = true -> the broker should remove old sessions when we connect
-	 * obj = NULL -> we aren't passing any of our private data for callbacks
-	 */
-	mosq = mosquitto_new("dev1-ecc", true, NULL);
-	if(mosq == NULL){
-		fprintf(stderr, "Error: Out of memory.\n");
-		return 1;
-	}
+  az_mqtt_initialize(
+    &mqtt_client,
+    &feedback_client,
+    AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
+    8883,
+    AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1"),
+    AZ_SPAN_EMPTY,
+    AZ_SPAN_FROM_STR("dev1-ecc"),
+    &mqtt_options);
 
-	/* Configure callbacks. This should be done before connecting ideally. */
-	mosquitto_log_callback_set(mosq, on_log);
+  az_hfsm_event connect = {
+    .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ,
+    .data = NULL 
+  };
 
-	mosquitto_connect_callback_set(mosq, on_connect);
-	mosquitto_disconnect_callback_set(mosq, on_disconnect);
-	mosquitto_publish_callback_set(mosq, on_publish);
-	mosquitto_subscribe_callback_set(mosq, on_subscribe);
-	mosquitto_unsubscribe_callback_set(mosq, on_unsubscribe);
-	
-	rc = mosquitto_tls_set(
-		mosq,
-		"S:\\test\\rsa_baltimore_ca.pem",
-		NULL, //"S:\\cert\\RootCAs",
-		"S:\\test\\dev1-ecc_cert.pem",
-		"S:\\test\\dev1-ecc_key.pem",
-		NULL);
-	if (rc != MOSQ_ERR_SUCCESS)
-	{
-		mosquitto_destroy(mosq);
-		fprintf(stderr, "TLS Config Error: %s\n", mosquitto_strerror(rc));
-		return 1;
-	}
+  az_hfsm_send_event((az_hfsm*)&mqtt_client, connect);
 
-	rc = mosquitto_username_pw_set(mosq, "crispop-iothub1.azure-devices.net/dev1-ecc/?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1", "");
-	if (rc != MOSQ_ERR_SUCCESS)
-	{
-		mosquitto_destroy(mosq);
-		fprintf(stderr, "User/pass Config Error: %s\n", mosquitto_strerror(rc));
-		return 1;
-	}
+  while(1)
+  {
+  }
 
-	rc = mosquitto_connect(mosq, "crispop-iothub1.azure-devices.net", 8883, 60);
-	if(rc != MOSQ_ERR_SUCCESS)
-	{
-		mosquitto_destroy(mosq);
-		fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));
-		return 1;
-	}
-
-	/* Run the network loop in a background thread, this call returns quickly. */
-	rc = mosquitto_loop_start(mosq);
-	if(rc != MOSQ_ERR_SUCCESS)
-	{
-		mosquitto_destroy(mosq);
-		fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));
-		return 1;
-	}
-
-	/* At this point the client is connected to the network socket, but may not
-	 * have completed CONNECT/CONNACK.
-	 * It is fairly safe to start queuing messages at this point, but if you
-	 * want to be really sure you should wait until after a successful call to
-	 * the connect callback.
-	 * In this case we know it is 1 second before we start publishing.
-	 */
-	while(running){
-		//publish_sensor_data(mosq);
-	}
-
-	mosquitto_lib_cleanup();
-	return 0;
+  mosquitto_lib_cleanup();
+  return 0;
 }
