@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
 
+// Mosquitto Lib documentation is available at: https://mosquitto.org/api/files/mosquitto-h.html
+
+
 #include <azure/core/az_span.h>
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_mqtt.h>
@@ -41,7 +44,7 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_options const* options
   )
 {
-  // CPOP_TODO: Preconditions
+  // HFSM_TODO: Preconditions
 
   mqtt_hfsm->host = host;
   mqtt_hfsm->_internal.iot_client = iot_client;
@@ -74,7 +77,7 @@ static void _az_mosqitto_on_connect(struct mosquitto *mosq, void *obj, int reaso
 		mosquitto_disconnect(mosq);
 	}
 
-  
+
   // az_hfsm_dispatch_post_event(me->_internal.iot_client, )
 
 	/* You may wish to set a flag here to indicate to your application that the
@@ -174,22 +177,26 @@ AZ_INLINE int _az_mosquitto_disconnect(az_mqtt_hfsm_type* me)
   return mosquitto_disconnect((struct mosquitto *)me->_internal.mqtt);
 }
 
-AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_span topic, az_span payload, int8_t qos)
+AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_pub_data* data)
 {
   // HFSM_TODO: mid
   return mosquitto_publish(
     me->_internal.mqtt, 
-    NULL, 
-    az_span_ptr(topic), 
-    az_span_size(payload), 
-    az_span_ptr(payload), 
-    qos, 
+    data->id, 
+    az_span_ptr(data->topic),     // Assumes properly formed NULL terminated string.
+    az_span_size(data->payload), 
+    az_span_ptr(data->payload), 
+    data->qos, 
     false);
 }
 
-AZ_INLINE int _az_mosquitto_sub(az_mqtt_hfsm_type* me, az_span topic, int8_t qos)
+AZ_INLINE int _az_mosquitto_sub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_sub_data* data)
 {
-    // HFSM_TODO
+    return mosquitto_subscribe_multiple(
+      me->_internal.mqtt,
+      data->id,
+      
+
 }
 
 AZ_INLINE int _az_mosquitto_deinit(az_mqtt_hfsm_type* me)
@@ -220,7 +227,7 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 
   az_mqtt_hfsm_type* this_iot_hfsm = (az_mqtt_hfsm_type*)me;
 
-  switch ((int32_t)event.type)
+  switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
       if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTRY))
@@ -239,7 +246,9 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
         _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_CONNECT_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
-      _az_mosquitto_connect(this_iot_hfsm);
+      _az_mosquitto_error_adapter(
+        this_iot_hfsm,
+        _az_mosquitto_connect(this_iot_hfsm));
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_REQ:
@@ -248,7 +257,9 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
         _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_PUB_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
-      _az_mosquitto_pub(this_iot_hfsm, topic, data);
+      _az_mosquitto_error_adapter(
+        this_iot_hfsm,
+        _az_mosquitto_pub(this_iot_hfsm, (az_hfsm_mqtt_pub_data *)&event.data));
       break;
 
     case AZ_HFSM_MQTT_EVENT_SUB_REQ:

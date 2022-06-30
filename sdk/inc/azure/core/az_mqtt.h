@@ -110,8 +110,18 @@ typedef struct {
 } az_hfsm_mqtt_pub_data;
 
 typedef struct {
-  int32_t* id;
+  int32_t id;
 } az_hfsm_mqtt_puback_data;
+
+typedef struct {
+  az_span topic;
+  int8_t qos;
+  int32_t* id;
+} az_hfsm_mqtt_sub_data;
+
+typedef struct {
+  int32_t id;
+} az_hfsm_mqtt_suback_data;
 
 typedef struct {
   int32_t* connack_reason;

@@ -26,19 +26,19 @@ endif()
 # Azure IoT Samples Executables
 
 # Azure IoT Mosquitto Connect Sample
-add_executable (mosquitto_iot_sample_connect
-  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_iot_sample_connect.c
+add_executable (mosquitto_sample_connect
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_sample_connect.c
 )
-add_compile_definitions(mosquitto_iot_sample_connect
+add_compile_definitions(mosquitto_sample_connect
   LIBMOSQUITTO_STATIC
 )
 
-target_include_directories(mosquitto_iot_sample_connect
+target_include_directories(mosquitto_sample_connect
   PRIVATE
     ${MOSQUITTO_INCLUDE_DIR}
 )
 
-target_link_libraries(mosquitto_iot_sample_connect
+target_link_libraries(mosquitto_sample_connect
   PRIVATE
     ${MOSQUITTO_LIBRARIES}
     ${PTHREAD_LIBRARIES}
@@ -51,14 +51,48 @@ target_link_libraries(mosquitto_iot_sample_connect
 )
 
 if(WIN32)
-target_link_libraries(mosquitto_iot_sample_connect
+target_link_libraries(mosquitto_sample_connect
   PRIVATE
   crypt32
   Ws2_32
 )
 endif()
 
-create_map_file(mosquitto_iot_sample_connect mosquitto_iot_sample_connect.map)
+create_map_file(mosquitto_sample_connect mosquitto_sample_connect.map)
+
+# Mosquitto HFSM Sample
+add_executable (mosquitto_hfsm_sample
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_hfsm_sample.c
+)
+add_compile_definitions(mosquitto_hfsm_sample
+  LIBMOSQUITTO_STATIC
+)
+
+target_include_directories(mosquitto_hfsm_sample
+  PRIVATE
+    ${MOSQUITTO_INCLUDE_DIR}
+)
+
+target_link_libraries(mosquitto_hfsm_sample
+  PRIVATE
+    ${MOSQUITTO_LIBRARIES}
+    ${PTHREAD_LIBRARIES}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
+    az::mosquitto
+    az::iot::hub
+    az::iot::provisioning
+)
+
+if(WIN32)
+target_link_libraries(mosquitto_hfsm_sample
+  PRIVATE
+  crypt32
+  Ws2_32
+)
+endif()
+
+create_map_file(mosquitto_hfsm_sample mosquitto_hfsm_sample.map)
 
 # Azure IoT Mosquitto HFSM Sample
 add_executable (mosquitto_iot_sample
