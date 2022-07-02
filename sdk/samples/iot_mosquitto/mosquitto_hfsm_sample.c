@@ -105,7 +105,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 
       int32_t sub_id;
 
-      az_hfsm_send_event(me, (az_hfsm_event){
+      az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){
         AZ_HFSM_MQTT_EVENT_SUB_REQ, 
         &(az_hfsm_mqtt_sub_data){
           .topic_filter = AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
 
   while(1)
   {
+    Sleep(1000);
   }
 
   mosquitto_lib_cleanup();
