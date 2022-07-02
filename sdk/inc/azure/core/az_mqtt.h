@@ -59,10 +59,10 @@ typedef struct
   struct
   {
     az_hfsm hfsm;
-    az_hfsm_dispatch* iot_client;
+    // HFSM_DESIGN: This implementation supports only SEND (but not POST).
+    az_hfsm* iot_client;
     az_mqtt_impl mqtt;
     az_mqtt_options options;
-    int16_t connack_reason;
   } _internal; 
 
   az_span host;
@@ -114,7 +114,7 @@ typedef struct {
 } az_hfsm_mqtt_puback_data;
 
 typedef struct {
-  az_span topic;
+  az_span topic_filter;
   int8_t qos;
   int32_t* id;
 } az_hfsm_mqtt_sub_data;
@@ -124,8 +124,12 @@ typedef struct {
 } az_hfsm_mqtt_suback_data;
 
 typedef struct {
-  int32_t* connack_reason;
+  int32_t connack_reason;
 } az_hfsm_mqtt_connect_data;
+
+typedef struct {
+  int32_t disconnect_reason;
+} az_hfsm_mqtt_disconnect_data;
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
@@ -145,7 +149,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
  */
 AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_hfsm_type* mqtt_hfsm,
-  az_hfsm_dispatch* iot_client,
+  az_hfsm* iot_client,
   az_span host,
   int16_t port,
   az_span username,

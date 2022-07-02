@@ -1,15 +1,18 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include <azure/core/az_log.h>
 #include <azure/core/az_mqtt.h>
+
+#include <azure/az_iot.h>
+
 #include "mosquitto.h"
 
 az_mqtt_hfsm_type mqtt_client;
 
 //HFSM_TODO: replace with az_mqtt_pipeline?
-az_hfsm_dispatch feedback_client;
-
+az_hfsm feedback_client;
 
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
@@ -89,6 +92,54 @@ void az_platform_critical_error()
   while(1);
 }
 
+// Feedback client
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+
+  switch (event.type)
+  {
+    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
+      az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
+      printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
+
+      int32_t sub_id;
+
+      az_hfsm_send_event(me, (az_hfsm_event){
+        AZ_HFSM_MQTT_EVENT_SUB_REQ, 
+        &(az_hfsm_mqtt_sub_data){
+          .topic_filter = AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
+          .id = &sub_id,
+          .qos = 0}});
+
+      printf("APP: SUB mID = %d\n", sub_id);
+      break;
+      
+    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
+      printf("APP: Subscribed\n");
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
+      printf("APP: RECEIVED\n");
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+      printf("APP: PUBACK\n");
+      break;
+
+    default:
+      //NO-OP.
+      break;
+  }
+
+  return ret;
+}
+
+static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state)
+{
+  return NULL;
+}
+
 // HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char *argv[])
 {
@@ -96,6 +147,9 @@ int main(int argc, char *argv[])
   mosquitto_lib_init();
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
+
+  // Feedback: the HFSM used by the MQTT client to communicate results.
+  az_hfsm_init(&feedback_client, root, get_parent);
 
   az_mqtt_options mqtt_options = { 
     .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("S:\\test\\rsa_baltimore_ca.pem"),
@@ -112,12 +166,7 @@ int main(int argc, char *argv[])
     AZ_SPAN_FROM_STR("dev1-ecc"),
     &mqtt_options);
 
-  az_hfsm_event connect = {
-    .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ,
-    .data = NULL 
-  };
-
-  az_hfsm_send_event((az_hfsm*)&mqtt_client, connect);
+  az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL});
 
   while(1)
   {

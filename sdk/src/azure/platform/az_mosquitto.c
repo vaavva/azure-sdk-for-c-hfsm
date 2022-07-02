@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mosquitto.h>
+#include <pthread.h>
 
 #include <azure/core/_az_cfg.h>
 
@@ -35,7 +36,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 
 AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_hfsm_type* mqtt_hfsm,
-  az_hfsm_dispatch* iot_client,
+  az_hfsm* iot_client,
   az_span host,
   int16_t port,
   az_span username,
@@ -66,27 +67,29 @@ static void _az_mosqitto_on_connect(struct mosquitto *mosq, void *obj, int reaso
 {
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
-	printf("on_connect: %s\n", mosquitto_connack_string(reason_code));
-
 	if(reason_code != 0){
-    me->_internal.connack_reason = reason_code;
-
 		/* If the connection fails for any reason, we don't want to keep on
 		 * retrying in this example, so disconnect. Without this, the client
 		 * will attempt to reconnect. */
 		mosquitto_disconnect(mosq);
 	}
 
-
-  // az_hfsm_dispatch_post_event(me->_internal.iot_client, )
-
-	/* You may wish to set a flag here to indicate to your application that the
-	 * client is now connected. */
+  az_hfsm_send_event(
+    me->_internal.iot_client, 
+    (az_hfsm_event){
+      AZ_HFSM_MQTT_EVENT_CONNECT_RSP, 
+      &(az_hfsm_mqtt_connect_data){ reason_code }});
 }
 
 static void _az_mosqitto_on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
-	printf("MOSQ: DISCONNECT reason=%d\n", rc);
+  az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
+
+  az_hfsm_send_event(
+    me->_internal.iot_client, 
+    (az_hfsm_event){
+      AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP, 
+      &(az_hfsm_mqtt_disconnect_data){ rc }});
 }
 
 /* Callback called when the client knows to the best of its abilities that a
@@ -96,21 +99,30 @@ static void _az_mosqitto_on_disconnect(struct mosquitto *mosq, void *obj, int rc
  * received a PUBCOMP from the broker. */
 static void _az_mosqitto_on_publish(struct mosquitto *mosq, void *obj, int mid)
 {
-	printf("MOSQ: Message with mid %d has been published.\n", mid);
+  az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
+
+  az_hfsm_send_event(
+    me->_internal.iot_client, 
+    (az_hfsm_event){
+      AZ_HFSM_MQTT_EVENT_PUBACK_RSP, 
+      &(az_hfsm_mqtt_puback_data){ mid }});
 }
 
 static void _az_mosqitto_on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos)
 {
-	printf("MOSQ: Subscribed with mid %d; %d topics.\n", mid, qos_count);
-	for(int i = 0; i < qos_count; i++)
-	{
-		printf("MOSQ: \t QoS %d\n", granted_qos[i]);
-	}
+  az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
+
+  az_hfsm_send_event(
+    me->_internal.iot_client, 
+    (az_hfsm_event){
+      AZ_HFSM_MQTT_EVENT_SUBACK_RSP, 
+      &(az_hfsm_mqtt_suback_data){ mid }});
 }
 
 static void _az_mosqitto_on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
 {
-	printf("MOSQ: Unsubscribing using message with mid %d.\n", mid);
+  // Unsubscribe is not handled at the moment.
+  az_platform_critical_error();
 }
 
 static void _az_mosqitto_on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
@@ -179,7 +191,6 @@ AZ_INLINE int _az_mosquitto_disconnect(az_mqtt_hfsm_type* me)
 
 AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_pub_data* data)
 {
-  // HFSM_TODO: mid
   return mosquitto_publish(
     me->_internal.mqtt, 
     data->id, 
@@ -192,11 +203,11 @@ AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_pub_data* da
 
 AZ_INLINE int _az_mosquitto_sub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_sub_data* data)
 {
-    return mosquitto_subscribe_multiple(
-      me->_internal.mqtt,
-      data->id,
-      
-
+  return mosquitto_subscribe(
+    (struct mosquitto *)me->_internal.mqtt,
+    data->id,
+    az_span_ptr(data->topic_filter),
+    data->qos);
 }
 
 AZ_INLINE int _az_mosquitto_deinit(az_mqtt_hfsm_type* me)
@@ -238,6 +249,9 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       _az_mosquitto_error_adapter(
         this_iot_hfsm, 
         _az_mosquitto_init(this_iot_hfsm));
+
+      // HFSM_TODO: mutex release
+
       break;
     
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
@@ -268,7 +282,9 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
         _az_LOG_WRITE(AZ_HFSM_MQTT_EVENT_SUB_REQ, AZ_SPAN_FROM_STR("az_mosquitto/root"));
       }
 
-      //_az_mosquitto_pub(this_iot_hfsm, topic, qos);
+      _az_mosquitto_error_adapter(
+        this_iot_hfsm,
+        _az_mosquitto_sub(this_iot_hfsm, (az_hfsm_mqtt_sub_data *)&event.data));
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:

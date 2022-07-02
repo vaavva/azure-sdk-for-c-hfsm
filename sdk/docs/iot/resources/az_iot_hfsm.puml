@@ -1,73 +1,32 @@
 @startuml Azure IoT HFSM
 
-state AzureIot {
-    state Idle
-    
-    state Provisioning
-    Provisioning: <b>entry/</b>
-    Provisioning : \t _retry_attempt = 0
-    Provisioning : \t _start_time_msec = get_miliseconds()
-    Provisioning : \t _timer_handle = timer_create()
-    Provisioning :
-    Provisioning : <b>exit/</b>
-    Provisioning : \t timer_destroy(_timer_handle)
-    Provisioning :
-    Provisioning : <b>TIMEOUT/</b>
-    Provisioning : \t _start_time_msec = get_miliseconds()
-    Provisioning : \t post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
-
-    state Hub
-    Hub : <b>entry/</b>
-    Hub : \t _retry_attempt = 0
-    Hub : \t _start_time_msec = get_miliseconds()
-    Hub : \t _timer_handle = timer_create()
-    Hub :
-    Hub : <b>exit/</b>
-    Hub : \t timer_destroy(_timer_handle)
-    Hub : 
-    Hub : <b>TIMEOUT/</b>
-    Hub : \t _start_time_msec = get_miliseconds()
-    Hub : \t start_hub()
-    
-    state Faulted
-    Faulted : <b>entry/</b> critical_error()
-
-
-    [*] -> Idle
-    Idle --> Provisioning : AZ_HFSM_IOT_EVENT_START / post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
-    Provisioning --> Hub : AZ_HFSM_IOT_EVENT_PROVISIONING_DONE / post_event(hfsm_iothub, AZ_HFSM_IOT_EVENT_START)
-
-    Hub -> Provisioning : AZ_HFSM_IOT_EVENT_ERROR
+package "Run-To-Completion" as RTC {
+    frame AzureIoTOrchestration {
+        [Provisioning State Machine]
+        [Hub State Machine]
+        interface az_mqtt
+        [MQTT State Machine Async Implementation]
+    }
 }
 
-AzureIot : <b>entry/</b> 
-AzureIot : \t _use_secondary_credentials = false
-AzureIot :
-AzureIot : <b>AZ_HFSM_IOT_EVENT_ERROR/</b>
-AzureIot : \t _retry_attempt++
-AzureIot : \t operation_msec = get_miliseconds() - _start_time_msec
-AzureIot : \t should_retry = 
-AzureIot : \t\t((error_type == NETWORK) && (_retry_attempt <= MAX_HUB_RETRY)) || 
-AzureIot : \t\t((error_type == SERVICE) && az_iot_status_retriable(status)));
-AzureIot: 
-AzureIot : \t if (should_retry) {
-AzureIot : \t\t retry_delay_msec = az_iot_calculate_retry_delay(operation_msec, _retry_attempt, ...)
-AzureIot : \t\t timer_start(_timer_handle)
-AzureIot : \t\t
-AzureIot : \t }
-AzureIot : \t else {
-AzureIot : \t\t _use_secondary_credentials = !_use_secondary_credentials
-AzureIot:  \t\t operation_msec = get_miliseconds() - _start_time_msec
-AzureIot : \t\t post_event(hfsm_provisioning, AZ_HFSM_IOT_EVENT_START)
-AzureIot : \t\t transition(provisioning)
-AzureIot : \t }
-AzureIot :
-AzureIot :
-AzureIot : <b>exit/</b>
-AzureIot : <b>TIMEOUT/</b>
-AzureIot : <b>ERROR/</b>
-AzureIot : \t critical_error()
+cloud AzureIoT {
+    [Azure IoT Hub]
+    [Azure IoT Device Provisioning]
+}
 
-AzureIot --> Faulted : TIMEOUT|ERROR|exit
+package "Thread-Safe Queues" {
+database DispatchingRequests
+database DispatchingResponses
+}
+
+[Provisioning State Machine] <--> az_mqtt
+[Hub State Machine] <--> az_mqtt
+az_mqtt <--> [MQTT State Machine Async Implementation]
+[MQTT State Machine Async Implementation] <--> AzureIoT
+[Application] <--> [API]
+[API] --> DispatchingRequests
+DispatchingRequests --> AzureIoTOrchestration
+AzureIoTOrchestration --> DispatchingResponses
+DispatchingResponses --> API
 
 @enduml
