@@ -60,7 +60,7 @@ typedef struct
   {
     az_hfsm hfsm;
     // HFSM_DESIGN: This implementation supports only SEND (but not POST).
-    az_hfsm* iot_client;
+    az_hfsm* parent;
     az_mqtt_impl mqtt;
     az_mqtt_options options;
   } _internal; 
@@ -137,7 +137,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
  * @brief Initializes the MQTT Platform Layer.
  * 
  * @param mqtt_hfsm The #az_hfsm MQTT state machine instance.
- * @param iot_client The IoT client state machine dispatcher that will receive events from this 
+ * @param parent The IoT client state machine dispatcher that will receive events from this 
  *                   machine.
  * @param host 
  * @param port 
@@ -149,7 +149,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
  */
 AZ_NODISCARD az_result az_mqtt_initialize(
   az_mqtt_hfsm_type* mqtt_hfsm,
-  az_hfsm* iot_client,
+  az_hfsm* parent,
   az_span host,
   int16_t port,
   az_span username,

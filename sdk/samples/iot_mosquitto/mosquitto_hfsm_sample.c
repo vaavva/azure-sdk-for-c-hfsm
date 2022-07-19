@@ -20,20 +20,17 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
 
   switch(classification)
   {
-    case AZ_LOG_HFSM_ENTRY:
+    case AZ_HFSM_EVENT_ENTRY:
       class_str = "HFSM_ENTRY";
       break;
-    case AZ_LOG_HFSM_EXIT:
+    case AZ_HFSM_EVENT_EXIT:
       class_str = "HFSM_EXIT";
       break;
-    case AZ_LOG_HFSM_TIMEOUT:
+    case AZ_HFSM_EVENT_TIMEOUT:
       class_str = "HFSM_TIMEOUT";
       break;
-    case AZ_LOG_HFSM_ERROR:
+    case AZ_HFSM_EVENT_ERROR:
       class_str = "HFSM_ERROR";
-      break;
-    case AZ_LOG_HFSM_ERROR_DETAILS:
-      class_str = "HFSM_ERROR_DETAILS";
       break;
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
       class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";

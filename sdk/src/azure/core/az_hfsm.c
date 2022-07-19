@@ -33,6 +33,7 @@ az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent ge
   h->_internal.current_state = root_state;
   h->_internal.get_parent_func = get_parent_func;
 
+  // Root state entry must always return a "handled" status.
   _az_PRECONDITION(AZ_HFSM_RETURN_HANDLED == h->_internal.current_state(h, az_hfsm_event_entry));
 
   return AZ_OK;

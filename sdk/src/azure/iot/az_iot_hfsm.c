@@ -67,24 +67,18 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   int64_t operation_msec;
 
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hfsm/root"));
+  }
 
   switch ((int32_t)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTRY))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ENTRY, AZ_SPAN_FROM_STR("az_iot_hfsm/root"));
-      }
-
       this_iot_hfsm->_internal.use_secondary_credentials = false;
       break;
 
     case AZ_HFSM_IOT_EVENT_ERROR:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/root"));
-      }
-
       az_result az_ret = az_platform_clock_msec(&operation_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
@@ -155,13 +149,6 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 
     case AZ_HFSM_EVENT_ERROR:
       az_hfsm_event_data_error* e = (az_hfsm_event_data_error*)event.data;
-
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ERROR))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ERROR, AZ_SPAN_FROM_STR("az_iot_hfsm/root"));
-        // HFSM_TODO: log az_result code.
-        e->error_type;
-      }
       // Exitting the top-level state to cause a critical error.
       az_hfsm_send_event(me, az_hfsm_event_exit);
       break;
@@ -169,9 +156,9 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_EXIT:
     case AZ_HFSM_EVENT_TIMEOUT:
     default:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
+      if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
-        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/root"));
+        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/root: PANIC!"));
       }
 
       az_platform_critical_error();
@@ -185,29 +172,19 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hfsm/root/idle"));
+  }
 
   switch ((int32_t)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTRY))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ENTRY, AZ_SPAN_FROM_STR("az_iot_hfsm/root/idle"));
-      }
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/root/idle"));
-      }
+      // No-op.
       break;
 
     case AZ_HFSM_IOT_EVENT_START:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_IOT_START))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_IOT_START, AZ_SPAN_FROM_STR("az_iot_hfsm/root/idle"));
-      }
-
       az_result az_ret;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
       az_ret = az_hfsm_dispatch_post_event(
@@ -245,15 +222,14 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hfsm/root/provisioning"));
+  }
 
   switch ((int32_t)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTRY))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ENTRY, AZ_SPAN_FROM_STR("az_iot_hfsm/root/provisioning"));
-      }
-
       this_iot_hfsm->_internal.retry_attempt = 0;
       az_result az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
@@ -268,20 +244,10 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/root/provisioning"));
-      }
-
       az_platform_timer_destroy(this_iot_hfsm->_internal.timer_handle);
       break;
 
     case AZ_HFSM_EVENT_TIMEOUT:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_TIMEOUT))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_TIMEOUT, AZ_SPAN_FROM_STR("az_iot_hfsm/root/provisioning"));
-      }
-
       az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
@@ -296,13 +262,6 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_IOT_EVENT_PROVISIONING_DONE:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_IOT_PROVISIONING_DONE))
-      {
-        _az_LOG_WRITE(
-            AZ_LOG_HFSM_IOT_PROVISIONING_DONE,
-            AZ_SPAN_FROM_STR("az_iot_hfsm/root/provisioning"));
-      }
-
       az_ret = az_hfsm_dispatch_post_event(
           this_iot_hfsm->_internal.hub_hfsm, &az_hfsm_event_az_iot_start);
       if (az_result_failed(az_ret))
@@ -329,15 +288,14 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hfsm/root/hub"));
+  }
 
   switch ((int32_t)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_ENTRY))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_ENTRY, AZ_SPAN_FROM_STR("az_iot_hfsm/root/hub"));
-      }
-
       this_iot_hfsm->_internal.retry_attempt = 0;
 
       az_result az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
@@ -353,20 +311,10 @@ static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_EXIT))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_EXIT, AZ_SPAN_FROM_STR("az_iot_hfsm/root/hub"));
-      }
-
       az_platform_timer_destroy(this_iot_hfsm->_internal.timer_handle);
       break;
 
     case AZ_HFSM_EVENT_TIMEOUT:
-      if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_TIMEOUT))
-      {
-        _az_LOG_WRITE(AZ_LOG_HFSM_TIMEOUT, AZ_SPAN_FROM_STR("az_iot_hfsm/root/hub"));
-      }
-
       az_ret = az_platform_clock_msec(&this_iot_hfsm->_internal.start_time_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
