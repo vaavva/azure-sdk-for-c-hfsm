@@ -24,7 +24,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event);
 
-static az_hfsm_state_handler azure_mqtt_hfsm_get_parent(az_hfsm_state_handler child_state)
+static az_hfsm_state_handler _azure_mqtt_hfsm_get_parent(az_hfsm_state_handler child_state)
 {
   az_hfsm_state_handler parent_state;
 
@@ -79,9 +79,48 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   //              CPU may need to synchronize state with another device.
   //              For the Mosquitto implementation, a simplified 2 level, 3 state HFSM is used.
 
-  _az_RETURN_IF_FAILED(az_hfsm_init(&mqtt_hfsm->_internal.hfsm, root, azure_mqtt_hfsm_get_parent));
+  _az_RETURN_IF_FAILED(az_hfsm_init(&mqtt_hfsm->_internal.hfsm, root, _azure_mqtt_hfsm_get_parent));
   az_hfsm_transition_substate(&mqtt_hfsm->_internal.hfsm, root, idle);
 
+  return AZ_OK;
+}
+
+AZ_NODISCARD az_result az_mqtt_pub_data_create(az_hfsm_mqtt_pub_data* data)
+{
+  // For Mosquitto MQTT, the stack does not perform internal allocation.
+  // The application is responsible with allocating and maintaining the lifetime of the object.
+  _az_PRECONDITION_NOT_NULL(data);
+  // data->id can be NULL if the application doesn't want to correlate PUBACK.
+  _az_PRECONDITION_VALID_SPAN(data->topic, 1, false);
+  _az_PRECONDITION_VALID_SPAN(data->payload, 1, false);
+
+  return AZ_OK;
+}
+
+AZ_NODISCARD az_result az_mqtt_pub_data_destroy(az_hfsm_mqtt_pub_data* data)
+{
+  // For Mosquitto MQTT, the stack does not perform internal allocation.
+  // The application is responsible with allocating and maintaining the lifetime of the object.
+  _az_PRECONDITION_NOT_NULL(data);
+  return AZ_OK;
+}
+
+AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data)
+{
+  // For Mosquitto MQTT, the stack does not perform internal allocation.
+  // The application is responsible with allocating and maintaining the lifetime of the object.
+  _az_PRECONDITION_NOT_NULL(data);
+  // data->id can be NULL if the application doesn't want to correlate SUBACK.
+  _az_PRECONDITION_VALID_SPAN(data->topic_filter, 1, false);
+
+  return AZ_OK;
+}
+
+AZ_NODISCARD az_result az_mqtt_sub_data_destroy(az_hfsm_mqtt_sub_data* data)
+{
+  // For Mosquitto MQTT, the stack does not perform internal allocation.
+  // The application is responsible with allocating and maintaining the lifetime of the object.
+  _az_PRECONDITION_NOT_NULL(data);
   return AZ_OK;
 }
 

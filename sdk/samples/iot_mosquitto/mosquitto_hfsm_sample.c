@@ -89,6 +89,9 @@ void az_platform_critical_error()
   while(1);
 }
 
+static int32_t mid;
+static az_hfsm_mqtt_sub_data sub_data;
+
 // Feedback client
 static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 {
@@ -100,20 +103,24 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
       printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
 
-      int32_t sub_id;
+      sub_data = (az_hfsm_mqtt_sub_data){
+          .topic_filter = AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
+          .id = &mid,
+          .qos = 0};
+
+      az_mqtt_sub_data_create(&sub_data);
 
       az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){
         AZ_HFSM_MQTT_EVENT_SUB_REQ, 
-        &(az_hfsm_mqtt_sub_data){
-          .topic_filter = AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
-          .id = &sub_id,
-          .qos = 0}});
+        &sub_data});
 
-      printf("APP: SUB mID = %d\n", sub_id);
+      printf("APP: SUB mID = %d\n", *sub_data.id);
       break;
       
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
       printf("APP: Subscribed\n");
+
+      az_mqtt_sub_data_destroy(&sub_data);
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
