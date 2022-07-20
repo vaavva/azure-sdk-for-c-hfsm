@@ -6,8 +6,8 @@
  *
  * @brief This header defines the types and functions your application uses to leverage MQTT pub/sub
  * functionality.
- * 
- * @details For more details on Azure IoT MQTT requirements please see 
+ *
+ * @details For more details on Azure IoT MQTT requirements please see
  * https://docs.microsoft.com/azure/iot-hub/iot-hub-mqtt-support.
  *
  * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
@@ -30,7 +30,7 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
-// HFSM_TODO: we may want to add enums for the various MQTT status codes. These could be used to 
+// HFSM_TODO: we may want to add enums for the various MQTT status codes. These could be used to
 //            simplify logging.
 
 // MQTT library handle (type defined by implementation)
@@ -51,7 +51,7 @@ typedef struct
 /**
  * @brief Azure MQTT HFSM.
  * @details Derives from az_hfsm.
- * 
+ *
  */
 typedef struct
 {
@@ -63,7 +63,7 @@ typedef struct
     az_hfsm* parent;
     az_mqtt_impl mqtt;
     az_mqtt_options options;
-  } _internal; 
+  } _internal;
 
   az_span host;
   int16_t port;
@@ -74,7 +74,7 @@ typedef struct
 
 /**
  * @brief Azure MQTT HFSM event types.
- * 
+ *
  */
 // HFSM_TODO: az_log_classification_iot uses _az_FACILITY_IOT_MQTT up to ID 2.
 enum az_hfsm_event_type_mqtt
@@ -86,13 +86,13 @@ enum az_hfsm_event_type_mqtt
   AZ_HFSM_MQTT_EVENT_CONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 11),
 
   AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 12),
-  
+
   AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 13),
 
   AZ_HFSM_MQTT_EVENT_PUB_RECV_IND = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 14),
 
   AZ_HFSM_MQTT_EVENT_PUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 15),
-  
+
   AZ_HFSM_MQTT_EVENT_PUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 16),
 
   AZ_HFSM_MQTT_EVENT_SUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
@@ -102,32 +102,38 @@ enum az_hfsm_event_type_mqtt
   AZ_LOG_HFSM_MQTT_STACK = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 19),
 };
 
-typedef struct {
+typedef struct
+{
   az_span topic;
   az_span payload;
   int8_t qos;
   int32_t* id;
 } az_hfsm_mqtt_pub_data;
 
-typedef struct {
+typedef struct
+{
   int32_t id;
 } az_hfsm_mqtt_puback_data;
 
-typedef struct {
+typedef struct
+{
   az_span topic_filter;
   int8_t qos;
   int32_t* id;
 } az_hfsm_mqtt_sub_data;
 
-typedef struct {
+typedef struct
+{
   int32_t id;
 } az_hfsm_mqtt_suback_data;
 
-typedef struct {
+typedef struct
+{
   int32_t connack_reason;
 } az_hfsm_mqtt_connect_data;
 
-typedef struct {
+typedef struct
+{
   int32_t disconnect_reason;
 } az_hfsm_mqtt_disconnect_data;
 
@@ -135,37 +141,37 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
 /**
  * @brief Initializes the MQTT Platform Layer.
- * 
+ *
  * @param mqtt_hfsm The #az_hfsm MQTT state machine instance.
- * @param parent The IoT client state machine dispatcher that will receive events from this 
+ * @param parent The IoT client state machine dispatcher that will receive events from this
  *                   machine.
- * @param host 
- * @param port 
- * @param username 
- * @param password 
- * @param client_id 
- * @param options 
- * @return AZ_NODISCARD 
+ * @param host
+ * @param port
+ * @param username
+ * @param password
+ * @param client_id
+ * @param options
+ * @return AZ_NODISCARD
  */
 AZ_NODISCARD az_result az_mqtt_initialize(
-  az_mqtt_hfsm_type* mqtt_hfsm,
-  az_hfsm* parent,
-  az_span host,
-  int16_t port,
-  az_span username,
-  az_span password,
-  az_span client_id,
-  az_mqtt_options const* options);
+    az_mqtt_hfsm_type* mqtt_hfsm,
+    az_hfsm* parent,
+    az_span host,
+    int16_t port,
+    az_span username,
+    az_span password,
+    az_span client_id,
+    az_mqtt_options const* options);
 
 /**
  * @brief Creates an MQTT PUB message.
- * 
+ *
  * @details The MQTT platform implementation will allocate and correctly set the structures within
  *          this struct to point to valid memory. The application is then responsible with filling
  *          in the required information.
- * 
- * @param data 
- * @return AZ_NODISCARD 
+ *
+ * @param data
+ * @return AZ_NODISCARD
  */
 AZ_NODISCARD az_result az_mqtt_pub_data_create(az_hfsm_mqtt_pub_data* data);
 
@@ -173,22 +179,21 @@ AZ_NODISCARD az_result az_mqtt_pub_data_create(az_hfsm_mqtt_pub_data* data);
  * @brief Destroys an MQTT PUB message.
  * @details The MQTT platform may need to release or dispose of the underlying MQTT structures that
  *          this #az_hfsm_mqtt_pub_data points to.
- * 
- * @param data 
- * @return AZ_NODISCARD 
+ *
+ * @param data
+ * @return AZ_NODISCARD
  */
 AZ_NODISCARD az_result az_mqtt_pub_data_destroy(az_hfsm_mqtt_pub_data* data);
 
-
 /**
  * @brief Creates an MQTT SUB message.
- * 
+ *
  * @details The MQTT platform implementation will allocate and correctly set the structures within
  *          this struct to point to valid memory. The application is then responsible with filling
  *          in the required information.
- * 
- * @param data 
- * @return AZ_NODISCARD 
+ *
+ * @param data
+ * @return AZ_NODISCARD
  */
 AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data);
 
@@ -196,9 +201,9 @@ AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data);
  * @brief Destroys an MQTT PUB message.
  * @details The MQTT platform may need to release or dispose of the underlying MQTT structures that
  *          this #az_hfsm_mqtt_pub_data points to.
- * 
- * @param data 
- * @return AZ_NODISCARD 
+ *
+ * @param data
+ * @return AZ_NODISCARD
  */
 AZ_NODISCARD az_result az_mqtt_sub_data_destroy(az_hfsm_mqtt_sub_data* data);
 

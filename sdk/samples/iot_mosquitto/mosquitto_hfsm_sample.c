@@ -1,9 +1,10 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <azure/core/az_log.h>
 #include <azure/core/az_mqtt.h>
+#include <azure/core/az_platform.h>
 
 #include <azure/az_iot.h>
 
@@ -11,14 +12,14 @@
 
 az_mqtt_hfsm_type mqtt_client;
 
-//HFSM_TODO: replace with az_mqtt_pipeline?
+// HFSM_TODO: replace with az_mqtt_pipeline?
 az_hfsm feedback_client;
 
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
   const char* class_str;
 
-  switch(classification)
+  switch (classification)
   {
     case AZ_HFSM_EVENT_ENTRY:
       class_str = "HFSM_ENTRY";
@@ -59,9 +60,9 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
       class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
       break;
-	case AZ_LOG_HFSM_MQTT_STACK:
-	  class_str = "AZ_LOG_HFSM_MQTT_STACK";
-	  break;
+    case AZ_LOG_HFSM_MQTT_STACK:
+      class_str = "AZ_LOG_HFSM_MQTT_STACK";
+      break;
     default:
       class_str = NULL;
   }
@@ -86,7 +87,8 @@ void az_platform_critical_error()
 {
   printf("AZSDK PANIC!\n");
 
-  while(1);
+  while (1)
+    ;
 }
 
 static int32_t mid;
@@ -103,20 +105,19 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
       printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
 
-      sub_data = (az_hfsm_mqtt_sub_data){
-          .topic_filter = AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
-          .id = &mid,
-          .qos = 0};
+      sub_data = (az_hfsm_mqtt_sub_data){ .topic_filter = AZ_SPAN_FROM_STR(
+                                              AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
+                                          .id = &mid,
+                                          .qos = 0 };
 
       az_mqtt_sub_data_create(&sub_data);
 
-      az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){
-        AZ_HFSM_MQTT_EVENT_SUB_REQ, 
-        &sub_data});
+      az_hfsm_send_event(
+          (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
 
       printf("APP: SUB mID = %d\n", *sub_data.id);
       break;
-      
+
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
       printf("APP: Subscribed\n");
 
@@ -142,20 +143,17 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       printf("APP: MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
 
     default:
-      //NO-OP.
+      // NO-OP.
       break;
   }
 
   return ret;
 }
 
-static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state)
-{
-  return NULL;
-}
+static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state) { return NULL; }
 
 // HFSM_TODO: Error handling intentionally missing.
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
   /* Required before calling other mosquitto functions */
   mosquitto_lib_init();
@@ -167,28 +165,35 @@ int main(int argc, char *argv[])
   // Feedback: the HFSM used by the MQTT client to communicate results.
   az_hfsm_init(&feedback_client, root, get_parent);
 
-  az_mqtt_options mqtt_options = { 
-    .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("S:\\test\\rsa_baltimore_ca.pem"),
-                             .client_certificate = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_cert.pem"),
-                             .client_private_key = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_key.pem") };
+  az_mqtt_options mqtt_options
+      = { .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("S:\\test\\rsa_baltimore_ca.pem"),
+          .client_certificate = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_cert.pem"),
+          .client_private_key = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_key.pem") };
 
   az_mqtt_initialize(
-    &mqtt_client,
-    &feedback_client,
-    AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
-    8883,
-    AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1"),
-    AZ_SPAN_EMPTY,
-    AZ_SPAN_FROM_STR("dev1-ecc"),
-    &mqtt_options);
+      &mqtt_client,
+      &feedback_client,
+      AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
+      8883,
+      AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/"
+                       "?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1"),
+      AZ_SPAN_EMPTY,
+      AZ_SPAN_FROM_STR("dev1-ecc"),
+      &mqtt_options);
 
-  az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL});
+  az_hfsm_send_event(
+      (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
 
-  Sleep(15*1000);
+  for(int i=0; i<15; i++)
+  {
+    az_platform_sleep_msec(1000);
+    printf(".");
+  }
 
-  az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL});
+  az_hfsm_send_event(
+      (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL });
 
-  Sleep(1000);
+  az_platform_sleep_msec(1000);
 
   mosquitto_lib_cleanup();
   return 0;

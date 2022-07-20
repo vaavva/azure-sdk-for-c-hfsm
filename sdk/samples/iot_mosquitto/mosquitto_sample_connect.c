@@ -141,13 +141,16 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  rc = mosquitto_connect(mosq, "crispop-iothub1.azure-devices.net", 8883, 60);
+  rc = mosquitto_connect_async(mosq, "crispop-iothub1.azure-devices.net", 8883, 60);
   if(rc != MOSQ_ERR_SUCCESS)
   {
     mosquitto_destroy(mosq);
     fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));
     return 1;
   }
+
+  // Mosquitto BUG: sleep required when connect async used on Windows.
+  Sleep(500);
 
   /* Run the network loop in a background thread, this call returns quickly. */
   rc = mosquitto_loop_start(mosq);
