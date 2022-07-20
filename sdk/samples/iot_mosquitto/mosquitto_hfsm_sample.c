@@ -117,12 +117,22 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-      printf("APP: RECEIVED\n");
+      az_hfsm_mqtt_pub_data* pub_data = (az_hfsm_mqtt_pub_data*)event.data;
+      printf("APP: RECEIVED: qos=%d topic=[%s]\n", pub_data->qos, az_span_ptr(pub_data->topic));
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
       printf("APP: PUBACK\n");
       break;
+
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+      az_hfsm_mqtt_disconnect_data* disconnect_data = (az_hfsm_mqtt_disconnect_data*)event.data;
+      printf("APP: DISCONNECT reason=%d\n", disconnect_data->disconnect_reason);
+      break;
+
+    case AZ_HFSM_EVENT_ERROR:
+      az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
+      printf("APP: MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
 
     default:
       //NO-OP.
@@ -142,6 +152,8 @@ int main(int argc, char *argv[])
 {
   /* Required before calling other mosquitto functions */
   mosquitto_lib_init();
+  printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
+
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
@@ -165,10 +177,11 @@ int main(int argc, char *argv[])
 
   az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL});
 
-  while(1)
-  {
-    Sleep(1000);
-  }
+  Sleep(15*1000);
+
+  az_hfsm_send_event((az_hfsm*)&mqtt_client, (az_hfsm_event){AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL});
+
+  Sleep(1000);
 
   mosquitto_lib_cleanup();
   return 0;

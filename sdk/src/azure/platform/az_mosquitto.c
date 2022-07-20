@@ -149,11 +149,28 @@ static void _az_mosqitto_on_unsubscribe(struct mosquitto *mosq, void *obj, int m
   az_platform_critical_error();
 }
 
+static void _az_mosquitto_on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message* message)
+{
+  az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
+
+  az_hfsm_send_event(
+    me->_internal.parent,
+    (az_hfsm_event){
+      AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
+      &(az_hfsm_mqtt_pub_data) { 
+        .id = &message->mid,
+        .qos = message->qos,
+        .payload = az_span_create(message->payload, message->payloadlen),
+        .topic = az_span_create_from_str(message->topic)
+      }
+    });
+}
+
 static void _az_mosqitto_on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
 {
   if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_MQTT_STACK))
   {
-    _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str(str));
+    _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str((char*)str));
   }
 }
 
@@ -174,7 +191,8 @@ AZ_INLINE int _az_mosquitto_init(az_mqtt_hfsm_type* me)
 	mosquitto_publish_callback_set(me->_internal.mqtt, _az_mosqitto_on_publish);
 	mosquitto_subscribe_callback_set(me->_internal.mqtt, _az_mosqitto_on_subscribe);
 	mosquitto_unsubscribe_callback_set(me->_internal.mqtt, _az_mosqitto_on_unsubscribe);
-	
+	mosquitto_message_callback_set(me->_internal.mqtt, _az_mosquitto_on_message);
+
 	rc = mosquitto_tls_set(
 		me->_internal.mqtt,
 		(const char*)az_span_ptr(me->_internal.options.certificate_authority_trusted_roots),
@@ -189,11 +207,6 @@ AZ_INLINE int _az_mosquitto_init(az_mqtt_hfsm_type* me)
       me->_internal.mqtt, 
       (const char*) az_span_ptr(me->username), 
       (const char*) az_span_ptr(me->password));
-  }
-
-	if (rc == MOSQ_ERR_SUCCESS)
-	{
-    rc = mosquitto_loop_start(me->_internal.mqtt);
   }
 
   return rc;
@@ -270,6 +283,7 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
+      // No-op.
       break;
 
     case AZ_HFSM_EVENT_EXIT:
@@ -302,16 +316,21 @@ az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
+      _az_mosquitto_error_adapter(
+        this_iot_hfsm, 
+        _az_mosquitto_init(this_iot_hfsm));
+      break;
+
     case AZ_HFSM_EVENT_EXIT:
       // No-op.
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      az_hfsm_transition_substate((az_hfsm*)me, idle, running);
-
       _az_mosquitto_error_adapter(
         this_iot_hfsm,
         _az_mosquitto_connect(this_iot_hfsm));
+
+      az_hfsm_transition_substate((az_hfsm*)me, idle, running);
       break;
 
     default:
@@ -339,11 +358,15 @@ az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ENTRY:
       _az_mosquitto_error_adapter(
         this_iot_hfsm, 
-        _az_mosquitto_init(this_iot_hfsm));
+        mosquitto_loop_start(this_iot_hfsm->_internal.mqtt));
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      _az_mosquitto_deinit(this_iot_hfsm);
+      //HFSM_TODO: A new event is likely required in case the loop can't stop.
+      _az_mosquitto_error_adapter(
+        this_iot_hfsm,      
+        _az_mosquitto_deinit(this_iot_hfsm));
+
       // IMPORTANT: application must call mosquitto_lib_cleanup() 
       // after all clients have been destroyed.
       break;
@@ -351,13 +374,13 @@ az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_PUB_REQ:
       _az_mosquitto_error_adapter(
         this_iot_hfsm,
-        _az_mosquitto_pub(this_iot_hfsm, (az_hfsm_mqtt_pub_data *)&event.data));
+        _az_mosquitto_pub(this_iot_hfsm, (az_hfsm_mqtt_pub_data *)event.data));
       break;
 
     case AZ_HFSM_MQTT_EVENT_SUB_REQ:
       _az_mosquitto_error_adapter(
         this_iot_hfsm,
-        _az_mosquitto_sub(this_iot_hfsm, (az_hfsm_mqtt_sub_data *)&event.data));
+        _az_mosquitto_sub(this_iot_hfsm, (az_hfsm_mqtt_sub_data *)event.data));
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
