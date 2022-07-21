@@ -107,10 +107,6 @@ AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data)
 {
   // For Mosquitto MQTT, the stack does not perform internal allocation.
   // The application is responsible with allocating and maintaining the lifetime of the object.
-  _az_PRECONDITION_NOT_NULL(data);
-  // data->id can be NULL if the application doesn't want to correlate SUBACK.
-  _az_PRECONDITION_VALID_SPAN(data->topic_filter, 1, false);
-
   return AZ_OK;
 }
 

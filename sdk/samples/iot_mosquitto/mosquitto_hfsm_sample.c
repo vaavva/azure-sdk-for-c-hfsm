@@ -105,12 +105,20 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
       printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
 
+      // This API is called here only for exemplification. In certain zero-copy implementations,
+      // the underlying MQTT stack will re-used pooled network packets. In that case, the
+      // application will be given `az_span` structures with maximum sizes.
+      // The application must use az_span_copy:
+      //      az_span_copy(
+      //       sub_data.topic_filter, 
+      //       AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC));
+      //       sub_data.qos = 0;
+      //       sub_data.id = &mid;
+      az_mqtt_sub_data_create(&sub_data);
       sub_data = (az_hfsm_mqtt_sub_data){ .topic_filter = AZ_SPAN_FROM_STR(
                                               AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
                                           .id = &mid,
                                           .qos = 0 };
-
-      az_mqtt_sub_data_create(&sub_data);
 
       az_hfsm_send_event(
           (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
@@ -184,7 +192,7 @@ int main(int argc, char* argv[])
   az_hfsm_send_event(
       (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
 
-  for(int i=0; i<15; i++)
+  for (int i = 0; i < 15; i++)
   {
     az_platform_sleep_msec(1000);
     printf(".");
