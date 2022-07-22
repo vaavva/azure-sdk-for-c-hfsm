@@ -320,7 +320,7 @@ git checkout <vcpkg commit>
 # build vcpkg
 .\bootstrap-vcpkg.bat
 # install dependencies and update triplet
-.\vcpkg.exe install --triplet x64-windows-static curl[winssl] cmocka paho-mqtt mosquitto
+.\vcpkg.exe install --triplet x64-windows-static curl[winssl] cmocka paho-mqtt pthreads mosquitto
 # Add this environment variables to link this vcpkg folder with cmake:
 # VCPKG_DEFAULT_TRIPLET=x64-windows-static
 # VCPKG_ROOT=PATH_TO_VCPKG (replace PATH_TO_VCPKG for where vcpkg is installed)
@@ -371,7 +371,7 @@ git checkout <vcpkg commit>
 
 # build vcpkg
 ./bootstrap-vcpkg.sh
-./vcpkg install --triplet x64-linux curl cmocka paho-mqtt mosquitto
+./vcpkg install --triplet x64-linux curl cmocka paho-mqtt pthreads mosquitto
 export VCPKG_DEFAULT_TRIPLET=x64-linux
 export VCPKG_ROOT=PATH_TO_VCPKG #replace PATH_TO_VCPKG for where vcpkg is installed
 ```
@@ -428,7 +428,7 @@ git checkout <vcpkg commit>
 
 # build vcpkg
 ./bootstrap-vcpkg.sh
-./vcpkg install --triplet x64-osx curl cmocka paho-mqtt mosquitto
+./vcpkg install --triplet x64-osx curl cmocka paho-mqtt pthreads mosquitto
 export VCPKG_DEFAULT_TRIPLET=x64-osx
 export VCPKG_ROOT=PATH_TO_VCPKG #replace PATH_TO_VCPKG for where vcpkg is installed
 ```
