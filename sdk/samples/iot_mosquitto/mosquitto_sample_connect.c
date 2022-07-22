@@ -6,9 +6,18 @@
 
 volatile bool running = true;
 
+void on_connect(struct mosquitto *mosq, void *obj, int reason_code);
+void on_disconnect(struct mosquitto *mosq, void *obj, int rc);
+void on_publish(struct mosquitto *mosq, void *obj, int mid);
+void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos);
+void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid);
+void on_log(struct mosquitto *mosq, void *obj, int level, const char *str);
+
 /* Callback called when the client receives a CONNACK message from the broker. */
 void on_connect(struct mosquitto *mosq, void *obj, int reason_code)
 {
+  (void)obj;
+
   /* Print out the connection result. mosquitto_connack_string() produces an
    * appropriate string for MQTT v3.x clients, the equivalent for MQTT v5.0
    * clients is mosquitto_reason_string().
@@ -27,6 +36,7 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code)
 
 void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
+  (void)mosq; (void)obj, (void)rc;
   printf("MOSQ: DISCONNECT reason=%d\n", rc);
   running = false;
 }
@@ -38,11 +48,14 @@ void on_disconnect(struct mosquitto *mosq, void *obj, int rc)
  * received a PUBCOMP from the broker. */
 void on_publish(struct mosquitto *mosq, void *obj, int mid)
 {
+  (void)mosq; (void)obj, (void)mid;
   printf("MOSQ: Message with mid %d has been published.\n", mid);
 }
 
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos)
 {
+  (void)mosq; (void)obj; (void)mid; (void)qos_count; (void)granted_qos;
+
   printf("MOSQ: Subscribed with mid %d; %d topics.\n", mid, qos_count);
   for(int i = 0; i < qos_count; i++)
   {
@@ -52,11 +65,15 @@ void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, con
 
 void on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
 {
+  (void)mosq; (void)obj; (void)mid;
+
   printf("MOSQ: Unsubscribing using message with mid %d.\n", mid);
 }
 
 void on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
 {
+  (void)mosq; (void)obj;
+
   char* log_level;
 
   switch (level)
@@ -93,6 +110,8 @@ void on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
 
 int main(int argc, char *argv[])
 {
+  (void)argc; (void)argv;
+
   struct mosquitto *mosq;
   int rc;
 
@@ -121,10 +140,10 @@ int main(int argc, char *argv[])
   
   rc = mosquitto_tls_set(
     mosq,
-    "S:\\test\\rsa_baltimore_ca.pem",
+    "/home/crista/test/rsa_baltimore_ca.pem",
     NULL, //"S:\\cert\\RootCAs",
-    "S:\\test\\dev1-ecc_cert.pem",
-    "S:\\test\\dev1-ecc_key.pem",
+    "/home/cristian/test/dev1-ecc_cert.pem",
+    "/home/cristian/test/dev1-ecc_key.pem",
     NULL);
   if (rc != MOSQ_ERR_SUCCESS)
   {
@@ -150,7 +169,7 @@ int main(int argc, char *argv[])
   }
 
   // Mosquitto BUG: sleep required when connect async used on Windows.
-  Sleep(500);
+  //Sleep(500);
 
   /* Run the network loop in a background thread, this call returns quickly. */
   rc = mosquitto_loop_start(mosq);

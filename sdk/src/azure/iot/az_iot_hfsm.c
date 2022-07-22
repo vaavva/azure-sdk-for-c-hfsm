@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
+#include <azure/core/az_result.h>
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/internal/az_log_internal.h>
@@ -79,6 +80,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_IOT_EVENT_ERROR:
+    {
       az_result az_ret = az_platform_clock_msec(&operation_msec);
       _az_PRECONDITION(az_result_succeeded(az_ret));
 
@@ -146,9 +148,8 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
         }
       }
       break;
-
+    }
     case AZ_HFSM_EVENT_ERROR:
-      az_hfsm_event_data_error* e = (az_hfsm_event_data_error*)event.data;
       // Exitting the top-level state to cause a critical error.
       az_hfsm_send_event(me, az_hfsm_event_exit);
       break;
@@ -185,9 +186,9 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_IOT_EVENT_START:
-      az_result az_ret;
+    {
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-      az_ret = az_hfsm_dispatch_post_event(
+      az_result az_ret = az_hfsm_dispatch_post_event(
           this_iot_hfsm->_internal.provisioning_hfsm, &az_hfsm_event_az_iot_start);
 #else
       az_hfsm_dispatch_post_event(
@@ -208,6 +209,7 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
         az_hfsm_send_event(me, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &e });
       }
       break;
+    }
 
     default:
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;

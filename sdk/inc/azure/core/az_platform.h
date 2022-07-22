@@ -128,7 +128,7 @@ AZ_NODISCARD az_result az_platform_queue_push(void* queue_handle, void const* el
  * @param[out] out_element The queue element.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_platform_queue_pop(void* queue_handle, void** out_element);
+AZ_NODISCARD az_result az_platform_queue_pop(void* queue_handle, void const** out_element);
 
 #include <azure/core/_az_cfg_suffix.h>
 

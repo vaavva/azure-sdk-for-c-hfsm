@@ -107,6 +107,7 @@ AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data)
 {
   // For Mosquitto MQTT, the stack does not perform internal allocation.
   // The application is responsible with allocating and maintaining the lifetime of the object.
+  (void)data;
   return AZ_OK;
 }
 
@@ -138,6 +139,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
 
 static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
 {
+  (void)mosq;
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
   az_hfsm_transition_peer((az_hfsm*)me, running, idle);
@@ -154,6 +156,7 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
  * received a PUBCOMP from the broker. */
 static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
 {
+  (void)mosq;
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
   az_hfsm_send_event(
@@ -168,6 +171,8 @@ static void _az_mosqitto_on_subscribe(
     int qos_count,
     const int* granted_qos)
 {
+  (void)mosq; (void)qos_count; (void)granted_qos;
+
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
   az_hfsm_send_event(
@@ -177,6 +182,8 @@ static void _az_mosqitto_on_subscribe(
 
 static void _az_mosqitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int mid)
 {
+  (void)mosq; (void)obj; (void)mid;
+
   // Unsubscribe is not handled at the moment.
   az_platform_critical_error();
 }
@@ -186,23 +193,28 @@ static void _az_mosquitto_on_message(
     void* obj,
     const struct mosquitto_message* message)
 {
+  (void)mosq;
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
   az_hfsm_send_event(
       me->_internal.parent,
       (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
                        &(az_hfsm_mqtt_pub_data){
-                           .id = &message->mid,
-                           .qos = message->qos,
+                           //HFSM_TODO: a new recv_data type is required 
+                           //           .id = (int32_t *)&(message->mid),
+                           .qos = (int8_t)message->qos,
                            .payload = az_span_create(message->payload, message->payloadlen),
                            .topic = az_span_create_from_str(message->topic) } });
 }
 
 static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, const char* str)
 {
+  (void)mosq; (void)obj; (void)level;
+  
   if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_MQTT_STACK))
   {
-    _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str((char*)str));
+    //HFSM_TODO: how to cast from const to non-const span?
+    _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str((char*)(uintptr_t)str));
   }
 }
 
@@ -212,7 +224,7 @@ AZ_INLINE int _az_mosquitto_init(az_mqtt_hfsm_type* me)
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
   me->_internal.mqtt = mosquitto_new(
-      az_span_ptr(me->client_id),
+      (char*)az_span_ptr(me->client_id),
       false, // clean-session
       me);
 
@@ -248,7 +260,7 @@ AZ_INLINE int _az_mosquitto_connect(az_mqtt_hfsm_type* me)
 {
   return mosquitto_connect_async(
       (struct mosquitto*)me->_internal.mqtt,
-      az_span_ptr(me->host),
+      (char*)az_span_ptr(me->host),
       me->port,
       AZ_MQTT_KEEPALIVE_SECONDS);
 }
@@ -263,7 +275,7 @@ AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_pub_data* da
   return mosquitto_publish(
       me->_internal.mqtt,
       data->id,
-      az_span_ptr(data->topic), // Assumes properly formed NULL terminated string.
+      (char*)az_span_ptr(data->topic), // Assumes properly formed NULL terminated string.
       az_span_size(data->payload),
       az_span_ptr(data->payload),
       data->qos,
@@ -273,7 +285,7 @@ AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_pub_data* da
 AZ_INLINE int _az_mosquitto_sub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_sub_data* data)
 {
   return mosquitto_subscribe(
-      (struct mosquitto*)me->_internal.mqtt, data->id, az_span_ptr(data->topic_filter), data->qos);
+      (struct mosquitto*)me->_internal.mqtt, data->id, (char*)az_span_ptr(data->topic_filter), data->qos);
 }
 
 AZ_INLINE int _az_mosquitto_deinit(az_mqtt_hfsm_type* me)
@@ -301,8 +313,7 @@ AZ_INLINE void _az_mosquitto_error_adapter(az_mqtt_hfsm_type* me, int rc)
 az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-
-  az_mqtt_hfsm_type* this_iot_hfsm = (az_mqtt_hfsm_type*)me;
+  (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {

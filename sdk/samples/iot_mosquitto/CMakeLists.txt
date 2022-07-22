@@ -19,10 +19,16 @@ if(NOT OpenSSL_FOUND)
   find_package(OpenSSL REQUIRED)
 endif()
 
-find_package(pthread CONFIG)
-if(NOT pthread_FOUND)
-  find_package(pthread REQUIRED)
+if (WIN32)
+  find_package(pthread CONFIG)
+  if(NOT pthread_FOUND)
+    find_package(pthread REQUIRED)
+  endif()
+  # HFSM_TODO: From https://github.com/microsoft/vcpkg/issues/23705 and associated PR:
+  #find_package(PThreads4W REQUIRED)
+  #target_link_libraries(main PRIVATE PThreads4W::PThreads4W)
 endif()
+
 # Azure IoT Samples Executables
 
 # Azure IoT Mosquitto Connect Sample
@@ -42,12 +48,10 @@ target_link_libraries(mosquitto_sample_connect
   PRIVATE
     ${MOSQUITTO_LIBRARIES}
     ${PTHREAD_LIBRARIES}
-    #${MOSQUITTO_LIBRARY}
     OpenSSL::SSL 
     OpenSSL::Crypto
     az::iot::hub
     az::iot::provisioning
-    # Windows only:
 )
 
 if(WIN32)

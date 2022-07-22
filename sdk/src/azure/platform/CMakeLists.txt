@@ -90,10 +90,15 @@ if (TRANSPORT_MOSQUITTO)
     find_package(OpenSSL REQUIRED)
   endif()
 
+if (WIN32)
   find_package(pthread CONFIG)
   if(NOT pthread_FOUND)
     find_package(pthread REQUIRED)
   endif()
+  # HFSM_TODO: From https://github.com/microsoft/vcpkg/issues/23705 and associated PR:
+  #find_package(PThreads4W REQUIRED)
+  #target_link_libraries(main PRIVATE PThreads4W::PThreads4W)
+endif()
 
   add_library (
     az_mosquitto

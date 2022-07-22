@@ -14,6 +14,8 @@
 
 #include <azure/core/_az_cfg.h>
 
+#if false
+
 AZ_NODISCARD az_result
 az_hfsm_dispatch_post_event(az_hfsm_dispatch* h, az_hfsm_event const* event)
 {
@@ -28,3 +30,5 @@ AZ_NODISCARD az_result az_hfsm_dispatch_one(az_hfsm_dispatch* h)
 
   return AZ_OK;
 }
+
+#endif

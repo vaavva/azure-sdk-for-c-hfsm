@@ -97,7 +97,7 @@ void az_hfsm_transition_substate(
   _az_PRECONDITION(AZ_HFSM_RETURN_HANDLED == h->_internal.current_state(h, az_hfsm_event_entry));
 }
 
-void hfsm_transition_superstate(
+void az_hfsm_transition_superstate(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state)
