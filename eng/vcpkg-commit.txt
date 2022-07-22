@@ -1,1 +1,7 @@
 tags/2022.05.10
+
+
+Above tag works for Windows but not for other OSs.
+https://github.com/microsoft/vcpkg/pull/24308
+
+No tag available yet to include 6/27/2022 pthread fix - checkout main.
