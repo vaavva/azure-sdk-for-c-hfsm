@@ -109,8 +109,8 @@ if (UNIT_TESTING)
   find_package(cmocka CONFIG REQUIRED)
 
   
-  // HFSM_TODO: https://github.com/Azure/azure-sdk-for-c/pull/1388 fix to work with latest VCPKG
-  // cmocka package:
+  # HFSM_TODO: https://github.com/Azure/azure-sdk-for-c/pull/1388 fix to work with latest VCPKG
+  # cmocka package:
   if(NOT DEFINED CMOCKA_LIBRARIES)
     find_path(CMOCKA_INCLUDE_DIR cmocka.h)
     find_library(CMOCKA_LIBRARIES cmocka)
