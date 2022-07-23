@@ -15,6 +15,10 @@ az_mqtt_hfsm_type mqtt_client;
 // HFSM_TODO: replace with az_mqtt_pipeline?
 az_hfsm feedback_client;
 
+void az_sdk_log_callback(az_log_classification classification, az_span message);
+bool az_sdk_log_filter_callback(az_log_classification classification);
+
+
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
   const char* class_str;
@@ -79,6 +83,7 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
 
 bool az_sdk_log_filter_callback(az_log_classification classification)
 {
+  (void)classification;
   // Enable all logging.
   return true;
 }
@@ -97,6 +102,7 @@ static az_hfsm_mqtt_sub_data sub_data;
 // Feedback client
 static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 {
+  (void)me;
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
   az_result az_ret;
 
@@ -107,12 +113,20 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
       printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
 
+      // This API is called here only for exemplification. In certain zero-copy implementations,
+      // the underlying MQTT stack will re-used pooled network packets. In that case, the
+      // application will be given `az_span` structures with maximum sizes.
+      // The application must use az_span_copy:
+      //      az_span_copy(
+      //       sub_data.topic_filter, 
+      //       AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC));
+      //       sub_data.qos = 0;
+      //       sub_data.id = &mid;
+      az_ret = az_mqtt_sub_data_create(&sub_data);
       sub_data = (az_hfsm_mqtt_sub_data){ .topic_filter = AZ_SPAN_FROM_STR(
                                               AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
                                           .id = &mid,
                                           .qos = 0 };
-
-      az_ret = az_mqtt_sub_data_create(&sub_data);
 
       az_hfsm_send_event(
           (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
@@ -156,16 +170,21 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       break;
   }
 
+  (void)az_ret;
   return ret;
 }
 
-static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state) { return NULL; }
+static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state) 
+{
+  (void)child_state; 
+  return NULL; 
+}
 
 // HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char* argv[])
 {
+  (void)argc; (void)argv;
   az_result az_ret;
-
   /* Required before calling other mosquitto functions */
   mosquitto_lib_init();
   printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
@@ -177,9 +196,9 @@ int main(int argc, char* argv[])
   az_ret = az_hfsm_init(&feedback_client, root, get_parent);
 
   az_mqtt_options mqtt_options
-      = { .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("S:\\test\\rsa_baltimore_ca.pem"),
-          .client_certificate = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_cert.pem"),
-          .client_private_key = AZ_SPAN_FROM_STR("S:\\test\\dev1-ecc_key.pem") };
+      = { .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
+          .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
+          .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem") };
 
   az_ret = az_mqtt_initialize(
       &mqtt_client,
@@ -195,10 +214,11 @@ int main(int argc, char* argv[])
   az_hfsm_send_event(
       (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
 
-  for(int i=0; i<15; i++)
+  for (int i = 0; i < 15; i++)
   {
     az_ret = az_platform_sleep_msec(1000);
     printf(".");
+    fflush(stdout);
   }
 
   az_hfsm_send_event(
@@ -207,5 +227,6 @@ int main(int argc, char* argv[])
   az_ret = az_platform_sleep_msec(1000);
 
   mosquitto_lib_cleanup();
+  (void)az_ret;
   return 0;
 }

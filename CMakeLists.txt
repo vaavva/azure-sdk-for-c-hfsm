@@ -108,11 +108,12 @@ if (UNIT_TESTING)
   # make generate step fail if cmocka dependency is not found
   find_package(cmocka CONFIG REQUIRED)
 
-  # When using VCPKG, cmocka lib name is set different than when it is globally installed
-  if(DEFINED ENV{VCPKG_ROOT} OR DEFINED ENV{VCPKG_INSTALLATION_ROOT})
-    set(CMOCKA_LIB ${CMOCKA_LIBRARIES})
-  else()
-    set(CMOCKA_LIB cmocka::cmocka)
+  
+  // HFSM_TODO: https://github.com/Azure/azure-sdk-for-c/pull/1388 fix to work with latest VCPKG
+  // cmocka package:
+  if(NOT DEFINED CMOCKA_LIBRARIES)
+    find_path(CMOCKA_INCLUDE_DIR cmocka.h)
+    find_library(CMOCKA_LIBRARIES cmocka)
   endif()
 
   # for gcc, we need to add no-clobbered compile opt to avoid warning about set-jump function
