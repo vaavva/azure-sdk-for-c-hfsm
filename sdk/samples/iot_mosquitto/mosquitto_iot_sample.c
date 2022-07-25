@@ -7,10 +7,12 @@
 #include <azure/core/az_platform.h>
 
 #include <azure/az_iot.h>
+#include <azure/iot/internal/az_iot_hub_hfsm.h>
 
 #include "mosquitto.h"
 
 az_mqtt_hfsm_type mqtt_client;
+az_iot_hfsm_type iot_client;
 
 // HFSM_TODO: replace with az_mqtt_pipeline?
 az_hfsm feedback_client;
