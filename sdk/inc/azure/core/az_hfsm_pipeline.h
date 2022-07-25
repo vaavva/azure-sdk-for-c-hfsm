@@ -18,17 +18,18 @@
 #include <azure/core/az_hfsm.h>
 #include <stdint.h>
 
-enum
-{
-  /// The maximum number of MQTT pipeline policies allowed.
-  _az_MAXIMUM_NUMBER_OF_POLICIES = 5,
-};
+/**
+ * @brief USed to declare HFSM policies.
+ * 
+ */
+// Definition is below.
+typedef struct _az_hfsm_policy _az_hfsm_policy;
 
 /**
  * @brief The type representing a HFSM with dispatch capabilities. Derived from #az_hfsm.
  *
  */
-typedef struct
+struct _az_hfsm_policy
 {
   struct
   {
@@ -36,13 +37,14 @@ typedef struct
      * @brief Current state machine executing operations.
      * 
      */
-    az_hfsm* processingNode;
+    _az_hfsm_policy* inbound;
+    _az_hfsm_policy* outbound;
     
     //HFSM_TODO: needs replacement with az_platform thread-safe Mailbox or Queue PAL.
-    az_hfsm_event const* inbound_mailbox;
-    az_hfsm_event const* outbound_mailbox;
+    az_hfsm* hfsm;
+    az_hfsm_event const* mailbox;
   } _internal;
-} _az_hfsm_policy;
+};
 
 /**
  * @brief Internal definition of an MQTT pipeline.
@@ -52,7 +54,7 @@ typedef struct
 {
   struct
   {
-    _az_hfsm_policy policies[_az_MAXIMUM_NUMBER_OF_POLICIES]
+    _az_hfsm_policy* last_policy;
   } _internal;
 } az_hfsm_dispatch_pipeline;
 
@@ -76,12 +78,12 @@ typedef struct
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_dispatch_post_inbound_event(az_hfsm_dispatch_pipeline* h, az_hfsm_event const* event_reference);
-
+az_hfsm_dispatch_post_inbound_event(_az_hfsm_policy* current,
+    az_hfsm_event const* event);
 
 AZ_NODISCARD az_result
-az_hfsm_dispatch_post_outbound_event(az_hfsm_dispatch_pipeline* h, az_hfsm_event const* event_reference);
-
+az_hfsm_dispatch_post_outbound_event(_az_hfsm_policy* current,
+    az_hfsm_event const* event);
 
 #ifdef AZ_HFSM_PIPELINE_SYNC
 /**
