@@ -15,7 +15,6 @@
 #include <azure/core/az_platform.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
-#include <azure/iot/internal/az_iot_hfsm.h>
 
 #include <azure/core/_az_cfg.h>
 

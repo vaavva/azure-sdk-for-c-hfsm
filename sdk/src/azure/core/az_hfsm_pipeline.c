@@ -4,89 +4,36 @@
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/internal/az_result_internal.h>
+#include <azure/core/internal/az_precondition_internal.h>
 
 #include <azure/core/_az_cfg.h>
 
-AZ_NODISCARD az_result az_hfsm_dispatch_post_inbound_event(
-    _az_hfsm_policy* current,
-    az_hfsm_event const* event)
+void az_hfsm_pipeline_post_event(az_hfsm_pipeline* pipeline, az_hfsm_event event)
 {
-  _az_hfsm_policy* inbound_policy = current->_internal.inbound;
+  _az_PRECONDITION_NOT_NULL(pipeline->_internal.first_policy);
 
-  if (inbound_policy == NULL)
-  {
-    return AZ_ERROR_ITEM_NOT_FOUND;
-  }
+  az_hfsm_send_event(pipeline->_internal.first_policy->hfsm, event);
+}
 
-#ifndef AZ_HFSM_PIPELINE_SYNC
+void az_hfsm_pipeline_post_inbound_event(az_hfsm_policy* current, az_hfsm_event event)
+{
+  az_hfsm_policy* inbound_policy = current->inbound;
+  _az_PRECONDITION_NOT_NULL(inbound_policy);
+
   // Async processes events immediately, on the same stack.
-  az_hfsm_send_event(inbound_policy->_internal.hfsm, *event);
-#else // AZ_HFSM_PIPELINE_SYNC
-
-  // HFSM_TODO: Implement using queue 
-  if (inbound_policy.mailbox != NULL)
-  {
-    return AZ_ERROR_NOT_ENOUGH_SPACE;
-  }
-
-  inbound_policy.mailbox = event;
-#endif //AZ_HFSM_PIPELINE_SYNC
-
-  return AZ_OK;  
+  az_hfsm_send_event(inbound_policy->hfsm, event);
 }
 
-AZ_NODISCARD az_result az_hfsm_dispatch_post_outbound_event(
-    _az_hfsm_policy* current,
-    az_hfsm_event const* event)
+void az_hfsm_pipeline_post_outbound_event(az_hfsm_policy* current, az_hfsm_event event)
 {
-  _az_hfsm_policy* outbound_policy = current->_internal.outbound;
+  az_hfsm_policy* outbound_policy = current->outbound;
+  _az_PRECONDITION_NOT_NULL(outbound_policy);
 
-  if (outbound_policy == NULL)
-  {
-    return AZ_ERROR_ITEM_NOT_FOUND;
-  }
-
-#ifndef AZ_HFSM_PIPELINE_SYNC
   // Async processes events immediately, on the same stack.
-  az_hfsm_send_event(outbound_policy->_internal.hfsm, *event);
-#else // AZ_HFSM_PIPELINE_SYNC
-
-  // HFSM_TODO: Implement using queue 
-  if (outbound_policy.mailbox != NULL)
-  {
-    return AZ_ERROR_NOT_ENOUGH_SPACE;
-  }
-
-  outbound_policy.mailbox = event;
-#endif //AZ_HFSM_PIPELINE_SYNC
-
-  return AZ_OK;
+  az_hfsm_send_event(outbound_policy->hfsm, event);
 }
 
-#ifdef AZ_HFSM_PIPELINE_SYNC
-void _az_hfsm_dispatch_process_current(_az_hfsm_policy* current)
-{
-  az_hfsm_event const* event = current->_internal.mailbox;
-
-  if (event != NULL)
-  {
-    _az_PRECONDITION_NOT_NULL(current->_internal.hfsm);
-    current->_internal.mailbox = NULL;
-    az_hfsm_send_event(current->_internal.hfsm, event);
-  }
-}
-
-void az_hfsm_dispatch_process_events(az_hfsm_dispatch_pipeline* pipeline)
-{
-  _az_hfsm_policy current = pipeline->_internal.last_policy;
-  _az_PRECONDITION_NOT_NULL(current);
-
-  do
-  {
-    _az_hfsm_dispatch_process_current(current);
-    current = current->_internal.inbound;
-  } while(current != NULL)
-
-  return AZ_OK;
-}
-#endif
+// HFSM_TODO: Implement a sync version of the pipeline.
+// HFSM_DESIGN: Add a base-class for az_hfsm_event_data containing the size. Event data will need to 
+//              either be pre-allocated by the application or copied into a queue/mailbox and
+//              de-allocated after being dispatched. 

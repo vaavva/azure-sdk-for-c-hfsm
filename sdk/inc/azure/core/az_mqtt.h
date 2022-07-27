@@ -22,6 +22,7 @@
 #include <azure/core/az_config.h>
 #include <azure/core/az_context.h>
 #include <azure/core/az_hfsm.h>
+#include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
@@ -37,6 +38,41 @@
 typedef void* az_mqtt_impl;
 
 #define AZ_MQTT_KEEPALIVE_SECONDS 240
+
+typedef struct
+{
+  az_span topic;
+  az_span payload;
+  int8_t qos;
+  int32_t* id;
+} az_hfsm_mqtt_pub_data;
+
+typedef struct
+{
+  int32_t id;
+} az_hfsm_mqtt_puback_data;
+
+typedef struct
+{
+  az_span topic_filter;
+  int8_t qos;
+  int32_t* id;
+} az_hfsm_mqtt_sub_data;
+
+typedef struct
+{
+  int32_t id;
+} az_hfsm_mqtt_suback_data;
+
+typedef struct
+{
+  int32_t connack_reason;
+} az_hfsm_mqtt_connect_data;
+
+typedef struct
+{
+  int32_t disconnect_reason;
+} az_hfsm_mqtt_disconnect_data;
 
 typedef struct
 {
@@ -59,10 +95,13 @@ typedef struct
   struct
   {
     az_hfsm hfsm;
-    // HFSM_DESIGN: This implementation supports only SEND (but not POST).
-    az_hfsm* parent;
+    az_hfsm_policy* policy;
+
+    // Extension point for the implementation.
+    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional 
+    //              memory reserved for the implementation:
     az_mqtt_impl mqtt;
-    az_mqtt_options options;
+    az_mqtt_options options;   
   } _internal;
 
   az_span host;
@@ -102,41 +141,6 @@ enum az_hfsm_event_type_mqtt
   AZ_LOG_HFSM_MQTT_STACK = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 19),
 };
 
-typedef struct
-{
-  az_span topic;
-  az_span payload;
-  int8_t qos;
-  int32_t* id;
-} az_hfsm_mqtt_pub_data;
-
-typedef struct
-{
-  int32_t id;
-} az_hfsm_mqtt_puback_data;
-
-typedef struct
-{
-  az_span topic_filter;
-  int8_t qos;
-  int32_t* id;
-} az_hfsm_mqtt_sub_data;
-
-typedef struct
-{
-  int32_t id;
-} az_hfsm_mqtt_suback_data;
-
-typedef struct
-{
-  int32_t connack_reason;
-} az_hfsm_mqtt_connect_data;
-
-typedef struct
-{
-  int32_t disconnect_reason;
-} az_hfsm_mqtt_disconnect_data;
-
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
 /**
@@ -155,7 +159,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
  */
 AZ_NODISCARD az_result az_mqtt_initialize(
     az_mqtt_hfsm_type* mqtt_hfsm,
-    az_hfsm* parent,
+    az_hfsm_policy* policy,
     az_span host,
     int16_t port,
     az_span username,

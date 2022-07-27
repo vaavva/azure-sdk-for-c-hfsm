@@ -47,7 +47,7 @@ add_library (
   ${CMAKE_CURRENT_LIST_DIR}/az_base64.c
   ${CMAKE_CURRENT_LIST_DIR}/az_context.c
   ${CMAKE_CURRENT_LIST_DIR}/az_hfsm.c
-  ${CMAKE_CURRENT_LIST_DIR}/az_hfsm_timer.c
+  # HFSM_TODO ${CMAKE_CURRENT_LIST_DIR}/az_hfsm_timer.c
   ${CMAKE_CURRENT_LIST_DIR}/az_hfsm_pipeline.c
   ${CMAKE_CURRENT_LIST_DIR}/az_http_pipeline.c
   ${CMAKE_CURRENT_LIST_DIR}/az_http_policy.c

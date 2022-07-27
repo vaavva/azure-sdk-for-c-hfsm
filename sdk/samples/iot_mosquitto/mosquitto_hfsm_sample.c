@@ -15,9 +15,12 @@ az_mqtt_hfsm_type mqtt_client;
 // HFSM_TODO: replace with az_mqtt_pipeline?
 az_hfsm feedback_client;
 
+static az_hfsm_pipeline pipeline;
+static az_hfsm_policy mqtt_policy;
+static az_hfsm_policy feedback_policy;
+
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
-
 
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
@@ -118,7 +121,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       // application will be given `az_span` structures with maximum sizes.
       // The application must use az_span_copy:
       //      az_span_copy(
-      //       sub_data.topic_filter, 
+      //       sub_data.topic_filter,
       //       AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC));
       //       sub_data.qos = 0;
       //       sub_data.id = &mid;
@@ -163,10 +166,15 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
       printf("APP: MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
+      break;
     }
 
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      break;
+
     default:
-      // NO-OP.
+      az_hfsm_pipeline_post_outbound_event(&feedback_policy, event);
       break;
   }
 
@@ -174,16 +182,17 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state) 
+static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state)
 {
-  (void)child_state; 
-  return NULL; 
+  (void)child_state;
+  return NULL;
 }
 
 // HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char* argv[])
 {
-  (void)argc; (void)argv;
+  (void)argc;
+  (void)argv;
   az_result az_ret;
   /* Required before calling other mosquitto functions */
   mosquitto_lib_init();
@@ -192,17 +201,23 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
+  mqtt_policy = (az_hfsm_policy){ .hfsm = NULL, .inbound = &feedback_policy, .outbound = NULL };
+  feedback_policy
+      = (az_hfsm_policy){ .hfsm = &feedback_client, .inbound = NULL, .outbound = &mqtt_policy };
+  pipeline = (az_hfsm_pipeline){ ._internal.first_policy = &feedback_policy };
+
   // Feedback: the HFSM used by the MQTT client to communicate results.
   az_ret = az_hfsm_init(&feedback_client, root, get_parent);
 
   az_mqtt_options mqtt_options
-      = { .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
+      = { .certificate_authority_trusted_roots
+          = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
           .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
           .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem") };
 
   az_ret = az_mqtt_initialize(
       &mqtt_client,
-      &feedback_client,
+      &mqtt_policy,
       AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
       8883,
       AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/"
@@ -211,8 +226,7 @@ int main(int argc, char* argv[])
       AZ_SPAN_FROM_STR("dev1-ecc"),
       &mqtt_options);
 
-  az_hfsm_send_event(
-      (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
+  az_hfsm_pipeline_post_event(&pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
 
   for (int i = 0; i < 15; i++)
   {
@@ -221,8 +235,8 @@ int main(int argc, char* argv[])
     fflush(stdout);
   }
 
-  az_hfsm_send_event(
-      (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL });
+  az_hfsm_pipeline_post_event(
+      &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL });
 
   az_ret = az_platform_sleep_msec(1000);
 

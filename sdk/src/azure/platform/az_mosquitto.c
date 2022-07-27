@@ -54,7 +54,7 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 
 AZ_NODISCARD az_result az_mqtt_initialize(
     az_mqtt_hfsm_type* mqtt_hfsm,
-    az_hfsm* parent,
+    az_hfsm_policy* policy,
     az_span host,
     int16_t port,
     az_span username,
@@ -65,7 +65,6 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   // HFSM_TODO: Preconditions
 
   mqtt_hfsm->host = host;
-  mqtt_hfsm->_internal.parent = parent;
   mqtt_hfsm->port = port;
   mqtt_hfsm->username = username;
   mqtt_hfsm->password = password;
@@ -78,6 +77,9 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   //              For the Mosquitto implementation, a simplified 2 level, 3 state HFSM is used.
 
   _az_RETURN_IF_FAILED(az_hfsm_init(&mqtt_hfsm->_internal.hfsm, root, _azure_mqtt_hfsm_get_parent));
+  mqtt_hfsm->_internal.policy = policy;
+  mqtt_hfsm->_internal.policy->hfsm = (az_hfsm*)mqtt_hfsm;
+
   az_hfsm_transition_substate(&mqtt_hfsm->_internal.hfsm, root, idle);
 
   return AZ_OK;
@@ -131,8 +133,8 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
     mosquitto_disconnect(mosq);
   }
 
-  az_hfsm_send_event(
-      me->_internal.parent,
+  az_hfsm_pipeline_post_inbound_event(
+      me->_internal.policy,
       (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_RSP,
                        &(az_hfsm_mqtt_connect_data){ reason_code } });
 }
@@ -144,8 +146,8 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
 
   az_hfsm_transition_peer((az_hfsm*)me, running, idle);
 
-  az_hfsm_send_event(
-      me->_internal.parent,
+  az_hfsm_pipeline_post_inbound_event(
+      me->_internal.policy,
       (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP, &(az_hfsm_mqtt_disconnect_data){ rc } });
 }
 
@@ -159,8 +161,8 @@ static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
   (void)mosq;
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
-  az_hfsm_send_event(
-      me->_internal.parent,
+  az_hfsm_pipeline_post_inbound_event(
+      me->_internal.policy,
       (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUBACK_RSP, &(az_hfsm_mqtt_puback_data){ mid } });
 }
 
@@ -171,18 +173,22 @@ static void _az_mosqitto_on_subscribe(
     int qos_count,
     const int* granted_qos)
 {
-  (void)mosq; (void)qos_count; (void)granted_qos;
+  (void)mosq;
+  (void)qos_count;
+  (void)granted_qos;
 
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
-  az_hfsm_send_event(
-      me->_internal.parent,
+  az_hfsm_pipeline_post_inbound_event(
+      me->_internal.policy,
       (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUBACK_RSP, &(az_hfsm_mqtt_suback_data){ mid } });
 }
 
 static void _az_mosqitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int mid)
 {
-  (void)mosq; (void)obj; (void)mid;
+  (void)mosq;
+  (void)obj;
+  (void)mid;
 
   // Unsubscribe is not handled at the moment.
   az_platform_critical_error();
@@ -196,11 +202,11 @@ static void _az_mosquitto_on_message(
   (void)mosq;
   az_mqtt_hfsm_type* me = (az_mqtt_hfsm_type*)obj;
 
-  az_hfsm_send_event(
-      me->_internal.parent,
+  az_hfsm_pipeline_post_inbound_event(
+      me->_internal.policy,
       (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
                        &(az_hfsm_mqtt_pub_data){
-                           //HFSM_TODO: a new recv_data type is required 
+                           // HFSM_TODO: a new recv_data type is required
                            //           .id = (int32_t *)&(message->mid),
                            .qos = (int8_t)message->qos,
                            .payload = az_span_create(message->payload, message->payloadlen),
@@ -209,11 +215,13 @@ static void _az_mosquitto_on_message(
 
 static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, const char* str)
 {
-  (void)mosq; (void)obj; (void)level;
-  
+  (void)mosq;
+  (void)obj;
+  (void)level;
+
   if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_MQTT_STACK))
   {
-    //HFSM_TODO: how to cast from const to non-const span?
+    // HFSM_TODO: how to cast from const to non-const span?
     _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str((char*)(uintptr_t)str));
   }
 }
@@ -285,7 +293,10 @@ AZ_INLINE int _az_mosquitto_pub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_pub_data* da
 AZ_INLINE int _az_mosquitto_sub(az_mqtt_hfsm_type* me, az_hfsm_mqtt_sub_data* data)
 {
   return mosquitto_subscribe(
-      (struct mosquitto*)me->_internal.mqtt, data->id, (char*)az_span_ptr(data->topic_filter), data->qos);
+      (struct mosquitto*)me->_internal.mqtt,
+      data->id,
+      (char*)az_span_ptr(data->topic_filter),
+      data->qos);
 }
 
 AZ_INLINE int _az_mosquitto_deinit(az_mqtt_hfsm_type* me)
@@ -306,7 +317,8 @@ AZ_INLINE void _az_mosquitto_error_adapter(az_mqtt_hfsm_type* me, int rc)
   if (rc != MOSQ_ERR_SUCCESS)
   {
     az_hfsm_event_data_error d = { .error_type = rc };
-    az_hfsm_send_event(me->_internal.parent, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
+    az_hfsm_pipeline_post_inbound_event(
+        me->_internal.policy, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
   }
 }
 
