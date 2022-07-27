@@ -74,6 +74,11 @@ void az_platform_critical_error();
  */
 AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random);
 
+//HFSM_DESIGN: CMSIS-like typedefs:
+//  The typedefs would need to change based on the selected platform.
+typedef void* az_platform_timer;
+typedef void* az_platform_mutex;
+
 /**
  * @brief Timer callback.
  *
@@ -92,7 +97,7 @@ typedef void (*az_platform_timer_callback)(void* sdk_data);
 AZ_NODISCARD az_result az_platform_timer_create(
     az_platform_timer_callback callback,
     void* sdk_data,
-    void** out_timer_handle);
+    az_platform_timer* out_timer_handle);
 
 /**
  * @brief Starts the timer. This function can be called multiple times. The timer should call the
@@ -103,14 +108,25 @@ AZ_NODISCARD az_result az_platform_timer_create(
  *                     #az_platform_timer_callback.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_platform_timer_start(void* timer_handle, int32_t milliseconds);
+AZ_NODISCARD az_result az_platform_timer_start(az_platform_timer timer_handle, int32_t milliseconds);
 
 /**
  * @brief Destroys a timer.
  * 
  * @param[in] timer_handle The timer handle.
  */
-void az_platform_timer_destroy(void* timer_handle);
+void az_platform_timer_destroy(az_platform_timer timer_handle);
+
+//**
+ * @brief Creates a mutex.
+ * 
+ * @param mutex The mutex handle.
+ * @return An #az_result value indicating the result of the operation.
+ */
+AZ_NODISCARD az_result az_platform_mutex_create(az_platform_mutex* mutex_handle);
+AZ_NODISCARD az_result az_platform_mutex_acquire(az_platform_mutex mutex_handle);
+AZ_NODISCARD az_result az_platform_mutex_release(az_platform_mutex mutex_handle);
+AZ_NODISCARD az_result az_platform_mutex_destroy(az_platform_mutex mutex_handle);
 
 /**
  * @brief Enqueue an element in an already initialized queue.

@@ -1,234 +1,122 @@
+//#define _POSIX_SOURCE  199309L
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <azure/core/az_log.h>
-#include <azure/core/az_mqtt.h>
-#include <azure/core/az_platform.h>
+// Just for this example
+#include <string.h>
+#include <unistd.h>
 
-#include <azure/az_iot.h>
-#include <azure/iot/internal/az_iot_hub_hfsm.h>
+// For timer functionality
+#include <time.h>
+#include <signal.h>
 
-#include "mosquitto.h"
+// For Mutex
+#include <pthread.h>
 
-az_mqtt_hfsm_type mqtt_client;
-az_iot_hfsm_type iot_client;
+// From https://sodocumentation.net/posix/topic/4644/timers
 
-// HFSM_TODO: replace with az_mqtt_pipeline?
-az_hfsm feedback_client;
-
-void az_sdk_log_callback(az_log_classification classification, az_span message);
-bool az_sdk_log_filter_callback(az_log_classification classification);
+pthread_mutex_t mutex;
+void thread_handler(union sigval sv);
 
 
-void az_sdk_log_callback(az_log_classification classification, az_span message)
-{
-  const char* class_str;
 
-  switch (classification)
+void thread_handler(union sigval sv) {
+  char *s = sv.sival_ptr;
+
+  if (0 != pthread_mutex_lock(&mutex))
   {
-    case AZ_HFSM_EVENT_ENTRY:
-      class_str = "HFSM_ENTRY";
-      break;
-    case AZ_HFSM_EVENT_EXIT:
-      class_str = "HFSM_EXIT";
-      break;
-    case AZ_HFSM_EVENT_TIMEOUT:
-      class_str = "HFSM_TIMEOUT";
-      break;
-    case AZ_HFSM_EVENT_ERROR:
-      class_str = "HFSM_ERROR";
-      break;
-    case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_RSP";
-      break;
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP";
-      break;
-    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUB_RECV_IND";
-      break;
-    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUB_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUBACK_RSP";
-      break;
-    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_SUB_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
-      break;
-    case AZ_LOG_HFSM_MQTT_STACK:
-      class_str = "AZ_LOG_HFSM_MQTT_STACK";
-      break;
-    default:
-      class_str = NULL;
+      perror("pthread_mutex_lock failed");
+      exit(EXIT_FAILURE);
   }
+  
+  /* Will print "5 seconds elapsed." */
+  puts(s); fflush(stdout);
 
-  if (class_str == NULL)
+  if (0 != pthread_mutex_unlock(&mutex))
   {
-    printf("AZSDK [UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
+      perror("pthread_mutex_lock failed");
+      exit(EXIT_FAILURE);
   }
-  else
-  {
-    printf("AZSDK [%s] %s\n", class_str, az_span_ptr(message));
-  }
-}
-
-bool az_sdk_log_filter_callback(az_log_classification classification)
-{
-  (void)classification;
-  // Enable all logging.
-  return true;
-}
-
-void az_platform_critical_error()
-{
-  printf("AZSDK PANIC!\n");
-
-  while (1)
-    ;
-}
-
-static int32_t mid;
-static az_hfsm_mqtt_sub_data sub_data;
-
-// Feedback client
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
-{
-  (void)me;
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  az_result az_ret;
-
-  switch (event.type)
-  {
-    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
-    {
-      az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
-      printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
-
-      // This API is called here only for exemplification. In certain zero-copy implementations,
-      // the underlying MQTT stack will re-used pooled network packets. In that case, the
-      // application will be given `az_span` structures with maximum sizes.
-      // The application must use az_span_copy:
-      //      az_span_copy(
-      //       sub_data.topic_filter, 
-      //       AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC));
-      //       sub_data.qos = 0;
-      //       sub_data.id = &mid;
-      az_ret = az_mqtt_sub_data_create(&sub_data);
-      sub_data = (az_hfsm_mqtt_sub_data){ .topic_filter = AZ_SPAN_FROM_STR(
-                                              AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
-                                          .id = &mid,
-                                          .qos = 0 };
-
-      az_hfsm_send_event(
-          (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
-
-      printf("APP: SUB mID = %d\n", *sub_data.id);
-      break;
-    }
-
-    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
-      printf("APP: Subscribed\n");
-
-      az_ret = az_mqtt_sub_data_destroy(&sub_data);
-      break;
-
-    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-    {
-      az_hfsm_mqtt_pub_data* pub_data = (az_hfsm_mqtt_pub_data*)event.data;
-      printf("APP: RECEIVED: qos=%d topic=[%s]\n", pub_data->qos, az_span_ptr(pub_data->topic));
-      break;
-    }
-
-    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-      printf("APP: PUBACK\n");
-      break;
-
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-    {
-      az_hfsm_mqtt_disconnect_data* disconnect_data = (az_hfsm_mqtt_disconnect_data*)event.data;
-      printf("APP: DISCONNECT reason=%d\n", disconnect_data->disconnect_reason);
-      break;
-    }
-
-    case AZ_HFSM_EVENT_ERROR:
-    {
-      az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
-      printf("APP: MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
-    }
-
-    default:
-      // NO-OP.
-      break;
-  }
-
-  (void)az_ret;
-  return ret;
-}
-
-static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state) 
-{
-  (void)child_state; 
-  return NULL; 
 }
 
 // HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char* argv[])
 {
   (void)argc; (void)argv;
-  az_result az_ret;
-  /* Required before calling other mosquitto functions */
-  mosquitto_lib_init();
-  printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
 
-  az_log_set_message_callback(az_sdk_log_callback);
-  az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
+  char info[] = "1 second elapsed.";
+  timer_t timerid;
+  struct sigevent sev;
+  struct itimerspec trigger;
 
-  // Feedback: the HFSM used by the MQTT client to communicate results.
-  az_ret = az_hfsm_init(&feedback_client, root, get_parent);
-
-  az_mqtt_options mqtt_options
-      = { .certificate_authority_trusted_roots = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
-          .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
-          .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem") };
-
-  az_ret = az_mqtt_initialize(
-      &mqtt_client,
-      &feedback_client,
-      AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
-      8883,
-      AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/"
-                       "?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1"),
-      AZ_SPAN_EMPTY,
-      AZ_SPAN_FROM_STR("dev1-ecc"),
-      &mqtt_options);
-
-  az_hfsm_send_event(
-      (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
-
-  for (int i = 0; i < 15; i++)
+  if (0 != pthread_mutex_init(&mutex, NULL))
   {
-    az_ret = az_platform_sleep_msec(1000);
-    printf(".");
-    fflush(stdout);
+      perror("pthread_mutex_init() failed");
+      return EXIT_FAILURE;
   }
 
-  az_hfsm_send_event(
-      (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL });
+  /* Set all `sev` and `trigger` memory to 0 */
+  memset(&sev, 0, sizeof(struct sigevent));
+  memset(&trigger, 0, sizeof(struct itimerspec));
 
-  az_ret = az_platform_sleep_msec(1000);
+  /* 
+    * Set the notification method as SIGEV_THREAD:
+    *
+    * Upon timer expiration, `sigev_notify_function` (thread_handler()),
+    * will be invoked as if it were the start function of a new thread.
+    *
+    */
+  sev.sigev_notify = SIGEV_THREAD;
+  sev.sigev_notify_function = &thread_handler;
+  sev.sigev_value.sival_ptr = &info;
 
-  mosquitto_lib_cleanup();
-  (void)az_ret;
+  /* Create the timer. In this example, CLOCK_REALTIME is used as the
+    * clock, meaning that we're using a system-wide real-time clock for
+    * this timer.
+    */
+  timer_create(CLOCK_REALTIME, &sev, &timerid);
+
+  /* Timer expiration will occur withing 5 seconds after being armed
+    * by timer_settime().
+    */
+  // Single shot:
+  trigger.it_value.tv_sec = 1;
+  // Periodic:
+  trigger.it_interval.tv_nsec = 1000000000 / 2;
+
+  /* Arm the timer. No flags are set and no old_value will be retrieved.
+    */
+  timer_settime(timerid, 0, &trigger, NULL);
+
+  /* Wait 10 seconds under the main thread. In 5 seconds (when the
+    * timer expires), a message will be printed to the standard output
+    * by the newly created notification thread.
+    */
+  for (int i = 0; i < 10; i++)
+  {
+    if (0 != pthread_mutex_lock(&mutex))
+    {
+        perror("pthread_mutex_lock failed");
+        exit(EXIT_FAILURE);
+    }
+    printf("main(): Waiting\n"); fflush(stdout);
+    if (0 != pthread_mutex_unlock(&mutex))
+    {
+        perror("pthread_mutex_lock failed");
+        exit(EXIT_FAILURE);
+    }
+    sleep(1);
+  }
+
+  /* Delete (destroy) the timer */
+  timer_delete(timerid);
+  if (0 != pthread_mutex_destroy(&mutex))
+  {
+      perror("pthread_mutex_destroy() failed");
+      return EXIT_FAILURE;
+  }
+
   return 0;
 }

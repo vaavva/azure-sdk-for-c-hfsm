@@ -120,6 +120,7 @@ target_link_libraries(mosquitto_iot_sample
     az::mosquitto
     az::iot::hub
     az::iot::provisioning
+    rt  #HFSM_TODO: Test only: -lrt (Posix) should be included to az_platform, not here.
 )
 
 if(WIN32)

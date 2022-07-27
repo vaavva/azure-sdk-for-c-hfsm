@@ -7,8 +7,9 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include <signal.h>
 #include <unistd.h>
-
+#include <pthread.h>
 
 #include <azure/core/_az_cfg.h>
 
@@ -33,4 +34,49 @@ AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random)
   _az_PRECONDITION_NOT_NULL(out_random);
   *out_random = (int32_t)random();
   return AZ_OK;
+}
+
+typedef struct 
+{
+  az_platform_timer_callback callback;
+  void* sdk_data;
+} _az_platform_posix_timer_data;
+
+AZ_NODISCARD az_result az_platform_timer_create(
+    az_platform_timer_callback callback,
+    void* sdk_data,
+    az_platform_timer* out_timer_handle)
+{
+  
+}
+
+AZ_NODISCARD az_result az_platform_timer_start(az_platform_timer timer_handle, int32_t milliseconds)
+{
+
+}
+
+void az_platform_timer_destroy(az_platform_timer timer_handle)
+{
+
+}
+
+
+AZ_NODISCARD az_result az_platform_mutex_create(az_platform_mutex* mutex_handle)
+{
+
+}
+
+AZ_NODISCARD az_result az_platform_mutex_acquire(az_platform_mutex mutex_handle)
+{
+
+}
+
+AZ_NODISCARD az_result az_platform_mutex_release(az_platform_mutex mutex_handle)
+{
+
+}
+
+AZ_NODISCARD az_result az_platform_mutex_destroy(az_platform_mutex mutex_handle)
+{
+
 }
