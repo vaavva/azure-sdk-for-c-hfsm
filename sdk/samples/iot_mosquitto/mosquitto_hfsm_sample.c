@@ -10,14 +10,9 @@
 
 #include "mosquitto.h"
 
-az_mqtt_hfsm_type mqtt_client;
-
-// HFSM_TODO: replace with az_mqtt_pipeline?
-az_hfsm feedback_client;
-
 static az_hfsm_pipeline pipeline;
-static az_hfsm_policy mqtt_policy;
 static az_hfsm_policy feedback_policy;
+static az_hfsm_mqtt_policy mqtt_client;
 
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
@@ -99,13 +94,13 @@ void az_platform_critical_error()
     ;
 }
 
-static int32_t mid;
 static az_hfsm_mqtt_sub_data sub_data;
 
 // Feedback client
 static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 {
-  (void)me;
+  az_hfsm_policy* this_policy = (az_hfsm_policy*)me;
+
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
   az_result az_ret;
 
@@ -128,13 +123,13 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       az_ret = az_mqtt_sub_data_create(&sub_data);
       sub_data = (az_hfsm_mqtt_sub_data){ .topic_filter = AZ_SPAN_FROM_STR(
                                               AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
-                                          .id = &mid,
+                                          .out_id = 0,
                                           .qos = 0 };
 
       az_hfsm_send_event(
           (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
 
-      printf("APP: SUB mID = %d\n", *sub_data.id);
+      printf("APP: SUB mID = %d\n", sub_data.out_id);
       break;
     }
 
@@ -146,8 +141,8 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
     {
-      az_hfsm_mqtt_pub_data* pub_data = (az_hfsm_mqtt_pub_data*)event.data;
-      printf("APP: RECEIVED: qos=%d topic=[%s]\n", pub_data->qos, az_span_ptr(pub_data->topic));
+      az_hfsm_mqtt_recv_data* recv_data = (az_hfsm_mqtt_recv_data*)event.data;
+      printf("APP: RECEIVED: qos=%d topic=[%s]\n", recv_data->qos, az_span_ptr(recv_data->topic));
       break;
     }
 
@@ -174,7 +169,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      az_hfsm_pipeline_post_outbound_event(&feedback_policy, event);
+      az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
       break;
   }
 
@@ -201,13 +196,11 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  mqtt_policy = (az_hfsm_policy){ .hfsm = NULL, .inbound = &feedback_policy, .outbound = NULL };
   feedback_policy
-      = (az_hfsm_policy){ .hfsm = &feedback_client, .inbound = NULL, .outbound = &mqtt_policy };
-  pipeline = (az_hfsm_pipeline){ ._internal.first_policy = &feedback_policy };
-
+      = (az_hfsm_policy){ .inbound = NULL, .outbound = (az_hfsm_policy*)&mqtt_client };
+  az_ret = az_hfsm_init((az_hfsm*)&feedback_policy, root, get_parent);
+  
   // Feedback: the HFSM used by the MQTT client to communicate results.
-  az_ret = az_hfsm_init(&feedback_client, root, get_parent);
 
   az_mqtt_options mqtt_options
       = { .certificate_authority_trusted_roots
@@ -217,7 +210,8 @@ int main(int argc, char* argv[])
 
   az_ret = az_mqtt_initialize(
       &mqtt_client,
-      &mqtt_policy,
+      &pipeline,
+      &feedback_policy,
       AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
       8883,
       AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/"
@@ -226,7 +220,10 @@ int main(int argc, char* argv[])
       AZ_SPAN_FROM_STR("dev1-ecc"),
       &mqtt_options);
 
-  az_hfsm_pipeline_post_event(&pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
+  az_ret = az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client);
+
+  az_ret = az_hfsm_pipeline_post_outbound_event(
+      &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
 
   for (int i = 0; i < 15; i++)
   {
@@ -235,7 +232,7 @@ int main(int argc, char* argv[])
     fflush(stdout);
   }
 
-  az_hfsm_pipeline_post_event(
+  az_ret = az_hfsm_pipeline_post_outbound_event(
       &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL });
 
   az_ret = az_platform_sleep_msec(1000);

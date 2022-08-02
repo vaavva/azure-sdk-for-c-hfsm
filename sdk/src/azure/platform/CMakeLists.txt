@@ -29,6 +29,7 @@ elseif(AZ_PLATFORM_IMPL STREQUAL "POSIX")
   target_link_libraries(az_posix
     PRIVATE
       az_core
+      rt
   )
 else()
   #noplatform

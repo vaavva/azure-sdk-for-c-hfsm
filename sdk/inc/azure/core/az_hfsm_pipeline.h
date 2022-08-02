@@ -15,6 +15,7 @@
 // #define AZ_HFSM_PIPELINE_SYNC
 
 #include <azure/core/az_hfsm.h>
+#include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
 #include <stdint.h>
 
@@ -31,7 +32,7 @@ typedef struct az_hfsm_policy az_hfsm_policy;
  */
 struct az_hfsm_policy
 {
-  az_hfsm* hfsm; // Must be the first element to properly cast the struct to az_hfsm.
+  az_hfsm hfsm; // Must be the first element to properly cast the struct to az_hfsm.
   az_hfsm_policy* inbound;
   az_hfsm_policy* outbound;
 };
@@ -44,9 +45,16 @@ typedef struct
 {
   struct
   {
-    az_hfsm_policy* first_policy;
+    az_hfsm_policy* outbound_handler;
+    az_hfsm_policy* inbound_handler;
+    az_platform_mutex mutex;
   } _internal;
 } az_hfsm_pipeline;
+
+AZ_NODISCARD az_result az_hfsm_pipeline_init(
+    az_hfsm_pipeline* pipeline,
+    az_hfsm_policy* outbound,
+    az_hfsm_policy* inbound);
 
 /**
  * @brief Queues an event to a HFSM object.
@@ -58,10 +66,12 @@ typedef struct
  * @param[in] event_reference A reference to the event being sent.
  * @return An #az_result value indicating the result of the operation.
  */
-void az_hfsm_pipeline_post_inbound_event(az_hfsm_policy* current, az_hfsm_event const event);
+AZ_NODISCARD az_result az_hfsm_pipeline_post_inbound_event(
+    az_hfsm_pipeline* pipeline,
+    az_hfsm_event const event);
 
-void az_hfsm_pipeline_post_outbound_event(az_hfsm_policy* current, az_hfsm_event const event);
-
-void az_hfsm_pipeline_post_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
+AZ_NODISCARD az_result az_hfsm_pipeline_post_outbound_event(
+    az_hfsm_pipeline* pipeline,
+    az_hfsm_event const event);
 
 #endif //_az_HFSM_PIPELINE_H

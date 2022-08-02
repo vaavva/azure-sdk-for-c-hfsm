@@ -44,8 +44,16 @@ typedef struct
   az_span topic;
   az_span payload;
   int8_t qos;
-  int32_t* id;
+  int32_t out_id;
 } az_hfsm_mqtt_pub_data;
+
+typedef struct
+{
+  az_span topic;
+  az_span payload;
+  int8_t qos;
+  int32_t id;
+} az_hfsm_mqtt_recv_data;
 
 typedef struct
 {
@@ -56,7 +64,7 @@ typedef struct
 {
   az_span topic_filter;
   int8_t qos;
-  int32_t* id;
+  int32_t out_id;
 } az_hfsm_mqtt_sub_data;
 
 typedef struct
@@ -91,11 +99,11 @@ typedef struct
  */
 typedef struct
 {
-  // HFSM_DESIGN: The az_hfsm object _must_ be the first one in the struct.
+  // Derived from az_policy which is a kind of az_hfsm.
   struct
   {
-    az_hfsm hfsm;
-    az_hfsm_policy* policy;
+    az_hfsm_policy policy;
+    az_hfsm_pipeline* pipeline;
 
     // Extension point for the implementation.
     // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional 
@@ -109,7 +117,7 @@ typedef struct
   az_span username;
   az_span password;
   az_span client_id;
-} az_mqtt_hfsm_type;
+} az_hfsm_mqtt_policy;
 
 /**
  * @brief Azure MQTT HFSM event types.
@@ -158,8 +166,9 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
  * @return AZ_NODISCARD
  */
 AZ_NODISCARD az_result az_mqtt_initialize(
-    az_mqtt_hfsm_type* mqtt_hfsm,
-    az_hfsm_policy* policy,
+    az_hfsm_mqtt_policy* mqtt_hfsm,
+    az_hfsm_pipeline* pipeline,
+    az_hfsm_policy* inbound_policy,
     az_span host,
     int16_t port,
     az_span username,
