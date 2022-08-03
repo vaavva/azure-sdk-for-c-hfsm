@@ -71,8 +71,25 @@ typedef struct
 
 typedef struct
 {
-  int32_t connack_reason;
+  az_span host;
+  int16_t port;
+  az_span username;
+  az_span password;
+  az_span client_id;
+  
+  /**
+   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
+   */
+  az_span certificate_authority_trusted_roots;
+  az_span client_certificate;
+  az_span client_private_key;
+
 } az_hfsm_mqtt_connect_data;
+
+typedef struct
+{
+  int32_t connack_reason;
+} az_hfsm_mqtt_connack_data;
 
 typedef struct
 {
@@ -81,12 +98,10 @@ typedef struct
 
 typedef struct
 {
-  /**
-   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
-   */
-  az_span certificate_authority_trusted_roots;
-  az_span client_certificate;
-  az_span client_private_key;
+  struct
+  {
+    int32_t reserved;
+  } _internal;
 } az_mqtt_options;
 
 /**
@@ -108,12 +123,6 @@ typedef struct
     az_mqtt_impl mqtt;
     az_mqtt_options options;   
   } _internal;
-
-  az_span host;
-  int16_t port;
-  az_span username;
-  az_span password;
-  az_span client_id;
 } az_hfsm_mqtt_policy;
 
 /**
@@ -166,11 +175,6 @@ AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_hfsm,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
-    az_span host,
-    int16_t port,
-    az_span username,
-    az_span password,
-    az_span client_id,
     az_mqtt_options const* options);
 
 /**

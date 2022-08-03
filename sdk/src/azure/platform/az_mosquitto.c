@@ -69,29 +69,16 @@ AZ_INLINE void _az_mosquitto_error_adapter(az_hfsm_mqtt_policy* me, int rc)
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 {
-  return (az_mqtt_options){ .certificate_authority_trusted_roots = AZ_SPAN_EMPTY,
-                            .client_certificate = AZ_SPAN_EMPTY,
-                            .client_private_key = AZ_SPAN_EMPTY };
+  return (az_mqtt_options){ ._internal.reserved = 0 };
 }
 
 AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_policy,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
-    az_span host,
-    int16_t port,
-    az_span username,
-    az_span password,
-    az_span client_id,
     az_mqtt_options const* options)
 {
   // HFSM_TODO: Preconditions
-
-  mqtt_policy->host = host;
-  mqtt_policy->port = port;
-  mqtt_policy->username = username;
-  mqtt_policy->password = password;
-  mqtt_policy->client_id = client_id;
 
   mqtt_policy->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
 
@@ -164,7 +151,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
       az_hfsm_pipeline_post_inbound_event(
           me->_internal.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_RSP,
-                           &(az_hfsm_mqtt_connect_data){ reason_code } }));
+                           &(az_hfsm_mqtt_connack_data){ reason_code } }));
 }
 
 static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
@@ -264,13 +251,13 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
   }
 }
 
-AZ_INLINE int _az_mosquitto_init(az_hfsm_mqtt_policy* me)
+AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connect_data* data)
 {
   int rc;
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
   me->_internal.mqtt = mosquitto_new(
-      (char*)az_span_ptr(me->client_id),
+      (char*)az_span_ptr(data->client_id),
       false, // clean-session
       me);
 
@@ -285,30 +272,27 @@ AZ_INLINE int _az_mosquitto_init(az_hfsm_mqtt_policy* me)
 
   rc = mosquitto_tls_set(
       me->_internal.mqtt,
-      (const char*)az_span_ptr(me->_internal.options.certificate_authority_trusted_roots),
+      (const char*)az_span_ptr(data->certificate_authority_trusted_roots),
       NULL,
-      (const char*)az_span_ptr(me->_internal.options.client_certificate),
-      (const char*)az_span_ptr(me->_internal.options.client_private_key),
+      (const char*)az_span_ptr(data->client_certificate),
+      (const char*)az_span_ptr(data->client_private_key),
       NULL); // HFSM_TODO: Key callback for cases where the PEM files are encrypted at rest.
 
   if (rc == MOSQ_ERR_SUCCESS)
   {
     rc = mosquitto_username_pw_set(
         me->_internal.mqtt,
-        (const char*)az_span_ptr(me->username),
-        (const char*)az_span_ptr(me->password));
+        (const char*)az_span_ptr(data->username),
+        (const char*)az_span_ptr(data->password));
   }
 
-  return rc;
-}
-
-AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me)
-{
-  return mosquitto_connect_async(
+  rc = mosquitto_connect_async(
       (struct mosquitto*)me->_internal.mqtt,
-      (char*)az_span_ptr(me->host),
-      me->port,
+      (char*)az_span_ptr(data->host),
+      data->port,
       AZ_MQTT_KEEPALIVE_SECONDS);
+
+  return rc;
 }
 
 AZ_INLINE int _az_mosquitto_disconnect(az_hfsm_mqtt_policy* me)
@@ -396,7 +380,7 @@ az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      _az_mosquitto_error_adapter(this_iot_hfsm, _az_mosquitto_init(this_iot_hfsm));
+      // No-op.
       break;
 
     case AZ_HFSM_EVENT_EXIT:
@@ -404,7 +388,9 @@ az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      _az_mosquitto_error_adapter(this_iot_hfsm, _az_mosquitto_connect(this_iot_hfsm));
+      _az_mosquitto_error_adapter(
+          this_iot_hfsm,
+          _az_mosquitto_connect(this_iot_hfsm, (az_hfsm_mqtt_connect_data*)event.data));
 
       az_hfsm_transition_substate((az_hfsm*)me, idle, running);
       break;
@@ -457,7 +443,7 @@ az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
       _az_mosquitto_disconnect(this_iot_hfsm);
       break;
-      
+
     case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:

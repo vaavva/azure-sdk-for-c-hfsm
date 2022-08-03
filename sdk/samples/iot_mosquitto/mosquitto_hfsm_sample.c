@@ -108,7 +108,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
     {
-      az_hfsm_mqtt_connect_data* connack_data = (az_hfsm_mqtt_connect_data*)event.data;
+      az_hfsm_mqtt_connack_data* connack_data = (az_hfsm_mqtt_connack_data*)event.data;
       printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
 
       // This API is called here only for exemplification. In certain zero-copy implementations,
@@ -196,34 +196,30 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  feedback_policy
-      = (az_hfsm_policy){ .inbound = NULL, .outbound = (az_hfsm_policy*)&mqtt_client };
+  feedback_policy = (az_hfsm_policy){ .inbound = NULL, .outbound = (az_hfsm_policy*)&mqtt_client };
   az_ret = az_hfsm_init((az_hfsm*)&feedback_policy, root, get_parent);
-  
+
   // Feedback: the HFSM used by the MQTT client to communicate results.
 
-  az_mqtt_options mqtt_options
-      = { .certificate_authority_trusted_roots
-          = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
-          .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
-          .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem") };
-
-  az_ret = az_mqtt_initialize(
-      &mqtt_client,
-      &pipeline,
-      &feedback_policy,
-      AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
-      8883,
-      AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/"
-                       "?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-beta.1"),
-      AZ_SPAN_EMPTY,
-      AZ_SPAN_FROM_STR("dev1-ecc"),
-      &mqtt_options);
-
+  az_ret = az_mqtt_initialize(&mqtt_client, &pipeline, &feedback_policy, NULL);
   az_ret = az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client);
 
+  az_hfsm_mqtt_connect_data connect_data = (az_hfsm_mqtt_connect_data){
+    .host = AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
+    .port = 8883,
+    .username = AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net/dev1-ecc/"
+                                 "?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-"
+                                 "beta.1"),
+    .password = AZ_SPAN_EMPTY,
+    .client_id = AZ_SPAN_FROM_STR("dev1-ecc"),
+    .certificate_authority_trusted_roots
+    = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
+    .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
+    .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem"),
+  };
+
   az_ret = az_hfsm_pipeline_post_outbound_event(
-      &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, NULL });
+      &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, &connect_data });
 
   for (int i = 0; i < 15; i++)
   {
