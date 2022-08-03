@@ -40,21 +40,19 @@ typedef struct
 {
   struct
   {
-    az_hfsm hfsm;
+    az_hfsm_mqtt_policy policy;
     bool use_secondary_credentials;
     int16_t retry_attempt;
     int64_t start_time_msec;
-    void* timer_handle;
+    az_platform_timer* timer;
     az_hfsm_timer_sdk_data timer_data;
     az_hfsm_event start_event;
     az_hfsm_dispatch* hub_hfsm;
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
     az_hfsm_dispatch* provisioning_hfsm;
 #endif
-
-    // HFSM_TODO: Pointers to configuration and memory to store IoT Hub endpoints.
   } _internal;
-} az_iot_hfsm_type;
+} az_hfsm_iot_retry_policy;
 
 /**
  * @brief Azure IoT HFSM event types.

@@ -20,7 +20,6 @@
 #define _az_MQTT_H
 
 #include <azure/core/az_config.h>
-#include <azure/core/az_context.h>
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_result.h>
@@ -36,8 +35,6 @@
 
 // MQTT library handle (type defined by implementation)
 typedef void* az_mqtt_impl;
-
-#define AZ_MQTT_KEEPALIVE_SECONDS 240
 
 typedef struct
 {

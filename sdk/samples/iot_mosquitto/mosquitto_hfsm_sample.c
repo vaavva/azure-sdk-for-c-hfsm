@@ -88,7 +88,7 @@ bool az_sdk_log_filter_callback(az_log_classification classification)
 
 void az_platform_critical_error()
 {
-  printf("AZSDK PANIC!\n");
+  printf("APP PANIC!\n");
 
   while (1)
     ;
@@ -238,6 +238,6 @@ int main(int argc, char* argv[])
   az_ret = az_platform_sleep_msec(1000);
 
   mosquitto_lib_cleanup();
-  (void)az_ret;
-  return 0;
+
+  return az_result_failed(az_ret);
 }

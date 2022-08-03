@@ -7,8 +7,8 @@
  *
  * @details Implements fault handling for Azure Device Provisioning + IoT Hub operations.
  */
-#ifndef _az_IOT_PROVISIONING_HFSM_H
-#define _az_IOT_PROVISIONING_HFSM_H
+#ifndef _az_IOT_RETRY_HFSM_H
+#define _az_IOT_RETRY_HFSM_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -29,28 +29,25 @@
 typedef struct
 {
   int _reserved;
-} az_hfsm_iot_provisioning_policy_options;
+} az_hfsm_iot_retry_policy_options;
 
 typedef struct
 {
   struct
   {
     az_hfsm_policy policy;
-    az_hfsm_pipeline* pipeline;
-    az_iot_provisioning_client* provisioning_client;
-    az_hfsm_iot_provisioning_policy_options options;
+    az_hfsm_pipeline* provisioning_pipeline;
+    az_hfsm_pipeline* hub_pipeline;
+    az_hfsm_iot_retry_policy_options options;
   } _internal;
-} az_hfsm_iot_provisioning_policy;
+} az_hfsm_iot_retry_policy;
 
-AZ_NODISCARD az_hfsm_iot_provisioning_policy_options
-az_hfsm_iot_provisioning_policy_options_default();
+AZ_NODISCARD az_hfsm_iot_retry_policy_options az_hfsm_iot_retry_policy_options_default();
 
-AZ_NODISCARD az_result az_hfsm_iot_provisioning_policy_initialize(
-    az_hfsm_iot_provisioning_policy* policy,
+AZ_NODISCARD az_result az_hfsm_iot_retry_policy_initialize(
+    az_hfsm_iot_retry_policy* policy,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
-    az_hfsm_policy* outbound_policy,
-    az_iot_provisioning_client* provisioning_client,
-    az_hfsm_iot_provisioning_policy_options const* options);
+    az_hfsm_iot_retry_policy_options const* options);
 
-#endif //_az_IOT_PROVISIONING_HFSM_H
+#endif //_az_IOT_RETRY_HFSM_H

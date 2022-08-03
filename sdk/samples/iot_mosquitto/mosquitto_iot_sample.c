@@ -1,122 +1,183 @@
-//#define _POSIX_SOURCE  199309L
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-// Just for this example
-#include <string.h>
-#include <unistd.h>
+#include <azure/core/az_log.h>
+#include <azure/core/az_mqtt.h>
+#include <azure/core/az_platform.h>
+#include <azure/core/internal/az_result_internal.h>
 
-// For timer functionality
-#include <time.h>
-#include <signal.h>
+#include <azure/az_iot.h>
+#include <azure/core/az_hfsm_pipeline.h>
+#include <azure/iot/internal/az_iot_hub_hfsm.h>
+#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
+#include <azure/iot/internal/az_iot_retry_hfsm.h>
 
-// For Mutex
-#include <pthread.h>
+#include "mosquitto.h"
 
-// From https://sodocumentation.net/posix/topic/4644/timers
+const char* dps_endpoint = "global.azure-devices-provisioning.net";
+const char* id_scope = "0ne00003E26";
+const char* device_id = "dev1-ecc";
+static char hub_endpoint[120];
 
-pthread_mutex_t mutex;
-void thread_handler(union sigval sv);
+void az_sdk_log_callback(az_log_classification classification, az_span message);
+bool az_sdk_log_filter_callback(az_log_classification classification);
+az_result initialize_provisioning_pipeline();
+az_result initialize_hub_pipeline();
+az_result initialize_retry();
 
+void az_sdk_log_callback(az_log_classification classification, az_span message)
+{
+  const char* class_str;
 
-
-void thread_handler(union sigval sv) {
-  char *s = sv.sival_ptr;
-
-  if (0 != pthread_mutex_lock(&mutex))
+  switch (classification)
   {
-      perror("pthread_mutex_lock failed");
-      exit(EXIT_FAILURE);
+    case AZ_HFSM_EVENT_ENTRY:
+      class_str = "HFSM_ENTRY";
+      break;
+    case AZ_HFSM_EVENT_EXIT:
+      class_str = "HFSM_EXIT";
+      break;
+    case AZ_HFSM_EVENT_TIMEOUT:
+      class_str = "HFSM_TIMEOUT";
+      break;
+    case AZ_HFSM_EVENT_ERROR:
+      class_str = "HFSM_ERROR";
+      break;
+    case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUB_RECV_IND";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUB_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUBACK_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_SUB_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
+      break;
+    case AZ_LOG_HFSM_MQTT_STACK:
+      class_str = "AZ_LOG_HFSM_MQTT_STACK";
+      break;
+    default:
+      class_str = NULL;
   }
-  
-  /* Will print "5 seconds elapsed." */
-  puts(s); fflush(stdout);
 
-  if (0 != pthread_mutex_unlock(&mutex))
+  if (class_str == NULL)
   {
-      perror("pthread_mutex_lock failed");
-      exit(EXIT_FAILURE);
+    printf("AZSDK [UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
   }
+  else
+  {
+    printf("AZSDK [%s] %s\n", class_str, az_span_ptr(message));
+  }
+}
+
+bool az_sdk_log_filter_callback(az_log_classification classification)
+{
+  (void)classification;
+  // Enable all logging.
+  return true;
+}
+
+void az_platform_critical_error()
+{
+  printf("APP PANIC!\n");
+
+  while (1)
+    ;
+}
+
+// Pipeline
+static az_hfsm_pipeline pipeline;
+
+// Inbound policy
+static az_hfsm_mqtt_policy mqtt_policy;
+static az_mqtt_options mqtt_options;
+
+// Hub
+static az_hfsm_iot_hub_policy hub_policy;
+static az_iot_hub_client hub_client;
+
+// Provisioning
+static az_hfsm_iot_provisioning_policy prov_policy;
+static az_iot_provisioning_client prov_client;
+
+// Retry / orchestrator
+static az_hfsm_iot_retry_policy retry_policy;
+
+az_result initialize_retry()
+{
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
+      &prov_pipeline, (az_hfsm_policy*)&retry_policy, (az_hfsm_policy*)&mqtt_policy));
+
+  _az_RETURN_IF_FAILED(az_hfsm_iot_retry_policy_initialize(
+      &retry_policy,
+      &pipeline,
+      (az_hfsm_policy*)&prov_policy,
+      &prov_client,
+      NULL));
+
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
+      &prov_client,
+      az_span_create_from_str(dps_endpoint),
+      az_span_create_from_str(id_scope),
+      az_span_create_from_str(device_id),
+      NULL));
+
+  _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
+      &prov_policy,
+      &prov_pipeline,
+      (az_hfsm_policy*)&prov_mqtt,
+      (az_hfsm_policy*)&retry_policy,
+      &prov_client,
+      NULL));
+
+  mqtt_options = az_mqtt_options_default();
+  mqtt_options.certificate_authority_trusted_roots
+      = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
+  mqtt_options.client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
+  mqtt_options.client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+
+  return AZ_OK;
 }
 
 // HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char* argv[])
 {
-  (void)argc; (void)argv;
+  (void)argc;
+  (void)argv;
+  az_result az_ret;
+  /* Required before calling other mosquitto functions */
+  mosquitto_lib_init();
+  printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
 
-  char info[] = "1 second elapsed.";
-  timer_t timerid;
-  struct sigevent sev;
-  struct itimerspec trigger;
+  az_log_set_message_callback(az_sdk_log_callback);
+  az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  if (0 != pthread_mutex_init(&mutex, NULL))
+  for (int i = 0; i < 15; i++)
   {
-      perror("pthread_mutex_init() failed");
-      return EXIT_FAILURE;
+    az_ret = az_platform_sleep_msec(1000);
+    printf(".");
+    fflush(stdout);
   }
 
-  /* Set all `sev` and `trigger` memory to 0 */
-  memset(&sev, 0, sizeof(struct sigevent));
-  memset(&trigger, 0, sizeof(struct itimerspec));
+  mosquitto_lib_cleanup();
 
-  /* 
-    * Set the notification method as SIGEV_THREAD:
-    *
-    * Upon timer expiration, `sigev_notify_function` (thread_handler()),
-    * will be invoked as if it were the start function of a new thread.
-    *
-    */
-  sev.sigev_notify = SIGEV_THREAD;
-  sev.sigev_notify_function = &thread_handler;
-  sev.sigev_value.sival_ptr = &info;
-
-  /* Create the timer. In this example, CLOCK_REALTIME is used as the
-    * clock, meaning that we're using a system-wide real-time clock for
-    * this timer.
-    */
-  timer_create(CLOCK_REALTIME, &sev, &timerid);
-
-  /* Timer expiration will occur withing 5 seconds after being armed
-    * by timer_settime().
-    */
-  // Single shot:
-  trigger.it_value.tv_sec = 1;
-  // Periodic:
-  trigger.it_interval.tv_nsec = 1000000000 / 2;
-
-  /* Arm the timer. No flags are set and no old_value will be retrieved.
-    */
-  timer_settime(timerid, 0, &trigger, NULL);
-
-  /* Wait 10 seconds under the main thread. In 5 seconds (when the
-    * timer expires), a message will be printed to the standard output
-    * by the newly created notification thread.
-    */
-  for (int i = 0; i < 10; i++)
-  {
-    if (0 != pthread_mutex_lock(&mutex))
-    {
-        perror("pthread_mutex_lock failed");
-        exit(EXIT_FAILURE);
-    }
-    printf("main(): Waiting\n"); fflush(stdout);
-    if (0 != pthread_mutex_unlock(&mutex))
-    {
-        perror("pthread_mutex_lock failed");
-        exit(EXIT_FAILURE);
-    }
-    sleep(1);
-  }
-
-  /* Delete (destroy) the timer */
-  timer_delete(timerid);
-  if (0 != pthread_mutex_destroy(&mutex))
-  {
-      perror("pthread_mutex_destroy() failed");
-      return EXIT_FAILURE;
-  }
-
-  return 0;
+  return az_result_failed(az_ret);
 }

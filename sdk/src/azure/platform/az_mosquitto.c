@@ -259,7 +259,7 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
 
   if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_MQTT_STACK))
   {
-    // HFSM_TODO: how to cast from const to non-const span?
+    // HFSM_TODO: add compiler supression macro instead of this workaround
     _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str((char*)(uintptr_t)str));
   }
 }
