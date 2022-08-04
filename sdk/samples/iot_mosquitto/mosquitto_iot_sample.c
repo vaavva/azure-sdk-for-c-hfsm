@@ -31,9 +31,6 @@ static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/d
 
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
-az_result initialize_provisioning_pipeline();
-az_result initialize_hub_pipeline();
-az_result initialize_retry();
 
 #define LOG_APP "\x1B[34mAPP: \x1B[0m"
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
@@ -136,7 +133,7 @@ static az_iot_provisioning_client prov_client;
 // Retry & endpoint orchestrator
 static az_hfsm_iot_retry_policy retry_policy;
 
-az_result initialize_retry()
+static az_result initialize()
 {
   hub_endpoint = AZ_SPAN_FROM_BUFFER(hub_endpoint_buffer);
 
@@ -197,23 +194,24 @@ int main(int argc, char* argv[])
 {
   (void)argc;
   (void)argv;
-  az_result az_ret;
 
   /* Required before calling other mosquitto functions */
   mosquitto_lib_init();
   printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
+
+  _az_RETURN_IF_FAILED(initialize());
 
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
   for (int i = 0; i < 15; i++)
   {
-    az_ret = az_platform_sleep_msec(1000);
+    _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(".");
     fflush(stdout);
   }
 
   mosquitto_lib_cleanup();
 
-  return az_result_failed(az_ret);
+  return 0;
 }
