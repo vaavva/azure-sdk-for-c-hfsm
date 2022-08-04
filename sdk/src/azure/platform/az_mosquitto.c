@@ -67,20 +67,21 @@ AZ_INLINE void _az_mosquitto_error_adapter(az_hfsm_mqtt_policy* me, int rc)
   }
 }
 
-AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
+AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default()
 {
-  return (az_mqtt_options){ ._internal.reserved = 0 };
+  return (az_hfsm_mqtt_policy_options){ .certificate_authority_trusted_roots = AZ_SPAN_EMPTY };
 }
 
 AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_policy,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
-    az_mqtt_options const* options)
+    az_hfsm_mqtt_policy_options const* options)
 {
   // HFSM_TODO: Preconditions
 
-  mqtt_policy->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
+  mqtt_policy->_internal.options
+      = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
 
   // HFSM_DESIGN: A complex HFSM is recommended for MQTT stacks such as an external modems where the
   //              CPU may need to synchronize state with another device.
@@ -269,7 +270,7 @@ AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connec
 
   rc = mosquitto_tls_set(
       me->_internal.mqtt,
-      (const char*)az_span_ptr(data->certificate_authority_trusted_roots),
+      (const char*)az_span_ptr(me->_internal.options.certificate_authority_trusted_roots),
       NULL,
       (const char*)az_span_ptr(data->client_certificate),
       (const char*)az_span_ptr(data->client_private_key),

@@ -20,7 +20,6 @@ bool az_sdk_log_filter_callback(az_log_classification classification);
 #define LOG_APP "\x1B[34mAPP: \x1B[0m"
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
 
-
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
   const char* class_str;
@@ -96,7 +95,7 @@ bool az_sdk_log_filter_callback(az_log_classification classification)
 
 void az_platform_critical_error()
 {
-  printf(LOG_APP " PANIC!\n");
+  printf(LOG_APP "PANIC!\n");
 
   while (1)
     ;
@@ -151,7 +150,8 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
     {
       az_hfsm_mqtt_recv_data* recv_data = (az_hfsm_mqtt_recv_data*)event.data;
-      printf(LOG_APP "RECEIVED: qos=%d topic=[%s]\n", recv_data->qos, az_span_ptr(recv_data->topic));
+      printf(
+          LOG_APP "RECEIVED: qos=%d topic=[%s]\n", recv_data->qos, az_span_ptr(recv_data->topic));
       break;
     }
 
@@ -213,8 +213,11 @@ int main(int argc, char* argv[])
   az_ret = az_hfsm_init((az_hfsm*)&feedback_policy, root, get_parent);
 
   // Feedback: the HFSM used by the MQTT client to communicate results.
+  az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
+  mqtt_options.certificate_authority_trusted_roots
+      = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
 
-  az_ret = az_mqtt_initialize(&mqtt_client, &pipeline, &feedback_policy, NULL);
+  az_ret = az_mqtt_initialize(&mqtt_client, &pipeline, &feedback_policy, &mqtt_options);
   az_ret = az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client);
 
   az_ret = az_platform_mutex_init(&disconnect_mutex);
@@ -227,8 +230,6 @@ int main(int argc, char* argv[])
                                  "beta.1"),
     .password = AZ_SPAN_EMPTY,
     .client_id = AZ_SPAN_FROM_STR("dev1-ecc"),
-    .certificate_authority_trusted_roots
-    = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem"),
     .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
     .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem"),
   };

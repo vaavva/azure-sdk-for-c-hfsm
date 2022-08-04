@@ -77,10 +77,6 @@ typedef struct
   az_span password;
   az_span client_id;
   
-  /**
-   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
-   */
-  az_span certificate_authority_trusted_roots;
   az_span client_certificate;
   az_span client_private_key;
 
@@ -99,11 +95,11 @@ typedef struct
 
 typedef struct
 {
-  struct
-  {
-    int32_t reserved;
-  } _internal;
-} az_mqtt_options;
+  /**
+   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
+   */
+  az_span certificate_authority_trusted_roots;
+} az_hfsm_mqtt_policy_options;
 
 /**
  * @brief Azure MQTT HFSM.
@@ -122,7 +118,7 @@ typedef struct
     // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional 
     //              memory reserved for the implementation:
     az_mqtt_impl mqtt;
-    az_mqtt_options options;   
+    az_hfsm_mqtt_policy_options options;   
   } _internal;
 } az_hfsm_mqtt_policy;
 
@@ -156,7 +152,7 @@ enum az_hfsm_event_type_mqtt
   AZ_LOG_HFSM_MQTT_STACK = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 19),
 };
 
-AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
+AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default();
 
 /**
  * @brief Initializes the MQTT Platform Layer.
@@ -176,7 +172,7 @@ AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_hfsm,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
-    az_mqtt_options const* options);
+    az_hfsm_mqtt_policy_options const* options);
 
 /**
  * @brief Creates an MQTT PUB message.

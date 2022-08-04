@@ -33,6 +33,9 @@ enum
 
   /// The MQTT keepalive in seconds.
   AZ_MQTT_KEEPALIVE_SECONDS = 240,
+
+  // SAS Token Lifetime in minutes
+  AZ_IOT_SAS_TOKEN_LIFETIME_MINUTES = 60,
 };
 
 #include <azure/core/_az_cfg_suffix.h>

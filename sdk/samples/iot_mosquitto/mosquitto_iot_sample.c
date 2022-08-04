@@ -15,16 +15,28 @@
 
 #include "mosquitto.h"
 
-const char* dps_endpoint = "global.azure-devices-provisioning.net";
-const char* id_scope = "0ne00003E26";
-const char* device_id = "dev1-ecc";
-static char hub_endpoint[120];
+static const az_span dps_endpoint
+    = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
+static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
+static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
+static char hub_endpoint_buffer[120];
+static az_span hub_endpoint;
+static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
+
+static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
+static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+
+static const az_span cert_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
+static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
 
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
 az_result initialize_provisioning_pipeline();
 az_result initialize_hub_pipeline();
 az_result initialize_retry();
+
+#define LOG_APP "\x1B[34mAPP: \x1B[0m"
+#define LOG_SDK "\x1B[33mSDK: \x1B[0m"
 
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
@@ -80,11 +92,15 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
 
   if (class_str == NULL)
   {
-    printf("AZSDK [UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
+    printf(LOG_SDK "[\x1B[31mUNKNOWN: %d\x1B[0m] %s\n", classification, az_span_ptr(message));
+  }
+  else if (classification == AZ_HFSM_EVENT_ERROR)
+  {
+    printf(LOG_SDK "[\x1B[31m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
   }
   else
   {
-    printf("AZSDK [%s] %s\n", class_str, az_span_ptr(message));
+    printf(LOG_SDK "[\x1B[35m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
   }
 }
 
@@ -97,7 +113,7 @@ bool az_sdk_log_filter_callback(az_log_classification classification)
 
 void az_platform_critical_error()
 {
-  printf("APP PANIC!\n");
+  printf(LOG_APP "PANIC!\n");
 
   while (1)
     ;
@@ -108,7 +124,6 @@ static az_hfsm_pipeline pipeline;
 
 // Inbound policy
 static az_hfsm_mqtt_policy mqtt_policy;
-static az_mqtt_options mqtt_options;
 
 // Hub
 static az_hfsm_iot_hub_policy hub_policy;
@@ -118,41 +133,61 @@ static az_iot_hub_client hub_client;
 static az_hfsm_iot_provisioning_policy prov_policy;
 static az_iot_provisioning_client prov_client;
 
-// Retry / orchestrator
+// Retry & endpoint orchestrator
 static az_hfsm_iot_retry_policy retry_policy;
 
 az_result initialize_retry()
 {
+  hub_endpoint = AZ_SPAN_FROM_BUFFER(hub_endpoint_buffer);
+
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
-      &prov_pipeline, (az_hfsm_policy*)&retry_policy, (az_hfsm_policy*)&mqtt_policy));
+      &pipeline, (az_hfsm_policy*)&retry_policy, (az_hfsm_policy*)&mqtt_policy));
+
+  // Retry
+  az_hfsm_iot_auth primary_cred;
+  primary_cred.x509 = (az_hfsm_iot_x509_auth){ .cert = cert_path1, .key = key_path1 };
+
+  az_hfsm_iot_retry_policy_options retry_options = az_hfsm_iot_retry_policy_options_default();
+  retry_options.secondary_credential.x509
+      = (az_hfsm_iot_x509_auth){ .cert = cert_path2, .key = key_path2 };
 
   _az_RETURN_IF_FAILED(az_hfsm_iot_retry_policy_initialize(
       &retry_policy,
       &pipeline,
       (az_hfsm_policy*)&prov_policy,
-      &prov_client,
-      NULL));
+      AZ_HFSM_IOT_AUTH_X509,
+      &primary_cred,
+      &retry_options));
 
-  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
-      &prov_client,
-      az_span_create_from_str(dps_endpoint),
-      az_span_create_from_str(id_scope),
-      az_span_create_from_str(device_id),
-      NULL));
+  // DPS
+  _az_RETURN_IF_FAILED(
+      az_iot_provisioning_client_init(&prov_client, dps_endpoint, id_scope, device_id, NULL));
 
   _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
       &prov_policy,
-      &prov_pipeline,
-      (az_hfsm_policy*)&prov_mqtt,
+      &pipeline,
+      (az_hfsm_policy*)&hub_policy,
       (az_hfsm_policy*)&retry_policy,
       &prov_client,
       NULL));
 
-  mqtt_options = az_mqtt_options_default();
-  mqtt_options.certificate_authority_trusted_roots
-      = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
-  mqtt_options.client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
-  mqtt_options.client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+  // HUB
+  _az_RETURN_IF_FAILED(az_iot_hub_client_init(&hub_client, hub_endpoint, device_id, NULL));
+
+  _az_RETURN_IF_FAILED(az_hfsm_iot_hub_policy_initialize(
+      &hub_policy,
+      &pipeline,
+      (az_hfsm_policy*)&mqtt_policy,
+      (az_hfsm_policy*)&prov_policy,
+      &hub_client,
+      NULL));
+
+  // MQTT
+  az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
+  mqtt_options.certificate_authority_trusted_roots = ca_path;
+
+  _az_RETURN_IF_FAILED(
+      az_mqtt_initialize(&mqtt_policy, &pipeline, (az_hfsm_policy*)&hub_policy, &mqtt_options));
 
   return AZ_OK;
 }
@@ -163,6 +198,7 @@ int main(int argc, char* argv[])
   (void)argc;
   (void)argv;
   az_result az_ret;
+
   /* Required before calling other mosquitto functions */
   mosquitto_lib_init();
   printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
