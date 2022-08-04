@@ -75,7 +75,11 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
 
   if (class_str == NULL)
   {
-    printf(LOG_SDK "[UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
+    printf(LOG_SDK "[\x1B[31mUNKNOWN: %d\x1B[0m] %s\n", classification, az_span_ptr(message));
+  }
+  else if (classification == AZ_HFSM_EVENT_ERROR)
+  {
+    printf(LOG_SDK "[\x1B[31m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
   }
   else
   {
