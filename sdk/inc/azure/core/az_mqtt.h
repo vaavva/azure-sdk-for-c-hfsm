@@ -94,6 +94,7 @@ typedef struct
 typedef struct
 {
   int32_t disconnect_reason;
+  bool disconnect_requested;
 } az_hfsm_mqtt_disconnect_data;
 
 typedef struct

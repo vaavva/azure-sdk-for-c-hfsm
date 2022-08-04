@@ -17,6 +17,10 @@ static az_hfsm_mqtt_policy mqtt_client;
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
 
+#define LOG_APP "\x1B[34mAPP: \x1B[0m"
+#define LOG_SDK "\x1B[33mSDK: \x1B[0m"
+
+
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
   const char* class_str;
@@ -71,11 +75,11 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
 
   if (class_str == NULL)
   {
-    printf("AZSDK [UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
+    printf(LOG_SDK "[UNKNOWN: %d] %s\n", classification, az_span_ptr(message));
   }
   else
   {
-    printf("AZSDK [%s] %s\n", class_str, az_span_ptr(message));
+    printf(LOG_SDK "[\x1B[35m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
   }
 }
 
@@ -88,13 +92,14 @@ bool az_sdk_log_filter_callback(az_log_classification classification)
 
 void az_platform_critical_error()
 {
-  printf("APP PANIC!\n");
+  printf(LOG_APP " PANIC!\n");
 
   while (1)
     ;
 }
 
 static az_hfsm_mqtt_sub_data sub_data;
+static az_platform_mutex disconnect_mutex;
 
 // Feedback client
 static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
@@ -109,7 +114,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
     {
       az_hfsm_mqtt_connack_data* connack_data = (az_hfsm_mqtt_connack_data*)event.data;
-      printf("APP: CONNACK REASON=%d\n", connack_data->connack_reason);
+      printf(LOG_APP "CONNACK REASON=%d\n", connack_data->connack_reason);
 
       // This API is called here only for exemplification. In certain zero-copy implementations,
       // the underlying MQTT stack will re-used pooled network packets. In that case, the
@@ -129,12 +134,12 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       az_hfsm_send_event(
           (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
 
-      printf("APP: SUB mID = %d\n", sub_data.out_id);
+      printf(LOG_APP "SUB mID = %d\n", sub_data.out_id);
       break;
     }
 
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
-      printf("APP: Subscribed\n");
+      printf(LOG_APP "Subscribed\n");
 
       az_ret = az_mqtt_sub_data_destroy(&sub_data);
       break;
@@ -142,25 +147,29 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
     {
       az_hfsm_mqtt_recv_data* recv_data = (az_hfsm_mqtt_recv_data*)event.data;
-      printf("APP: RECEIVED: qos=%d topic=[%s]\n", recv_data->qos, az_span_ptr(recv_data->topic));
+      printf(LOG_APP "RECEIVED: qos=%d topic=[%s]\n", recv_data->qos, az_span_ptr(recv_data->topic));
       break;
     }
 
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-      printf("APP: PUBACK\n");
+      printf(LOG_APP "PUBACK\n");
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
     {
       az_hfsm_mqtt_disconnect_data* disconnect_data = (az_hfsm_mqtt_disconnect_data*)event.data;
-      printf("APP: DISCONNECT reason=%d\n", disconnect_data->disconnect_reason);
+      printf(
+          LOG_APP "DISCONNECT reason=%d - %s\n",
+          disconnect_data->disconnect_reason,
+          disconnect_data->disconnect_requested ? "app-requested" : "unexpected");
+      az_ret = az_platform_mutex_release(&disconnect_mutex);
       break;
     }
 
     case AZ_HFSM_EVENT_ERROR:
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
-      printf("APP: MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
+      printf(LOG_APP "MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
       break;
     }
 
@@ -204,6 +213,8 @@ int main(int argc, char* argv[])
   az_ret = az_mqtt_initialize(&mqtt_client, &pipeline, &feedback_policy, NULL);
   az_ret = az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client);
 
+  az_ret = az_platform_mutex_init(&disconnect_mutex);
+
   az_hfsm_mqtt_connect_data connect_data = (az_hfsm_mqtt_connect_data){
     .host = AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
     .port = 8883,
@@ -221,19 +232,23 @@ int main(int argc, char* argv[])
   az_ret = az_hfsm_pipeline_post_outbound_event(
       &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_REQ, &connect_data });
 
-  for (int i = 0; i < 15; i++)
+  for (int i = 15; i > 0; i--)
   {
     az_ret = az_platform_sleep_msec(1000);
-    printf(".");
+    printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
 
+  az_ret = az_platform_mutex_acquire(&disconnect_mutex);
   az_ret = az_hfsm_pipeline_post_outbound_event(
       &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, NULL });
 
   az_ret = az_platform_sleep_msec(1000);
 
+  az_ret = az_platform_mutex_acquire(&disconnect_mutex);
   mosquitto_lib_cleanup();
+  az_ret = az_platform_mutex_release(&disconnect_mutex);
+  az_ret = az_platform_mutex_destroy(&disconnect_mutex);
 
   return az_result_failed(az_ret);
 }

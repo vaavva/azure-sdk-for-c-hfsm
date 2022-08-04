@@ -159,16 +159,13 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
   (void)mosq;
   az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;
 
-  // HFSM_TODO: Must be a POST. Transitions not allowed ouside of HFSM handlers to ensure
-  //            run-to-completion.
-  az_hfsm_transition_peer((az_hfsm*)me, running, idle);
-
   _az_result_error_handler(
       me,
       az_hfsm_pipeline_post_inbound_event(
           me->_internal.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP,
-                           &(az_hfsm_mqtt_disconnect_data){ rc } }));
+                           &(az_hfsm_mqtt_disconnect_data){ .disconnect_reason = rc,
+                                                            .disconnect_requested = (rc == 0) } }));
 }
 
 /* Callback called when the client knows to the best of its abilities that a
@@ -447,9 +444,13 @@ az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
       az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+      az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
+      az_hfsm_transition_peer(me, running, idle);
       break;
 
     default:
