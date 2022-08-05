@@ -1,0 +1,20 @@
+@startuml
+
+package "IoT Pipeline" {
+    [API Policy] as API
+    [Retry Policy] as Retry
+    [Provisioning Policy] as DPS
+    [Hub Policy] as Hub
+    [MQTT Policy] as MQTT
+
+    API -> Retry
+    API <- Retry
+    Retry -> DPS
+    Retry <- DPS
+    DPS -> Hub
+    DPS <- Hub
+    Hub -> MQTT
+    Hub <- MQTT
+}
+
+@enduml
