@@ -18,6 +18,7 @@
 #include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+#include <azure/core/az_mqtt.h>
 
 #include <azure/az_iot.h>
 
@@ -59,7 +60,7 @@ typedef struct
   struct
   {
     az_hfsm_policy policy;
-    az_hfsm_policy* outbound_policy;
+    az_hfsm_pipeline* pipeline;
 
     az_hfsm_iot_auth_type auth_type;
     az_hfsm_iot_auth primary_credential;

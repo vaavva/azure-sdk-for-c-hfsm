@@ -254,9 +254,8 @@ int main(int argc, char* argv[])
   _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
 
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
-  mosquitto_lib_cleanup();
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&disconnect_mutex));
   _az_RETURN_IF_FAILED(az_platform_mutex_destroy(&disconnect_mutex));
 
-  return 0;
+  return mosquitto_lib_cleanup();
 }

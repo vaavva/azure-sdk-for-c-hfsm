@@ -204,14 +204,12 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  for (int i = 0; i < 15; i++)
+  for (int i = 15; i > 0; i--)
   {
     _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
-    printf(".");
+    printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
 
-  mosquitto_lib_cleanup();
-
-  return 0;
+  return mosquitto_lib_cleanup();;
 }

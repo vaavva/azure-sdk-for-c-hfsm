@@ -23,7 +23,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event);
 
-static az_hfsm_state_handler _azure_mqtt_hfsm_get_parent(az_hfsm_state_handler child_state)
+static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
 {
   az_hfsm_state_handler parent_state;
 
@@ -83,17 +83,18 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   mqtt_policy->_internal.options
       = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
 
-  // HFSM_DESIGN: A complex HFSM is recommended for MQTT stacks such as an external modems where the
-  //              CPU may need to synchronize state with another device.
-  //              For the Mosquitto implementation, a simplified 2 level, 3 state HFSM is used.
 
-  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)mqtt_policy, root, _azure_mqtt_hfsm_get_parent));
   mqtt_policy->_internal.pipeline = pipeline;
 
   _az_PRECONDITION_NOT_NULL(inbound_policy);
   mqtt_policy->_internal.policy.inbound = inbound_policy;
   mqtt_policy->_internal.policy.outbound = NULL;
 
+  // HFSM_DESIGN: A complex HFSM is recommended for MQTT stacks such as an external modems where the
+  //              CPU may need to synchronize state with another device.
+  //              For the Mosquitto implementation, a simplified 2 level, 3 state HFSM is used.
+
+  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)mqtt_policy, root, _get_parent));
   az_hfsm_transition_substate((az_hfsm*)mqtt_policy, root, idle);
 
   return AZ_OK;
@@ -332,7 +333,7 @@ AZ_INLINE int _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
   return rc;
 }
 
-az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
   (void)me;
@@ -364,7 +365,7 @@ az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 }
 
 // Root/idle
-az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
+static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
 
@@ -402,7 +403,7 @@ az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
 }
 
 // Root/running
-az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
+static az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
 

@@ -28,7 +28,7 @@
 
 typedef struct
 {
-  int _reserved;
+  int32_t _reserved;
 } az_hfsm_iot_provisioning_policy_options;
 
 typedef struct

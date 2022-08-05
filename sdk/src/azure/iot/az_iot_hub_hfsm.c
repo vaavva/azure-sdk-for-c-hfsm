@@ -14,23 +14,15 @@
 #include <azure/core/az_platform.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
-#include <azure/iot/internal/
+
+#include <azure/iot/internal/az_iot_hub_hfsm.h>
 
 #include <azure/core/_az_cfg.h>
-
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
-
-// Hardcoded Azure IoT hierarchy structure
-static az_hfsm_state_handler azure_iot_hfsm_get_parent(az_hfsm_state_handler child_state)
-{
-
-  return parent_state;
-}
 
 
 AZ_NODISCARD az_hfsm_iot_hub_policy_options az_hfsm_iot_hub_policy_options_default()
 {
-  return (az_hfsm_iot_hub_policy_options){ .reserved = 0 };
+  return (az_hfsm_iot_hub_policy_options){ ._reserved = 0 };
 }
 
 AZ_NODISCARD az_result az_hfsm_iot_hub_policy_initialize(
@@ -41,5 +33,15 @@ AZ_NODISCARD az_result az_hfsm_iot_hub_policy_initialize(
     az_iot_hub_client* hub_client,
     az_hfsm_iot_hub_policy_options const* options)
 {
-  
+  policy->_internal.options
+      = options == NULL ? az_hfsm_iot_hub_policy_options_default() : *options;
+
+  policy->_internal.policy.outbound = outbound_policy;
+  policy->_internal.policy.inbound = inbound_policy;
+
+  policy->_internal.pipeline = pipeline;
+
+  policy->_internal.hub_client = hub_client;
+
+  return AZ_OK;  
 }
