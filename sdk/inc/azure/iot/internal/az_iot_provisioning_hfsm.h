@@ -42,6 +42,24 @@ typedef struct
   } _internal;
 } az_hfsm_iot_provisioning_policy;
 
+enum az_hfsm_event_type_mqtt
+{
+  // HFSM_DESIGN: Start / Stop are not very useful for DPS given that the service offers a single 
+  //              API today: register_device.
+
+  /// Connects the Provisioning HFSM.
+  AZ_IOT_PROVISIONING_START = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 0),
+
+  /// Disconnects the Provisioning HFSM.
+  AZ_IOT_PROVISIONING_STOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 1),
+
+  /// Device Registration Request 
+  AZ_IOT_PROVISIONING_REGISTER_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 2),
+
+  /// Device Registration Response
+  AZ_IOT_PROVISIONING_REGISTER_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 3),
+};
+
 AZ_NODISCARD az_hfsm_iot_provisioning_policy_options
 az_hfsm_iot_provisioning_policy_options_default();
 

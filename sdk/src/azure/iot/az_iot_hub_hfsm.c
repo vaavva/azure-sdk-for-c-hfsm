@@ -19,6 +19,33 @@
 
 #include <azure/core/_az_cfg.h>
 
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
+static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event);
+static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event);
+static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event);
+static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event);
+
+static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
+{
+  az_hfsm_state_handler parent_state;
+
+  if (child_state == root)
+  {
+  parent_state = NULL;
+  }
+  else if (child_state == idle)
+  {
+  parent_state = root;
+  }
+  else
+  {
+  // Unknown state.
+  az_platform_critical_error();
+  parent_state = NULL;
+  }
+
+  return parent_state;
+}
 
 AZ_NODISCARD az_hfsm_iot_hub_policy_options az_hfsm_iot_hub_policy_options_default()
 {
@@ -43,5 +70,154 @@ AZ_NODISCARD az_result az_hfsm_iot_hub_policy_initialize(
 
   policy->_internal.hub_client = hub_client;
 
+  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)policy, root, _get_parent));
+  az_hfsm_transition_substate((az_hfsm*)policy, root, idle);
+
   return AZ_OK;  
 }
+
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+  _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hub/root"));
+  }
+
+  switch (event.type)
+  {
+  case AZ_HFSM_EVENT_ENTRY:
+    // TODO 
+    break;
+
+  case AZ_HFSM_EVENT_EXIT:
+    // TODO 
+    break;
+
+  default:
+    // TODO 
+     ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+    break;
+  }
+
+  return ret;
+}
+
+static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+  _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hub/idle"));
+  }
+
+  switch (event.type)
+  {
+  case AZ_HFSM_EVENT_ENTRY:
+    // TODO 
+    break;
+
+  case AZ_HFSM_EVENT_EXIT:
+    // TODO 
+    break;
+
+  default:
+    // TODO 
+     ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+    break;
+  }
+
+  return ret;
+}
+
+static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+  _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hub/started"));
+  }
+
+  switch (event.type)
+  {
+  case AZ_HFSM_EVENT_ENTRY:
+    // TODO 
+    break;
+
+  case AZ_HFSM_EVENT_EXIT:
+    // TODO 
+    break;
+
+  default:
+    // TODO 
+     ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+    break;
+  }
+
+  return ret;
+}
+
+static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+  _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hub/started/connecting"));
+  }
+
+  switch (event.type)
+  {
+  case AZ_HFSM_EVENT_ENTRY:
+    // TODO 
+    break;
+
+  case AZ_HFSM_EVENT_EXIT:
+    // TODO 
+    break;
+
+  default:
+    // TODO 
+     ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+    break;
+  }
+
+  return ret;
+}
+
+static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+  _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_hub/started/connected"));
+  }
+
+  switch (event.type)
+  {
+  case AZ_HFSM_EVENT_ENTRY:
+    // TODO 
+    break;
+
+  case AZ_HFSM_EVENT_EXIT:
+    // TODO 
+    break;
+
+  default:
+    // TODO 
+     ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+    break;
+  }
+
+  return ret;
+}
+
