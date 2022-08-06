@@ -18,8 +18,10 @@
 #include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+#include <azure/core/az_mqtt.h>
 
 #include <azure/az_iot.h>
+#include <azure/iot/internal/az_iot_retry_hfsm.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -28,7 +30,18 @@
 
 typedef struct
 {
-  int32_t _reserved;
+  az_span topic_buffer;
+  az_span payload_buffer;
+  az_span username_buffer;
+  az_span password_buffer;
+  az_span client_id_buffer;
+  az_hfsm_iot_auth_type auth_type;
+  az_hfsm_iot_auth auth;
+} az_hfsm_iot_provisioning_register_data;
+
+typedef struct
+{
+  int16_t port;
 } az_hfsm_iot_provisioning_policy_options;
 
 typedef struct
@@ -36,13 +49,12 @@ typedef struct
   struct
   {
     az_hfsm_policy policy;
-    az_hfsm_pipeline* pipeline;
     az_iot_provisioning_client* provisioning_client;
     az_hfsm_iot_provisioning_policy_options options;
   } _internal;
 } az_hfsm_iot_provisioning_policy;
 
-enum az_hfsm_event_type_mqtt
+enum az_hfsm_event_type_provisioning_hfsm
 {
   // HFSM_DESIGN: Start / Stop are not very useful for DPS given that the service offers a single 
   //              API today: register_device.

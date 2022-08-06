@@ -33,7 +33,6 @@ typedef struct
   struct
   {
     az_hfsm_policy policy;
-    az_hfsm_pipeline* pipeline;
     az_iot_hub_client* hub_client;
     az_hfsm_iot_hub_policy_options options;
   } _internal;

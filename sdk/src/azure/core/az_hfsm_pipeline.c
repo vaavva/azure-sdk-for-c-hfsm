@@ -37,6 +37,21 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
   return AZ_OK;
 }
 
+void az_hfsm_pipeline_error_handler(az_hfsm_policy* policy, az_result rc)
+{
+  if (az_result_failed(rc))
+  {
+    az_hfsm_event_data_error d = { .error_type = rc };
+    az_result ret = az_hfsm_pipeline_post_inbound_event(
+        policy->pipeline, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
+
+    if (az_result_failed(ret))
+    {
+      az_platform_critical_error();
+    }
+  }
+}
+
 // HFSM_TODO: Implement a sync version of the pipeline.
 // HFSM_DESIGN: Add a base-class for az_hfsm_event_data containing the size. Event data will need to
 //              either be pre-allocated by the application or copied into a queue/mailbox and

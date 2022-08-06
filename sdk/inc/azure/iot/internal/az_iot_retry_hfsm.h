@@ -60,7 +60,6 @@ typedef struct
   struct
   {
     az_hfsm_policy policy;
-    az_hfsm_pipeline* pipeline;
 
     az_hfsm_iot_auth_type auth_type;
     az_hfsm_iot_auth primary_credential;

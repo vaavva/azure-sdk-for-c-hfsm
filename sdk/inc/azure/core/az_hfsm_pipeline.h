@@ -26,6 +26,8 @@
 // Definition is below.
 typedef struct az_hfsm_policy az_hfsm_policy;
 
+typedef struct az_hfsm_pipeline az_hfsm_pipeline;
+
 /**
  * @brief The type representing a HFSM with dispatch capabilities. Derived from #az_hfsm.
  *
@@ -35,13 +37,14 @@ struct az_hfsm_policy
   az_hfsm hfsm; // Must be the first element to properly cast the struct to az_hfsm.
   az_hfsm_policy* inbound;
   az_hfsm_policy* outbound;
+  az_hfsm_pipeline* pipeline;
 };
 
 /**
  * @brief Internal definition of an MQTT pipeline.
  *
  */
-typedef struct
+struct az_hfsm_pipeline
 {
   struct
   {
@@ -49,7 +52,7 @@ typedef struct
     az_hfsm_policy* inbound_handler;
     az_platform_mutex mutex;
   } _internal;
-} az_hfsm_pipeline;
+};
 
 AZ_NODISCARD az_result az_hfsm_pipeline_init(
     az_hfsm_pipeline* pipeline,
@@ -73,5 +76,7 @@ AZ_NODISCARD az_result az_hfsm_pipeline_post_inbound_event(
 AZ_NODISCARD az_result az_hfsm_pipeline_post_outbound_event(
     az_hfsm_pipeline* pipeline,
     az_hfsm_event const event);
+
+void az_hfsm_pipeline_error_handler(az_hfsm_policy* policy, az_result rc);
 
 #endif //_az_HFSM_PIPELINE_H

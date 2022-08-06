@@ -63,7 +63,7 @@ AZ_INLINE void _az_mosquitto_error_adapter(az_hfsm_mqtt_policy* me, int rc)
     _az_result_error_handler(
         me,
         az_hfsm_pipeline_post_inbound_event(
-            me->_internal.pipeline, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d }));
+            me->_internal.policy.pipeline, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d }));
   }
 }
 
@@ -84,7 +84,7 @@ AZ_NODISCARD az_result az_mqtt_initialize(
       = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
 
 
-  mqtt_policy->_internal.pipeline = pipeline;
+  mqtt_policy->_internal.policy.pipeline = pipeline;
 
   _az_PRECONDITION_NOT_NULL(inbound_policy);
   mqtt_policy->_internal.policy.inbound = inbound_policy;
@@ -151,7 +151,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
   _az_result_error_handler(
       me,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.pipeline,
+          me->_internal.policy.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_RSP,
                            &(az_hfsm_mqtt_connack_data){ reason_code } }));
 }
@@ -164,7 +164,7 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
   _az_result_error_handler(
       me,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.pipeline,
+          me->_internal.policy.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP,
                            &(az_hfsm_mqtt_disconnect_data){ .disconnect_reason = rc,
                                                             .disconnect_requested = (rc == 0) } }));
@@ -183,7 +183,7 @@ static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
   _az_result_error_handler(
       me,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.pipeline,
+          me->_internal.policy.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUBACK_RSP, &(az_hfsm_mqtt_puback_data){ mid } }));
 }
 
@@ -203,7 +203,7 @@ static void _az_mosqitto_on_subscribe(
   _az_result_error_handler(
       me,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.pipeline,
+          me->_internal.policy.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUBACK_RSP, &(az_hfsm_mqtt_suback_data){ mid } }));
 }
 
@@ -228,7 +228,7 @@ static void _az_mosquitto_on_message(
   _az_result_error_handler(
       me,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.pipeline,
+          me->_internal.policy.pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
                            &(az_hfsm_mqtt_recv_data){
                                .qos = (int8_t)message->qos,

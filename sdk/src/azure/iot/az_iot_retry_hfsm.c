@@ -40,7 +40,7 @@ AZ_NODISCARD az_result az_hfsm_iot_retry_policy_initialize(
     = options == NULL ? az_hfsm_iot_retry_policy_options_default() : *options;
 
   policy->_internal.policy.outbound = outbound_policy;
-  policy->_internal.pipeline = pipeline;
+  policy->_internal.policy.pipeline = pipeline;
 
   policy->_internal.auth_type = auth_type;
   policy->_internal.primary_credential = *primary_credential;
