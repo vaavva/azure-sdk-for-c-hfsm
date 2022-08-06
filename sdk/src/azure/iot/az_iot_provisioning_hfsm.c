@@ -466,16 +466,11 @@ static az_hfsm_return_type wait_register(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
-    case AZ_HFSM_EVENT_ENTRY:
-      // TODO
-      break;
-
-    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
       // TODO
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -496,16 +491,11 @@ static az_hfsm_return_type delay(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
-    case AZ_HFSM_EVENT_ENTRY:
-      // TODO
-      break;
-
-    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_EVENT_TIMEOUT:
       // TODO
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -526,16 +516,11 @@ static az_hfsm_return_type query(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
-    case AZ_HFSM_EVENT_ENTRY:
-      // TODO
-      break;
-
-    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
       // TODO
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
