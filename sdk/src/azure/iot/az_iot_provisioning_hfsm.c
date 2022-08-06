@@ -136,6 +136,10 @@ AZ_INLINE void _dps_connect(
     az_hfsm_iot_provisioning_policy* me,
     az_hfsm_iot_provisioning_register_data* data)
 {
+  // Cache topic and payload buffers for later use.
+  me->_internal.topic_buffer = data->topic_buffer;
+  me->_internal.payload_buffer = data->payload_buffer;
+
   az_hfsm_mqtt_connect_data connect_data;
   connect_data.host = me->_internal.provisioning_client->_internal.global_device_endpoint;
   connect_data.port = me->_internal.options.port;
@@ -360,8 +364,8 @@ AZ_INLINE void _dps_register(az_hfsm_iot_provisioning_policy* me)
       (az_hfsm_policy*)me,
       az_iot_provisioning_client_register_get_publish_topic(
           me->_internal.provisioning_client,
-          az_span_ptr(me->_internal.topic_buffer),
-          az_span_size(me->_internal.topic_buffer),
+          (char*)az_span_ptr(me->_internal.topic_buffer),
+          (size_t)az_span_size(me->_internal.topic_buffer),
           &buffer_size));
 
   // HFSM_TODO: Payload

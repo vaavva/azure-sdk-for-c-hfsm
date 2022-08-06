@@ -16,9 +16,9 @@
 #include <azure/core/az_config.h>
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_hfsm_pipeline.h>
+#include <azure/core/az_mqtt.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-#include <azure/core/az_mqtt.h>
 
 #include <azure/az_iot.h>
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
@@ -30,14 +30,17 @@
 
 typedef struct
 {
-  az_span topic_buffer;
-  az_span payload_buffer;
   az_span username_buffer;
   az_span password_buffer;
   az_span client_id_buffer;
   az_hfsm_iot_auth_type auth_type;
   az_hfsm_iot_auth auth;
+  az_span topic_buffer;
+  az_span payload_buffer;
 } az_hfsm_iot_provisioning_register_data;
+
+typedef az_iot_provisioning_client_register_response
+    az_hfsm_iot_provisioning_register_response_data;
 
 typedef struct
 {
@@ -51,12 +54,15 @@ typedef struct
     az_hfsm_policy policy;
     az_iot_provisioning_client* provisioning_client;
     az_hfsm_iot_provisioning_policy_options options;
+
+    az_span topic_buffer;
+    az_span payload_buffer;
   } _internal;
 } az_hfsm_iot_provisioning_policy;
 
 enum az_hfsm_event_type_provisioning_hfsm
 {
-  // HFSM_DESIGN: Start / Stop are not very useful for DPS given that the service offers a single 
+  // HFSM_DESIGN: Start / Stop are not very useful for DPS given that the service offers a single
   //              API today: register_device.
 
   /// Connects the Provisioning HFSM.
@@ -65,7 +71,7 @@ enum az_hfsm_event_type_provisioning_hfsm
   /// Disconnects the Provisioning HFSM.
   AZ_IOT_PROVISIONING_STOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 1),
 
-  /// Device Registration Request 
+  /// Device Registration Request
   AZ_IOT_PROVISIONING_REGISTER_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 2),
 
   /// Device Registration Response
