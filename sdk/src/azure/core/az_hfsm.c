@@ -94,6 +94,8 @@ void az_hfsm_transition_substate(
 
   // Transitions to sub-states will not exit the super-state:
   h->_internal.current_state = destination_state;
+
+  // All state handlers must handle ENTER/EXIT events.
   _az_PRECONDITION(AZ_HFSM_RETURN_HANDLED == h->_internal.current_state(h, az_hfsm_event_entry));
 }
 

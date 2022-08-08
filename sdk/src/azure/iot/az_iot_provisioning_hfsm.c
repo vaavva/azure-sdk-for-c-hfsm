@@ -282,6 +282,11 @@ static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+      
     case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
     {
       az_hfsm_mqtt_connack_data* data = (az_hfsm_mqtt_connack_data*)event.data;
@@ -320,6 +325,11 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+
     case AZ_IOT_PROVISIONING_STOP:
       _dps_disconnect(this_policy);
       break;
@@ -344,6 +354,11 @@ static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+
     case AZ_IOT_PROVISIONING_STOP:
       // No-op.
       break;
@@ -422,6 +437,11 @@ static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+
     default:
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
@@ -444,6 +464,11 @@ static az_hfsm_return_type start_register(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
       az_hfsm_transition_peer(me, start_register, wait_register);
       break;
@@ -470,6 +495,11 @@ static az_hfsm_return_type wait_register(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
       // TODO
       break;
@@ -495,6 +525,11 @@ static az_hfsm_return_type delay(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+
     case AZ_HFSM_EVENT_TIMEOUT:
       // TODO
       break;
@@ -520,6 +555,11 @@ static az_hfsm_return_type query(az_hfsm* me, az_hfsm_event event)
 
   switch (event.type)
   {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      //No-op.
+      break;
+      
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
       // TODO
       break;

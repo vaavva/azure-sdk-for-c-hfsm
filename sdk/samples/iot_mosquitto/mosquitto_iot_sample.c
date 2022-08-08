@@ -83,6 +83,9 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_LOG_HFSM_MQTT_STACK:
       class_str = "AZ_LOG_HFSM_MQTT_STACK";
       break;
+    case AZ_IOT_PROVISIONING_REGISTER_REQ:
+      class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
+      break;
     default:
       class_str = NULL;
   }
@@ -116,29 +119,79 @@ void az_platform_critical_error()
     ;
 }
 
-// Pipeline
-static az_hfsm_pipeline pipeline;
-
-// Inbound policy
-static az_hfsm_mqtt_policy mqtt_policy;
-
-// Hub
-static az_hfsm_iot_hub_policy hub_policy;
-static az_iot_hub_client hub_client;
-
 // Provisioning
+static az_hfsm_pipeline prov_pipeline;
 static az_hfsm_iot_provisioning_policy prov_policy;
 static az_iot_provisioning_client prov_client;
+static az_hfsm_mqtt_policy prov_mqtt_policy;
+
+// Hub
+static az_hfsm_pipeline hub_pipeline;
+static az_hfsm_iot_hub_policy hub_policy;
+static az_iot_hub_client hub_client;
+static az_hfsm_mqtt_policy hub_mqtt_policy;
 
 // Retry & endpoint orchestrator
 static az_hfsm_iot_retry_policy retry_policy;
 
-static az_result initialize()
+static az_result prov_initialize()
+{
+  // TODO: temporary start with DPS
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
+      &prov_pipeline, (az_hfsm_policy*)&prov_policy, (az_hfsm_policy*)&prov_mqtt_policy));
+
+  _az_RETURN_IF_FAILED(
+      az_iot_provisioning_client_init(&prov_client, dps_endpoint, id_scope, device_id, NULL));
+
+  _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
+      &prov_policy,
+      &prov_pipeline,
+      NULL, // TODO: temporary
+      (az_hfsm_policy*)&prov_mqtt_policy,
+      &prov_client,
+      NULL));
+
+  // MQTT
+  az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
+  mqtt_options.certificate_authority_trusted_roots = ca_path;
+
+  _az_RETURN_IF_FAILED(az_mqtt_initialize(
+      &prov_mqtt_policy, &prov_pipeline, (az_hfsm_policy*)&prov_policy, &mqtt_options));
+
+  return AZ_OK;
+}
+
+static az_result hub_initialize()
 {
   hub_endpoint = AZ_SPAN_FROM_BUFFER(hub_endpoint_buffer);
 
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
-      &pipeline, (az_hfsm_policy*)&retry_policy, (az_hfsm_policy*)&mqtt_policy));
+      &hub_pipeline, (az_hfsm_policy*)&retry_policy, (az_hfsm_policy*)&hub_mqtt_policy));
+
+  _az_RETURN_IF_FAILED(az_iot_hub_client_init(&hub_client, hub_endpoint, device_id, NULL));
+
+  _az_RETURN_IF_FAILED(az_hfsm_iot_hub_policy_initialize(
+      &hub_policy,
+      &hub_pipeline,
+      (az_hfsm_policy*)&hub_mqtt_policy,
+      (az_hfsm_policy*)&retry_policy,
+      &hub_client,
+      NULL));
+
+  // MQTT
+  az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
+  mqtt_options.certificate_authority_trusted_roots = ca_path;
+
+  _az_RETURN_IF_FAILED(az_mqtt_initialize(
+      &hub_mqtt_policy, &hub_pipeline, (az_hfsm_policy*)&hub_policy, &mqtt_options));
+
+  return AZ_OK;
+}
+
+static az_result initialize()
+{
+  _az_RETURN_IF_FAILED(prov_initialize());
+  _az_RETURN_IF_FAILED(hub_initialize());
 
   // Retry
   az_hfsm_iot_auth primary_cred;
@@ -150,41 +203,11 @@ static az_result initialize()
 
   _az_RETURN_IF_FAILED(az_hfsm_iot_retry_policy_initialize(
       &retry_policy,
-      &pipeline,
+      &prov_pipeline,
       (az_hfsm_policy*)&prov_policy,
       AZ_HFSM_IOT_AUTH_X509,
       &primary_cred,
       &retry_options));
-
-  // DPS
-  _az_RETURN_IF_FAILED(
-      az_iot_provisioning_client_init(&prov_client, dps_endpoint, id_scope, device_id, NULL));
-
-  _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
-      &prov_policy,
-      &pipeline,
-      (az_hfsm_policy*)&hub_policy,
-      (az_hfsm_policy*)&retry_policy,
-      &prov_client,
-      NULL));
-
-  // HUB
-  _az_RETURN_IF_FAILED(az_iot_hub_client_init(&hub_client, hub_endpoint, device_id, NULL));
-
-  _az_RETURN_IF_FAILED(az_hfsm_iot_hub_policy_initialize(
-      &hub_policy,
-      &pipeline,
-      (az_hfsm_policy*)&mqtt_policy,
-      (az_hfsm_policy*)&prov_policy,
-      &hub_client,
-      NULL));
-
-  // MQTT
-  az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
-  mqtt_options.certificate_authority_trusted_roots = ca_path;
-
-  _az_RETURN_IF_FAILED(
-      az_mqtt_initialize(&mqtt_policy, &pipeline, (az_hfsm_policy*)&hub_policy, &mqtt_options));
 
   return AZ_OK;
 }
@@ -199,10 +222,33 @@ int main(int argc, char* argv[])
   mosquitto_lib_init();
   printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
 
-  _az_RETURN_IF_FAILED(initialize());
-
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
+
+  _az_RETURN_IF_FAILED(initialize());
+
+  az_hfsm_iot_x509_auth auth = (az_hfsm_iot_x509_auth){
+    .cert = cert_path1,
+    .key = key_path1,
+  };
+
+  char client_id_buffer[64];
+  char username_buffer[128];
+  char password_buffer[1];
+  char topic_buffer[128];
+  char payload_buffer[256];
+
+  az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
+    .auth = auth,
+    .auth_type = AZ_HFSM_IOT_AUTH_X509,
+    .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
+    .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
+    .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
+    .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
+    .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
+  };
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+      &prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ, &register_data }));
 
   for (int i = 15; i > 0; i--)
   {
@@ -211,5 +257,6 @@ int main(int argc, char* argv[])
     fflush(stdout);
   }
 
-  return mosquitto_lib_cleanup();;
+  return mosquitto_lib_cleanup();
+  ;
 }
