@@ -362,7 +362,7 @@ static void send_operation_query_message(
   }
 
   // IMPORTANT: Wait the recommended retry-after number of seconds before query.
-  IOT_SAMPLE_LOG("Querying after %u seconds...", register_response->retry_after_seconds);
+  IOT_SAMPLE_LOG("Querying after %u seconds... ", register_response->retry_after_seconds);
   iot_sample_sleep_for_seconds(register_response->retry_after_seconds);
 
   // Publish the query status request.

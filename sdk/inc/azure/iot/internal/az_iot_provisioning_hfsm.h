@@ -57,6 +57,7 @@ typedef struct
 
     az_span topic_buffer;
     az_span payload_buffer;
+    az_iot_provisioning_client_register_response register_response;
   } _internal;
 } az_hfsm_iot_provisioning_policy;
 
