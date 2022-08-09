@@ -36,6 +36,9 @@ enum
 
   // SAS Token Lifetime in minutes
   AZ_IOT_SAS_TOKEN_LIFETIME_MINUTES = 60,
+
+  // DPS Minimum Retry in seconds.
+  AZ_IOT_PROVISIONING_RETRY_MINIMUM_TIMEOUT_SECONDS = 3,
 };
 
 #include <azure/core/_az_cfg_suffix.h>

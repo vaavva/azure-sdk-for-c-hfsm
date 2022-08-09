@@ -52,6 +52,27 @@ void az_hfsm_pipeline_error_handler(az_hfsm_policy* policy, az_result rc)
   }
 }
 
+static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
+{
+  az_hfsm_pipeline_timer* timer = (az_hfsm_pipeline_timer*)sdk_data;
+
+  az_hfsm_pipeline_error_handler(
+      timer->_internal.pipeline->_internal.outbound_handler,
+      az_hfsm_pipeline_post_outbound_event(
+          timer->_internal.pipeline,
+          (az_hfsm_event){ .type = AZ_HFSM_EVENT_TIMEOUT,
+                           .data = timer }));
+}
+
+AZ_NODISCARD az_result
+az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer* out_timer)
+{
+  out_timer->_internal.pipeline = pipeline;
+
+  return az_platform_timer_create(
+      &out_timer->platform_timer, _az_hfsm_pipeline_timer_callback, out_timer);
+}
+
 // HFSM_TODO: Implement a sync version of the pipeline.
 // HFSM_DESIGN: Add a base-class for az_hfsm_event_data containing the size. Event data will need to
 //              either be pre-allocated by the application or copied into a queue/mailbox and
