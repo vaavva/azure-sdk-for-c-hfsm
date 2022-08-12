@@ -103,26 +103,44 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+      // No-op.
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      // TODO
-      break;
-
     default:
-      // TODO
-      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
+      {
+        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_hub/root: PANIC!"));
+      }
+
+      az_platform_critical_error();
       break;
   }
 
   return ret;
 }
 
+AZ_INLINE void _hub_invalid_state(az_hfsm_iot_hub_policy* me)
+{
+  az_hfsm_event_data_error error_data
+      = (az_hfsm_event_data_error){ .error_type = AZ_ERROR_HFSM_INVALID_STATE };
+
+  az_hfsm_send_event(
+      (az_hfsm*)me->_internal.policy.outbound,
+      (az_hfsm_event){ .type = AZ_HFSM_EVENT_ERROR, .data = &error_data });
+}
+
+AZ_INLINE void _hub_connect(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_connect_data* data)
+{
+  // TODO
+  (void)me;
+  (void)data;
+}
+
 static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  (void)me;
+  az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -132,15 +150,23 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
       break;
 
-    case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+    case AZ_IOT_HUB_TELEMETRY_REQ:
+    case AZ_IOT_HUB_METHODS_RSP:
+      _hub_invalid_state(this_policy);
+      break;
+
+    case AZ_IOT_HUB_CONNECT_REQ:
+      az_hfsm_transition_peer(me, idle, started);
+      az_hfsm_transition_substate(me, started, connecting);
+      _hub_connect(this_policy, (az_hfsm_iot_hub_connect_data*)event.data);
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -248,15 +274,15 @@ static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO 
+      // TODO
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      // TODO 
+      // TODO
       break;
 
     default:
-      // TODO 
+      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }

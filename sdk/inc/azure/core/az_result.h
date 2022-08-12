@@ -141,6 +141,9 @@ enum az_result_core
   // === HTTP Adapter error codes ===
   /// Generic error in the HTTP transport adapter implementation.
   AZ_ERROR_HTTP_ADAPTER = _az_RESULT_MAKE_ERROR(_az_FACILITY_CORE_HTTP, 9),
+
+  /// The state is invalid for this signal.
+  AZ_ERROR_HFSM_INVALID_STATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
 };
 
 /**

@@ -16,7 +16,7 @@
 #include "mosquitto.h"
 
 #define TEMP_PROVISIONING
-#define TEMP_HUB
+// TODO : #define TEMP_HUB
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
@@ -31,6 +31,12 @@ static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/d
 
 static const az_span cert_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
 static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+
+static char client_id_buffer[64];
+static char username_buffer[128];
+static char password_buffer[1];
+static char topic_buffer[128];
+static char payload_buffer[256];
 
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
@@ -215,6 +221,9 @@ static az_result initialize()
       (az_hfsm_policy*)&prov_policy,
       AZ_HFSM_IOT_AUTH_X509,
       &primary_cred,
+      AZ_SPAN_FROM_BUFFER(username_buffer),
+      AZ_SPAN_FROM_BUFFER(password_buffer),
+      AZ_SPAN_FROM_BUFFER(client_id_buffer),
       &retry_options));
 
   return AZ_OK;
@@ -240,12 +249,6 @@ int main(int argc, char* argv[])
     .key = key_path1,
   };
 
-  char client_id_buffer[64];
-  char username_buffer[128];
-  char password_buffer[1];
-  char topic_buffer[128];
-  char payload_buffer[256];
-
 #ifdef TEMP_PROVISIONING
   az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
     .auth = auth,
@@ -269,7 +272,7 @@ int main(int argc, char* argv[])
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
   };
 
-  
+
 
 
 #endif
