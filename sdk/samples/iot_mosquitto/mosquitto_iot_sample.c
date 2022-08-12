@@ -15,6 +15,9 @@
 
 #include "mosquitto.h"
 
+#define TEMP_PROVISIONING
+#define TEMP_HUB
+
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
 static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
@@ -198,7 +201,6 @@ static az_result initialize()
 {
   _az_RETURN_IF_FAILED(prov_initialize());
   _az_RETURN_IF_FAILED(hub_initialize());
-
   // Retry
   az_hfsm_iot_auth primary_cred;
   primary_cred.x509 = (az_hfsm_iot_x509_auth){ .cert = cert_path1, .key = key_path1 };
@@ -244,6 +246,7 @@ int main(int argc, char* argv[])
   char topic_buffer[128];
   char payload_buffer[256];
 
+#ifdef TEMP_PROVISIONING
   az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
     .auth = auth,
     .auth_type = AZ_HFSM_IOT_AUTH_X509,
@@ -255,6 +258,21 @@ int main(int argc, char* argv[])
   };
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
       &prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ, &register_data }));
+#endif
+
+#ifdef TEMP_HUB
+  az_hfsm_iot_hub_connect_data connect_data = (az_hfsm_iot_hub_connect_data){
+    .auth = auth,
+    .auth_type = AZ_HFSM_IOT_AUTH_X509,
+    .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
+    .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
+    .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
+  };
+
+  
+
+
+#endif
 
   for (int i = 15; i > 0; i--)
   {

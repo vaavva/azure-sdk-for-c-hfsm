@@ -195,7 +195,7 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
-    case AZ_IOT_PROVISIONING_STOP:
+    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
       // No-op.
       break;
 
@@ -237,7 +237,7 @@ static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_STOP:
+    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
       az_hfsm_transition_substate(me, started, disconnecting);
       _dps_disconnect(this_policy);
       break;
@@ -330,7 +330,7 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_STOP:
+    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
       _dps_disconnect(this_policy);
       break;
 
@@ -359,7 +359,7 @@ static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_STOP:
+    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
       // No-op.
       break;
 

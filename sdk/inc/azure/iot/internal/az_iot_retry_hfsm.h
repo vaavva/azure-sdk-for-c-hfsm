@@ -36,6 +36,9 @@ typedef struct
 typedef struct
 {
   az_span shared_access_key;
+  az_span unencrypted_sas_buffer;
+  // HFSM_DESIGN: The application must implement an AZ_HFSM_HMACSHA256_EVENT_REQ and 
+  //              send a AZ_HFSM_HMACSHA256_EVENT_RSP to the state machine.
 } az_hfsm_iot_sas_auth;
 
 typedef union
@@ -65,11 +68,22 @@ typedef struct
     az_hfsm_iot_auth primary_credential;
 
     // Alloc objects
-    az_hfsm_mqtt_connect_data connect_data;
+    az_span username_buffer;
+    az_span password_buffer;
+    az_span client_id_buffer;
 
     az_hfsm_iot_retry_policy_options options;
   } _internal;
 } az_hfsm_iot_retry_policy;
+
+enum az_hfsm_event_type_iot_hfsm
+{
+  /// Connection control
+  AZ_IOT_CONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_HFSM, 0),
+  AZ_IOT_CONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_HFSM, 1),
+  AZ_IOT_DISCONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_HFSM, 2),
+  AZ_IOT_DISCONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_HFSM, 3),
+};
 
 AZ_NODISCARD az_hfsm_iot_retry_policy_options az_hfsm_iot_retry_policy_options_default();
 
@@ -79,6 +93,9 @@ AZ_NODISCARD az_result az_hfsm_iot_retry_policy_initialize(
     az_hfsm_policy* outbound_policy,
     az_hfsm_iot_auth_type auth_type,
     az_hfsm_iot_auth* primary_credential,
+    az_span username_buffer,
+    az_span password_buffer,
+    az_span client_id_buffer,
     az_hfsm_iot_retry_policy_options const* options);
 
 #endif //_az_IOT_RETRY_HFSM_H
