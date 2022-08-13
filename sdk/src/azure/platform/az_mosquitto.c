@@ -136,6 +136,30 @@ AZ_NODISCARD az_result az_mqtt_sub_data_destroy(az_hfsm_mqtt_sub_data* data)
   return AZ_OK;
 }
 
+AZ_NODISCARD az_result az_mqtt_init()
+{
+  az_result ret = AZ_OK;
+
+  if (MOSQ_ERR_SUCCESS != mosquitto_lib_init())
+  {
+    ret = AZ_ERROR_MQTT_INIT;
+  }
+
+  return ret;
+}
+
+AZ_NODISCARD az_result az_mqtt_deinit()
+{
+  az_result ret = AZ_OK;
+
+  if (MOSQ_ERR_SUCCESS != mosquitto_lib_cleanup())
+  {
+    ret = AZ_ERROR_MQTT_INIT;
+  }
+
+  return ret;
+}
+
 static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
   az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;

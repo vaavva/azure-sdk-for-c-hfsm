@@ -236,7 +236,7 @@ int main(int argc, char* argv[])
   (void)argv;
 
   /* Required before calling other mosquitto functions */
-  mosquitto_lib_init();
+  _az_RETURN_IF_FAILED(az_mqtt_init());
   printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
 
   az_log_set_message_callback(az_sdk_log_callback);
@@ -271,10 +271,6 @@ int main(int argc, char* argv[])
     .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
   };
-
-
-
-
 #endif
 
   for (int i = 15; i > 0; i--)
@@ -284,6 +280,8 @@ int main(int argc, char* argv[])
     fflush(stdout);
   }
 
-  return mosquitto_lib_cleanup();
-  ;
+
+  _az_RETURN_IF_FAILED(az_mqtt_deinit());
+
+  return 0;
 }

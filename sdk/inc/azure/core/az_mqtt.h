@@ -219,8 +219,8 @@ AZ_NODISCARD az_result az_mqtt_sub_data_destroy(az_hfsm_mqtt_sub_data* data);
 
 
 // HFSM_TODO: Common way for init-once items such as mosquitto_lib_init();
-AZ_NODISCARD az_result az_mqtt_init_once();
-AZ_NODISCARD az_result az_mqtt_deinit_once();
+AZ_NODISCARD az_result az_mqtt_init();
+AZ_NODISCARD az_result az_mqtt_deinit();
 
 #include <azure/core/_az_cfg_suffix.h>
 

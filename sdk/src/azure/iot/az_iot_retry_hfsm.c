@@ -34,6 +34,9 @@ AZ_NODISCARD az_result az_hfsm_iot_retry_policy_initialize(
     az_hfsm_policy* outbound_policy,
     az_hfsm_iot_auth_type auth_type,
     az_hfsm_iot_auth* primary_credential,
+    az_span username_buffer,
+    az_span password_buffer,
+    az_span client_id_buffer,
     az_hfsm_iot_retry_policy_options const* options)
 {
   policy->_internal.options
@@ -44,6 +47,9 @@ AZ_NODISCARD az_result az_hfsm_iot_retry_policy_initialize(
 
   policy->_internal.auth_type = auth_type;
   policy->_internal.primary_credential = *primary_credential;
+  policy->_internal.username_buffer = username_buffer;
+  policy->_internal.password_buffer = password_buffer;
+  policy->_internal.client_id_buffer = client_id_buffer;
 
   return AZ_OK;
 }

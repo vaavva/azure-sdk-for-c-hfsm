@@ -144,6 +144,9 @@ enum az_result_core
 
   /// The state is invalid for this signal.
   AZ_ERROR_HFSM_INVALID_STATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
+
+  /// MQTT initialization error.
+  AZ_ERROR_MQTT_INIT = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, 0),
 };
 
 /**
