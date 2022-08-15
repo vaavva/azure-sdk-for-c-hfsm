@@ -47,7 +47,7 @@ static void _az_hfsm_recursive_exit(az_hfsm* h, az_hfsm_state_handler source_sta
   // Super-state handler making a transition must exit all substates:
   while (source_state != h->_internal.current_state)
   {
-    // A top-level state is mandatory to ensure an LCA exists.
+    // A top-level state is mandatory to ensure an Least Common Ancestor exists.
     _az_PRECONDITION_NOT_NULL(h->_internal.current_state);
 
     _az_PRECONDITION(AZ_HFSM_RETURN_HANDLED == h->_internal.current_state(h, az_hfsm_event_exit));

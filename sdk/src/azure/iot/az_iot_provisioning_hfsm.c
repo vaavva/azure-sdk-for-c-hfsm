@@ -152,7 +152,7 @@ AZ_INLINE void _dps_connect(
   }
   else
   {
-    // HFSM_TODO: not implemented.
+    // HFSM_TODO: SAS not implemented.
     az_platform_critical_error();
   }
 
