@@ -144,16 +144,19 @@ AZ_INLINE void _dps_connect(
   connect_data.host = me->_internal.provisioning_client->_internal.global_device_endpoint;
   connect_data.port = me->_internal.options.port;
 
-  if (data->auth_type == AZ_HFSM_IOT_AUTH_X509)
+  switch (data->auth_type)
   {
+  case AZ_HFSM_IOT_AUTH_X509:
     connect_data.client_certificate = data->auth.x509.cert;
     connect_data.client_private_key = data->auth.x509.key;
     connect_data.password = AZ_SPAN_EMPTY;
-  }
-  else
-  {
+    break;
+  
+  case AZ_HFSM_IOT_AUTH_SAS:
+  default:
     // HFSM_TODO: SAS not implemented.
     az_platform_critical_error();
+    break;
   }
 
   size_t buffer_size;
@@ -316,8 +319,8 @@ static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
 static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
-
+  (void)me;
+  
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
     _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/started/connected"));
@@ -328,10 +331,6 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
       // No-op.
-      break;
-
-    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
-      _dps_disconnect(this_policy);
       break;
 
     default:
@@ -356,9 +355,6 @@ static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
-      // No-op.
-      break;
-
     case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
       // No-op.
       break;

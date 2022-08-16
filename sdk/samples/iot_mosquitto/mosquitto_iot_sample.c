@@ -15,15 +15,20 @@
 
 #include "mosquitto.h"
 
-#define TEMP_PROVISIONING
-// TODO : #define TEMP_HUB
+// #define TEMP_PROVISIONING
+#define TEMP_HUB
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
 static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
 static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
+
+#ifdef TEMP_PROVISIONING
 static char hub_endpoint_buffer[120];
 static az_span hub_endpoint;
+#else
+static az_span hub_endpoint = AZ_SPAN_LITERAL_FROM_STR("crispop-iothub1.azure-devices.net");
+#endif
 static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
 
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
@@ -100,6 +105,27 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
       break;
     case AZ_IOT_PROVISIONING_REGISTER_REQ:
       class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
+      break;
+    case AZ_IOT_HUB_CONNECT_REQ:
+      class_str = "AZ_IOT_HUB_CONNECT_REQ";
+      break;
+    case AZ_IOT_HUB_CONNECT_RSP:
+      class_str = "AZ_IOT_HUB_CONNECT_RSP";
+      break;
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+      class_str = "AZ_IOT_HUB_DISCONNECT_REQ";
+      break;
+    case AZ_IOT_HUB_DISCONNECT_RSP:
+      class_str = "AZ_IOT_HUB_DISCONNECT_RSP";
+      break;
+    case AZ_IOT_HUB_TELEMETRY_REQ:
+      class_str = "AZ_IOT_HUB_TELEMETRY_REQ";
+      break;
+    case AZ_IOT_HUB_METHODS_REQ:
+      class_str = "AZ_IOT_HUB_METHODS_REQ";
+      break;
+    case AZ_IOT_HUB_METHODS_RSP:
+      class_str = "AZ_IOT_HUB_METHODS_RSP";
       break;
     default:
       class_str = NULL;
@@ -178,20 +204,17 @@ static az_result prov_initialize()
 
 static az_result hub_initialize()
 {
+#ifdef TEMP_PROVISIONING
   hub_endpoint = AZ_SPAN_FROM_BUFFER(hub_endpoint_buffer);
+#endif
 
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
-      &hub_pipeline, (az_hfsm_policy*)&retry_policy, (az_hfsm_policy*)&hub_mqtt_policy));
+      &hub_pipeline, (az_hfsm_policy*)&hub_policy, (az_hfsm_policy*)&hub_mqtt_policy));
 
   _az_RETURN_IF_FAILED(az_iot_hub_client_init(&hub_client, hub_endpoint, device_id, NULL));
 
   _az_RETURN_IF_FAILED(az_hfsm_iot_hub_policy_initialize(
-      &hub_policy,
-      &hub_pipeline,
-      (az_hfsm_policy*)&hub_mqtt_policy,
-      (az_hfsm_policy*)&retry_policy,
-      &hub_client,
-      NULL));
+      &hub_policy, &hub_pipeline, NULL, (az_hfsm_policy*)&hub_mqtt_policy, &hub_client, NULL));
 
   // MQTT
   az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
@@ -272,6 +295,12 @@ int main(int argc, char* argv[])
     .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
   };
+
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+      &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data }));
+
+  (void)topic_buffer;
+  (void)payload_buffer;
 #endif
 
   for (int i = 15; i > 0; i--)
@@ -279,8 +308,30 @@ int main(int argc, char* argv[])
     _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
+
+    if (i % 5 == 0)
+    {
+      az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
+        .data = AZ_SPAN_LITERAL_FROM_STR("\000\001\002\003"),
+        .out_packet_id = 0,
+        .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
+        .properties = NULL,
+      };
+
+      _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+          &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data }));
+    }
   }
 
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+      &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_DISCONNECT_REQ, NULL }));
+
+  for (int i = 5; i > 0; i--)
+  {
+    _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
+    printf(LOG_APP "Waiting %ds        \r", i);
+    fflush(stdout);
+  }
 
   _az_RETURN_IF_FAILED(az_mqtt_deinit());
 

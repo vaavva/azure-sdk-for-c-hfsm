@@ -38,10 +38,9 @@ typedef struct
 {
   az_span data;
   az_iot_message_properties* properties;
+  int32_t out_packet_id;
 
   az_span topic_buffer;
-  az_span payload_buffer;
-  int32_t out_packet_id;
 } az_hfsm_iot_hub_telemetry_data;
 
 typedef az_iot_hub_client_method_request az_hfsm_iot_hub_method_request_data;
@@ -50,13 +49,14 @@ typedef struct
 {
   az_span request_id;
   uint16_t status; 
+  az_span payload;
 
   az_span topic_buffer;
 } az_hfsm_iot_hub_method_response_data;
 
 typedef struct
 {
-  int32_t _reserved;
+  int16_t port;
 } az_hfsm_iot_hub_policy_options;
 
 typedef struct

@@ -64,7 +64,7 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
 
 AZ_NODISCARD az_hfsm_iot_hub_policy_options az_hfsm_iot_hub_policy_options_default()
 {
-  return (az_hfsm_iot_hub_policy_options){ ._reserved = 0 };
+  return (az_hfsm_iot_hub_policy_options){ .port = AZ_IOT_DEFAULT_MQTT_CONNECT_PORT };
 }
 
 AZ_NODISCARD az_result az_hfsm_iot_hub_policy_initialize(
@@ -132,9 +132,48 @@ AZ_INLINE void _hub_invalid_state(az_hfsm_iot_hub_policy* me)
 
 AZ_INLINE void _hub_connect(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_connect_data* data)
 {
-  // TODO
-  (void)me;
-  (void)data;
+  az_hfsm_mqtt_connect_data connect_data;
+  connect_data.host = me->_internal.hub_client->_internal.iot_hub_hostname;
+  connect_data.port = me->_internal.options.port;
+
+  switch (data->auth_type)
+  {
+    case AZ_HFSM_IOT_AUTH_X509:
+      connect_data.client_certificate = data->auth.x509.cert;
+      connect_data.client_private_key = data->auth.x509.key;
+      connect_data.password = AZ_SPAN_EMPTY;
+      break;
+
+    case AZ_HFSM_IOT_AUTH_SAS:
+    default:
+      // HFSM_TODO: SAS not implemented.
+      az_platform_critical_error();
+      break;
+  }
+
+  size_t buffer_size;
+
+  az_hfsm_pipeline_error_handler(
+      (az_hfsm_policy*)me,
+      az_iot_hub_client_get_client_id(
+          me->_internal.hub_client,
+          (char*)az_span_ptr(data->client_id_buffer),
+          (size_t)az_span_size(data->client_id_buffer),
+          &buffer_size));
+  connect_data.client_id = az_span_slice(data->client_id_buffer, 0, (int32_t)buffer_size);
+
+  az_hfsm_pipeline_error_handler(
+      (az_hfsm_policy*)me,
+      az_iot_hub_client_get_user_name(
+          me->_internal.hub_client,
+          (char*)az_span_ptr(data->username_buffer),
+          (size_t)az_span_size(data->username_buffer),
+          &buffer_size));
+  connect_data.username = az_span_slice(data->username_buffer, 0, (int32_t)buffer_size);
+
+  az_hfsm_send_event(
+      (az_hfsm*)me->_internal.policy.outbound,
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ, .data = &connect_data });
 }
 
 static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
@@ -174,10 +213,17 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
+AZ_INLINE void _hub_disconnect(az_hfsm_iot_hub_policy* me)
+{
+  az_hfsm_send_event(
+      (az_hfsm*)me->_internal.policy.outbound,
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, .data = NULL });
+}
+
 static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  (void)me;
+  az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -187,15 +233,21 @@ static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
       break;
 
-    case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+      az_hfsm_transition_substate(me, started, disconnecting);
+      _hub_disconnect(this_policy);
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+      az_hfsm_transition_peer(me, started, idle);
+      // TODO: transform & forward inbound.
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -203,10 +255,23 @@ static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
+AZ_INLINE void _hub_subscribe(az_hfsm_iot_hub_policy* me)
+{
+  az_hfsm_mqtt_sub_data data = (az_hfsm_mqtt_sub_data){
+    .topic_filter = AZ_SPAN_LITERAL_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
+    .qos = 0,
+    .out_id = 0,
+  };
+
+  az_hfsm_send_event(
+      (az_hfsm*)me->_internal.policy.outbound,
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUB_REQ, &data });
+}
+
 static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  (void)me;
+  az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -216,15 +281,29 @@ static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
       break;
 
-    case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
+    {
+      az_hfsm_mqtt_connack_data* data = (az_hfsm_mqtt_connack_data*)event.data;
+      if (data->connack_reason == 0)
+      {
+        az_hfsm_transition_peer(me, connecting, connected);
+        az_hfsm_transition_substate(me, connected, subscribing);
+        _hub_subscribe(this_policy);
+      }
+      else
+      {
+        az_hfsm_transition_superstate(me, connecting, started);
+        az_hfsm_transition_peer(me, started, idle);
+        az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->outbound, event);
+      }
       break;
+    }
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -245,15 +324,11 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
-      // TODO
+      // No-op.
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -274,15 +349,12 @@ static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+      // No-op.
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -303,15 +375,15 @@ static az_hfsm_return_type subscribing(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
       break;
 
-    case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
+      az_hfsm_transition_peer(me, subscribing, subscribed);
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -319,10 +391,81 @@ static az_hfsm_return_type subscribing(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
+AZ_INLINE void _hub_telemetry_send(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_telemetry_data* data)
+{
+  size_t buffer_size;
+
+  az_hfsm_pipeline_error_handler(
+      (az_hfsm_policy*)me,
+      az_iot_hub_client_telemetry_get_publish_topic(
+          me->_internal.hub_client,
+          data->properties,
+          (char*)az_span_ptr(data->topic_buffer),
+          (size_t)az_span_size(data->topic_buffer),
+          &buffer_size));
+
+  az_hfsm_mqtt_pub_data mqtt_data = (az_hfsm_mqtt_pub_data){
+    .topic = az_span_slice(data->topic_buffer, 0, (int32_t)buffer_size),
+    .payload = data->data,
+    .qos = 1,
+    .out_id = 0,
+  };
+
+  az_hfsm_send_event(
+      (az_hfsm*)me->_internal.policy.outbound,
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, &mqtt_data });
+}
+
+AZ_INLINE void _hub_methods_response_send(
+    az_hfsm_iot_hub_policy* me,
+    az_hfsm_iot_hub_method_response_data* data)
+{
+  size_t buffer_size;
+
+  az_hfsm_pipeline_error_handler(
+      (az_hfsm_policy*)me,
+      az_iot_hub_client_methods_response_get_publish_topic(
+          me->_internal.hub_client,
+          data->request_id,
+          data->status,
+          (char*)az_span_ptr(data->topic_buffer),
+          (size_t)az_span_size(data->topic_buffer),
+          &buffer_size));
+
+  az_hfsm_mqtt_pub_data mqtt_data = (az_hfsm_mqtt_pub_data){
+    .topic = az_span_slice(data->topic_buffer, 0, (int32_t)buffer_size),
+    .payload = data->payload,
+    .qos = 0,
+    .out_id = 0,
+  };
+
+  az_hfsm_send_event(
+      (az_hfsm*)me->_internal.policy.outbound,
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, &mqtt_data });
+}
+
+AZ_INLINE void _hub_message_parse(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* data)
+{
+  az_hfsm_iot_hub_method_request_data methods_request;
+  az_result rc = az_iot_hub_client_methods_parse_received_topic(
+      me->_internal.hub_client, data->topic, &methods_request);
+  
+  // HFSM_TODO: if (rc == AZ_ERROR_IOT_TOPIC_NO_MATCH)
+  // Currently only Methods is implemented as a cloud-to-device handler.
+  if (az_result_failed(rc))
+  {
+    az_hfsm_pipeline_error_handler((az_hfsm_policy*)me, rc);
+  }
+  else
+  {
+    // TODO: send outbound message
+  }
+}
+
 static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  (void)me;
+  az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -332,15 +475,30 @@ static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
       break;
 
-    case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_IOT_HUB_TELEMETRY_REQ:
+      _hub_telemetry_send(this_policy, (az_hfsm_iot_hub_telemetry_data*)event.data);
+      break;
+
+    case AZ_IOT_HUB_METHODS_RSP:
+      _hub_methods_response_send(this_policy, (az_hfsm_iot_hub_method_response_data*)event.data);
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
+      _hub_message_parse(this_policy, (az_hfsm_mqtt_recv_data*)event.data);
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+      // HFSM_DESIGN: Message ID matching requires storing pipelined operations and their respective
+      //              types. (e.g. ID=5: Telemetry; ID=6: Methods_Response, etc).
+      //              This is required to correctly send AZ_IOT_HUB_TELEMETRY_RSP,
+      //              AZ_IOT_HUB_METHODS_RSP, etc
       break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
