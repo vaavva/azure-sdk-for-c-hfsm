@@ -457,7 +457,6 @@ static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event)
 static az_hfsm_return_type start_register(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
-  (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {

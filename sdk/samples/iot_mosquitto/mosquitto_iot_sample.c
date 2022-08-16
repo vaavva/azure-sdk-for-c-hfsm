@@ -258,6 +258,7 @@ int main(int argc, char* argv[])
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
     .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
     .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
+    // HFSM_TODO: hub_endpoint, device_id buffer are missing.
   };
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
       &prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ, &register_data }));

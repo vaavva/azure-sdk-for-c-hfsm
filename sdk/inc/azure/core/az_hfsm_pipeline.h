@@ -62,11 +62,11 @@ AZ_NODISCARD az_result az_hfsm_pipeline_init(
 /**
  * @brief Queues an event to a HFSM object.
  *
- * @note The lifetime of the `event_reference` must be maintained until the event is consumed by the
+ * @note The lifetime of the `event` must be maintained until the event is consumed by the
  *       HFSM. No threading guarantees exist for dispatching.
  *
  * @param[in] h The #az_hfsm to use for this call.
- * @param[in] event_reference A reference to the event being sent.
+ * @param[in] event The event being sent.
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result az_hfsm_pipeline_post_inbound_event(
