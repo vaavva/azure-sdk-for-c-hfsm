@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed under the MIT license. See LICENSE file in the project root for full license
+// information.
 
 #ifndef IOTHUB_TRANSPORT_LL_H
 #define IOTHUB_TRANSPORT_LL_H
@@ -14,26 +15,28 @@ extern "C"
 #include <stdint.h>
 #endif
 
-typedef void* TRANSPORT_LL_HANDLE;
-typedef void* IOTHUB_DEVICE_HANDLE;
+  typedef void* TRANSPORT_LL_HANDLE;
+  typedef void* IOTHUB_DEVICE_HANDLE;
 
-struct TRANSPORT_HANDLE_DATA_TAG;
-typedef struct TRANSPORT_HANDLE_DATA_TAG* TRANSPORT_HANDLE;
+  struct TRANSPORT_HANDLE_DATA_TAG;
+  typedef struct TRANSPORT_HANDLE_DATA_TAG* TRANSPORT_HANDLE;
 
-typedef void* METHOD_HANDLE;
+  typedef void* METHOD_HANDLE;
 
-struct TRANSPORT_PROVIDER_TAG;
-typedef struct TRANSPORT_PROVIDER_TAG TRANSPORT_PROVIDER;
+  struct TRANSPORT_PROVIDER_TAG;
+  typedef struct TRANSPORT_PROVIDER_TAG TRANSPORT_PROVIDER;
 
-typedef const TRANSPORT_PROVIDER*(*IOTHUB_CLIENT_TRANSPORT_PROVIDER)(void);
+  typedef const TRANSPORT_PROVIDER* (*IOTHUB_CLIENT_TRANSPORT_PROVIDER)(void);
 
-TRANSPORT_HANDLE IoTHubTransport_Create( IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, const char* iotHubName, const char* iotHubSuffix);
-void IoTHubTransport_Destroy(TRANSPORT_HANDLE transportHandle);
-TRANSPORT_LL_HANDLE IoTHubTransport_GetLLTransport(TRANSPORT_HANDLE transportHandle);
+  TRANSPORT_HANDLE IoTHubTransport_Create(
+      IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol,
+      const char* iotHubName,
+      const char* iotHubSuffix);
+  void IoTHubTransport_Destroy(TRANSPORT_HANDLE transportHandle);
+  TRANSPORT_LL_HANDLE IoTHubTransport_GetLLTransport(TRANSPORT_HANDLE transportHandle);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* IOTHUB_TRANSPORT_LL_H */
-
