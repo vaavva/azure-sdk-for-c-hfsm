@@ -153,7 +153,7 @@ AZ_INLINE void _hub_connect(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_connect_
 
   size_t buffer_size;
 
-  az_hfsm_pipeline_error_handler(
+  az_hfsm_policy_error_handler(
       (az_hfsm_policy*)me,
       az_iot_hub_client_get_client_id(
           me->_internal.hub_client,
@@ -162,7 +162,7 @@ AZ_INLINE void _hub_connect(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_connect_
           &buffer_size));
   connect_data.client_id = az_span_slice(data->client_id_buffer, 0, (int32_t)buffer_size);
 
-  az_hfsm_pipeline_error_handler(
+  az_hfsm_policy_error_handler(
       (az_hfsm_policy*)me,
       az_iot_hub_client_get_user_name(
           me->_internal.hub_client,
@@ -395,7 +395,7 @@ AZ_INLINE void _hub_telemetry_send(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_t
 {
   size_t buffer_size;
 
-  az_hfsm_pipeline_error_handler(
+  az_hfsm_policy_error_handler(
       (az_hfsm_policy*)me,
       az_iot_hub_client_telemetry_get_publish_topic(
           me->_internal.hub_client,
@@ -422,7 +422,7 @@ AZ_INLINE void _hub_methods_response_send(
 {
   size_t buffer_size;
 
-  az_hfsm_pipeline_error_handler(
+  az_hfsm_policy_error_handler(
       (az_hfsm_policy*)me,
       az_iot_hub_client_methods_response_get_publish_topic(
           me->_internal.hub_client,
@@ -454,7 +454,7 @@ AZ_INLINE void _hub_message_parse(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_
   // Currently only Methods is implemented as a cloud-to-device handler.
   if (az_result_failed(rc))
   {
-    az_hfsm_pipeline_error_handler((az_hfsm_policy*)me, rc);
+    az_hfsm_policy_error_handler((az_hfsm_policy*)me, rc);
   }
   else
   {

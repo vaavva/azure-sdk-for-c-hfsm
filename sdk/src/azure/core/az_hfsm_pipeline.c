@@ -37,7 +37,18 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
   return AZ_OK;
 }
 
-void az_hfsm_pipeline_error_handler(az_hfsm_policy* policy, az_result rc)
+void az_hfsm_policy_error_handler(az_hfsm_policy* policy, az_result rc)
+{
+  _az_PRECONDITION_NOT_NULL(policy->inbound);
+
+  if (az_result_failed(rc))
+  {
+    az_hfsm_event_data_error d = { .error_type = rc };
+    az_hfsm_send_event((az_hfsm*)(policy->inbound), (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
+  }
+}
+
+static void az_hfsm_pipeline_error_handler(az_hfsm_policy* policy, az_result rc)
 {
   if (az_result_failed(rc))
   {

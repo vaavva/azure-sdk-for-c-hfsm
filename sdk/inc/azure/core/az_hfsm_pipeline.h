@@ -77,7 +77,7 @@ AZ_NODISCARD az_result az_hfsm_pipeline_post_outbound_event(
     az_hfsm_pipeline* pipeline,
     az_hfsm_event const event);
 
-void az_hfsm_pipeline_error_handler(az_hfsm_policy* policy, az_result rc);
+void az_hfsm_policy_error_handler(az_hfsm_policy* policy, az_result rc);
 
 typedef struct 
 {

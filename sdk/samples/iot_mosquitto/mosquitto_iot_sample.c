@@ -1,3 +1,14 @@
+/* Copyright (c) Microsoft Corporation. All rights reserved. */
+/* SPDX-License-Identifier: MIT */
+
+/**
+ * @file mosquitto_iot_sample.c
+ * @brief HFSM IoT Sample
+ *
+ * @details This application directly uses the two IoT pipelines. Messages received from the
+ * pipelines are interpreted by a HFSM.
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,12 +24,12 @@
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
 
-#include <azure/iot/compat/prov_device_ll_client.h>
 #include <azure/iot/compat/iothub_device_client_ll.h>
+#include <azure/iot/compat/prov_device_ll_client.h>
 
 #include "mosquitto.h"
 
- #define TEMP_PROVISIONING
+#define TEMP_PROVISIONING
 //#define TEMP_HUB
 
 static const az_span dps_endpoint
@@ -37,8 +48,9 @@ static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/rsa
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
 static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
 
-static const az_span cert_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
-static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+// static const az_span cert_path2 =
+// AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"); static const az_span key_path2
+// = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
 
 static char client_id_buffer[64];
 static char username_buffer[128];
@@ -157,11 +169,14 @@ bool az_sdk_log_filter_callback(az_log_classification classification)
 
 void az_platform_critical_error()
 {
-  printf(LOG_APP "PANIC!\n");
+  printf(LOG_APP "\x1B[31mPANIC!\x1B[0m\n");
 
   while (1)
     ;
 }
+
+// HFSM Advanced Application
+static az_hfsm_policy app_policy;
 
 // Provisioning
 static az_hfsm_pipeline prov_pipeline;
@@ -175,14 +190,10 @@ static az_hfsm_iot_hub_policy hub_policy;
 static az_iot_hub_client hub_client;
 static az_hfsm_mqtt_policy hub_mqtt_policy;
 
-// Retry & endpoint orchestrator
-static az_hfsm_iot_retry_policy retry_policy;
-
 static az_result prov_initialize()
 {
-  // TODO: temporary start with DPS
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
-      &prov_pipeline, (az_hfsm_policy*)&prov_policy, (az_hfsm_policy*)&prov_mqtt_policy));
+      &prov_pipeline, (az_hfsm_policy*)&app_policy, (az_hfsm_policy*)&prov_mqtt_policy));
 
   _az_RETURN_IF_FAILED(
       az_iot_provisioning_client_init(&prov_client, dps_endpoint, id_scope, device_id, NULL));
@@ -190,7 +201,7 @@ static az_result prov_initialize()
   _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
       &prov_policy,
       &prov_pipeline,
-      NULL, // TODO: temporary
+      &app_policy,
       (az_hfsm_policy*)&prov_mqtt_policy,
       &prov_client,
       NULL));
@@ -207,17 +218,18 @@ static az_result prov_initialize()
 
 static az_result hub_initialize()
 {
-#ifdef TEMP_PROVISIONING
-  hub_endpoint = AZ_SPAN_FROM_BUFFER(hub_endpoint_buffer);
-#endif
-
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
-      &hub_pipeline, (az_hfsm_policy*)&hub_policy, (az_hfsm_policy*)&hub_mqtt_policy));
+      &hub_pipeline, (az_hfsm_policy*)&app_policy, (az_hfsm_policy*)&hub_mqtt_policy));
 
   _az_RETURN_IF_FAILED(az_iot_hub_client_init(&hub_client, hub_endpoint, device_id, NULL));
 
   _az_RETURN_IF_FAILED(az_hfsm_iot_hub_policy_initialize(
-      &hub_policy, &hub_pipeline, NULL, (az_hfsm_policy*)&hub_mqtt_policy, &hub_client, NULL));
+      &hub_policy,
+      &hub_pipeline,
+      &app_policy,
+      (az_hfsm_policy*)&hub_mqtt_policy,
+      &hub_client,
+      NULL));
 
   // MQTT
   az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
@@ -229,33 +241,125 @@ static az_result hub_initialize()
   return AZ_OK;
 }
 
+static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state)
+{
+  (void)child_state;
+  return NULL;
+}
+
+static bool provisioned = false;
+
+// Application - single-level HFSM
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+{
+  az_hfsm_policy* this_policy = (az_hfsm_policy*)me;
+
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_EVENT_ERROR:
+    {
+      az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
+      printf(LOG_APP "\x1B[31mERROR\x1B[0m: [AZ_RESULT:] %x\n", err_data->error_type);
+      break;
+    }
+
+    case AZ_IOT_PROVISIONING_REGISTER_RSP:
+    {
+      az_hfsm_iot_provisioning_register_response_data* data
+          = (az_hfsm_iot_provisioning_register_response_data*)event.data;
+
+      if (data->operation_status == AZ_IOT_PROVISIONING_STATUS_ASSIGNED)
+      {
+        printf(
+            LOG_APP "DPS: Registration successful: HUB=%.*s, DeviceID=%.*s\n",
+            az_span_size(data->registration_state.assigned_hub_hostname),
+            az_span_ptr(data->registration_state.assigned_hub_hostname),
+            az_span_size(data->registration_state.device_id),
+            az_span_ptr(data->registration_state.device_id));
+
+        az_span_copy(hub_endpoint, data->registration_state.assigned_hub_hostname);
+        hub_endpoint = az_span_slice(
+            hub_endpoint, 0, az_span_size(data->registration_state.assigned_hub_hostname));
+
+        hub_initialize();
+
+        // Wait for DPS disconnect.
+        provisioned = true;
+      }
+      else
+      {
+        printf(
+            LOG_APP "DPS: Registration \x1B[31mfailed\x1B[0m: TrackingID=%.*s, Error=%.*s\n",
+            az_span_size(data->registration_state.error_tracking_id),
+            az_span_ptr(data->registration_state.error_tracking_id),
+            az_span_size(data->registration_state.error_message),
+            az_span_ptr(data->registration_state.error_message));
+      }
+    }
+    break;
+
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+    {
+      if (provisioned)
+      {
+        // Switch the outbound pipeline to Hub now.
+        this_policy->outbound = (az_hfsm_policy*)&hub_policy;
+
+        az_hfsm_iot_x509_auth auth = (az_hfsm_iot_x509_auth){
+          .cert = cert_path1,
+          .key = key_path1,
+        };
+
+        az_hfsm_iot_hub_connect_data connect_data = (az_hfsm_iot_hub_connect_data){
+          .auth = auth,
+          .auth_type = AZ_HFSM_IOT_AUTH_X509,
+          .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
+          .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
+          .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
+        };
+
+        az_hfsm_send_event(
+            (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
+      }
+    }
+    break;
+
+    case AZ_IOT_HUB_CONNECT_RSP:
+    {
+      printf(LOG_APP "HUB: Connected\n");
+    }
+    break;
+
+    default:
+      // Pass-through provisioning events.
+      az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
+      break;
+  }
+
+  return ret;
+}
+
 static az_result initialize()
 {
+  app_policy = (az_hfsm_policy){
+    .inbound = NULL,
+    .outbound = (az_hfsm_policy*)&prov_policy,
+  };
+
+  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)&app_policy, root, get_parent));
+
   _az_RETURN_IF_FAILED(prov_initialize());
-  _az_RETURN_IF_FAILED(hub_initialize());
-  // Retry
-  az_hfsm_iot_auth primary_cred;
-  primary_cred.x509 = (az_hfsm_iot_x509_auth){ .cert = cert_path1, .key = key_path1 };
-
-  az_hfsm_iot_retry_policy_options retry_options = az_hfsm_iot_retry_policy_options_default();
-  retry_options.secondary_credential.x509
-      = (az_hfsm_iot_x509_auth){ .cert = cert_path2, .key = key_path2 };
-
-  _az_RETURN_IF_FAILED(az_hfsm_iot_retry_policy_initialize(
-      &retry_policy,
-      &prov_pipeline,
-      (az_hfsm_policy*)&prov_policy,
-      AZ_HFSM_IOT_AUTH_X509,
-      &primary_cred,
-      AZ_SPAN_FROM_BUFFER(username_buffer),
-      AZ_SPAN_FROM_BUFFER(password_buffer),
-      AZ_SPAN_FROM_BUFFER(client_id_buffer),
-      &retry_options));
+  //_az_RETURN_IF_FAILED(hub_initialize());
 
   return AZ_OK;
 }
 
-// HFSM_TODO: Error handling intentionally missing.
 int main(int argc, char* argv[])
 {
   (void)argc;
@@ -284,7 +388,6 @@ int main(int argc, char* argv[])
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
     .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
     .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
-    // HFSM_TODO: hub_endpoint, device_id buffer are missing.
   };
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
       &prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ, &register_data }));
@@ -326,7 +429,6 @@ int main(int argc, char* argv[])
           &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data }));
     }
 #endif
-
   }
 
 #ifdef TEMP_HUB
