@@ -15,8 +15,8 @@
 
 #include "mosquitto.h"
 
-// #define TEMP_PROVISIONING
-#define TEMP_HUB
+ #define TEMP_PROVISIONING
+//#define TEMP_HUB
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
@@ -309,6 +309,7 @@ int main(int argc, char* argv[])
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
 
+#ifdef TEMP_HUB
     if (i % 5 == 0)
     {
       az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
@@ -321,8 +322,11 @@ int main(int argc, char* argv[])
       _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
           &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data }));
     }
+#endif
+
   }
 
+#ifdef TEMP_HUB
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
       &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_DISCONNECT_REQ, NULL }));
 
@@ -332,6 +336,7 @@ int main(int argc, char* argv[])
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
+#endif
 
   _az_RETURN_IF_FAILED(az_mqtt_deinit());
 
