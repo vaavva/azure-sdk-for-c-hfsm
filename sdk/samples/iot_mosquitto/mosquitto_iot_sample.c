@@ -29,22 +29,13 @@
 
 #include "mosquitto.h"
 
-#define TEMP_PROVISIONING
-//#define TEMP_HUB
-
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
 static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
 static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
-
-#ifdef TEMP_PROVISIONING
 static char hub_endpoint_buffer[120];
 static az_span hub_endpoint;
-#else
-static az_span hub_endpoint = AZ_SPAN_LITERAL_FROM_STR("crispop-iothub1.azure-devices.net");
-#endif
 static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
-
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
 static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
 
@@ -148,7 +139,7 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
 
   if (class_str == NULL)
   {
-    printf(LOG_SDK "[\x1B[31mUNKNOWN: %d\x1B[0m] %s\n", classification, az_span_ptr(message));
+    printf(LOG_SDK "[\x1B[31mUNKNOWN: %x\x1B[0m] %s\n", classification, az_span_ptr(message));
   }
   else if (classification == AZ_HFSM_EVENT_ERROR)
   {
@@ -177,6 +168,7 @@ void az_platform_critical_error()
 
 // HFSM Advanced Application
 static az_hfsm_policy app_policy;
+static az_platform_mutex disconnect_mutex;
 
 // Provisioning
 static az_hfsm_pipeline prov_pipeline;
@@ -283,11 +275,15 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
             az_span_size(data->registration_state.device_id),
             az_span_ptr(data->registration_state.device_id));
 
+        hub_endpoint = AZ_SPAN_FROM_BUFFER(hub_endpoint_buffer);
         az_span_copy(hub_endpoint, data->registration_state.assigned_hub_hostname);
         hub_endpoint = az_span_slice(
             hub_endpoint, 0, az_span_size(data->registration_state.assigned_hub_hostname));
 
-        hub_initialize();
+        if (az_result_failed(hub_initialize()))
+        {
+          az_platform_critical_error();
+        }
 
         // Wait for DPS disconnect.
         provisioned = true;
@@ -333,12 +329,59 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_CONNECT_RSP:
     {
       printf(LOG_APP "HUB: Connected\n");
+
+      az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
+        .data = AZ_SPAN_LITERAL_FROM_STR("\000\001\002\003"),
+        .out_packet_id = 0,
+        .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
+        .properties = NULL,
+      };
+
+      az_hfsm_send_event(
+          (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
     }
     break;
 
-    default:
+    case AZ_IOT_HUB_METHODS_REQ:
+    {
+      az_hfsm_iot_hub_method_request_data* method_req
+          = (az_hfsm_iot_hub_method_request_data*)event.data;
+      printf(
+          LOG_APP "HUB: Method received [%.*s]\n",
+          az_span_size(method_req->name),
+          az_span_ptr(method_req->name));
+
+      az_hfsm_iot_hub_method_response_data method_rsp
+          = (az_hfsm_iot_hub_method_response_data){ .status = 0,
+                                                    .request_id = method_req->request_id,
+                                                    .topic_buffer
+                                                    = AZ_SPAN_FROM_BUFFER(topic_buffer),
+                                                    .payload = AZ_SPAN_EMPTY };
+
+      az_hfsm_send_event(
+          (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
+    }
+    break;
+
+    case AZ_IOT_HUB_DISCONNECT_RSP:
+      printf(LOG_APP "HUB: Disconnected\n");
+      if (az_result_failed(az_platform_mutex_release(&disconnect_mutex)))
+      {
+        az_platform_critical_error();
+      }
+      break;
+
+    // Pass-through events.
+    case AZ_IOT_PROVISIONING_REGISTER_REQ:
+    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+    case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through provisioning events.
       az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
+      break;
+
+    default:
+      printf(LOG_APP "UNKNOWN event! %x\n", event.type);
       break;
   }
 
@@ -379,7 +422,9 @@ int main(int argc, char* argv[])
     .key = key_path1,
   };
 
-#ifdef TEMP_PROVISIONING
+  _az_RETURN_IF_FAILED(az_platform_mutex_init(&disconnect_mutex));
+  _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
+
   az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
     .auth = auth,
     .auth_type = AZ_HFSM_IOT_AUTH_X509,
@@ -391,57 +436,20 @@ int main(int argc, char* argv[])
   };
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
       &prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ, &register_data }));
-#endif
-
-#ifdef TEMP_HUB
-  az_hfsm_iot_hub_connect_data connect_data = (az_hfsm_iot_hub_connect_data){
-    .auth = auth,
-    .auth_type = AZ_HFSM_IOT_AUTH_X509,
-    .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
-    .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
-    .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
-  };
-
-  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
-      &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data }));
-
-  (void)topic_buffer;
-  (void)payload_buffer;
-#endif
 
   for (int i = 15; i > 0; i--)
   {
     _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
-
-#ifdef TEMP_HUB
-    if (i % 5 == 0)
-    {
-      az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
-        .data = AZ_SPAN_LITERAL_FROM_STR("\000\001\002\003"),
-        .out_packet_id = 0,
-        .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
-        .properties = NULL,
-      };
-
-      _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
-          &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data }));
-    }
-#endif
   }
 
-#ifdef TEMP_HUB
+  printf(LOG_APP "Main thread disconnecting...\n");
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
       &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_DISCONNECT_REQ, NULL }));
 
-  for (int i = 5; i > 0; i--)
-  {
-    _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
-    printf(LOG_APP "Waiting %ds        \r", i);
-    fflush(stdout);
-  }
-#endif
+  _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
+  printf(LOG_APP "Done.\n");
 
   _az_RETURN_IF_FAILED(az_mqtt_deinit());
 

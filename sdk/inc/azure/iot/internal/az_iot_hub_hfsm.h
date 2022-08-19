@@ -79,6 +79,8 @@ enum az_hfsm_event_type_hub_hfsm
 
   /// Telemetry
   AZ_IOT_HUB_TELEMETRY_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_HUB_HFSM, 4),
+  
+  // TODO: Remove - very hard to implement matching.
   AZ_IOT_HUB_TELEMETRY_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_HUB_HFSM, 5),
 
   /// Methods
