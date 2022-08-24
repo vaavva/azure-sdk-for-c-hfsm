@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
   // Feedback: the HFSM used by the MQTT client to communicate results.
   az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
   mqtt_options.certificate_authority_trusted_roots
-      = AZ_SPAN_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
+      = AZ_SPAN_FROM_STR("/home/crispop/test/rsa_baltimore_ca.pem");
 
   _az_RETURN_IF_FAILED(az_mqtt_initialize(&mqtt_client, &pipeline, &feedback_policy, &mqtt_options));
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client));
@@ -233,8 +233,8 @@ int main(int argc, char* argv[])
                                  "beta.1"),
     .password = AZ_SPAN_EMPTY,
     .client_id = AZ_SPAN_FROM_STR("dev1-ecc"),
-    .client_certificate = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"),
-    .client_private_key = AZ_SPAN_FROM_STR("/home/cristian/test/dev1-ecc_key.pem"),
+    .client_certificate = AZ_SPAN_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"),
+    .client_private_key = AZ_SPAN_FROM_STR("/home/crispop/test/dev1-ecc_key.pem"),
   };
 
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(

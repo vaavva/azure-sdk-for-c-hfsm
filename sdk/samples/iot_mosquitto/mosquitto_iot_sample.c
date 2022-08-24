@@ -35,13 +35,13 @@ static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
 static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
 static char hub_endpoint_buffer[120];
 static az_span hub_endpoint;
-static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/rsa_baltimore_ca.pem");
-static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem");
-static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/rsa_baltimore_ca.pem");
+static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem");
+static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
 
 // static const az_span cert_path2 =
-// AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_cert.pem"); static const az_span key_path2
-// = AZ_SPAN_LITERAL_FROM_STR("/home/cristian/test/dev1-ecc_key.pem");
+// AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"); static const az_span key_path2
+// = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
 
 static char client_id_buffer[64];
 static char username_buffer[128];

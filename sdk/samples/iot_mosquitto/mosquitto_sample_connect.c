@@ -140,10 +140,10 @@ int main(int argc, char *argv[])
   
   rc = mosquitto_tls_set(
     mosq,
-    "/home/cristian/test/rsa_baltimore_ca.pem",
+    "/home/crispop/test/rsa_baltimore_ca.pem",
     NULL, //"S:\\cert\\RootCAs",
-    "/home/cristian/test/dev1-ecc_cert.pem",
-    "/home/cristian/test/dev1-ecc_key.pem",
+    "/home/crispop/test/dev1-ecc_cert.pem",
+    "/home/crispop/test/dev1-ecc_key.pem",
     NULL);
   if (rc != MOSQ_ERR_SUCCESS)
   {
