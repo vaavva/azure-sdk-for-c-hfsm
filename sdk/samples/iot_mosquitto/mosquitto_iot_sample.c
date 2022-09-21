@@ -425,9 +425,10 @@ int main(int argc, char* argv[])
   _az_RETURN_IF_FAILED(az_platform_mutex_init(&disconnect_mutex));
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
 
+  // HFSM_DESIGN: declarative API
   az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
     .auth = auth,
-    .auth_type = AZ_HFSM_IOT_AUTH_X509,
+    .auth_type = AZ_HFSM_IOT_AUTH_X509,                           // HFSM_DESIGN: dynamic typing
     .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
     .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
