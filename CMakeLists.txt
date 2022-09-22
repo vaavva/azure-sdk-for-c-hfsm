@@ -99,6 +99,7 @@ endif()
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
   if(TRANSPORT_MOSQUITTO)
     add_subdirectory(sdk/samples/iot_mosquitto)
+    add_subdirectory(sdk/samples/iot_compat)
   endif()
 endif()
 
