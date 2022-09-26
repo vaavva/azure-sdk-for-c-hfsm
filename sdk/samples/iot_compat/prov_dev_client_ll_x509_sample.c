@@ -6,6 +6,7 @@
 // when writing production code.
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "iothub.h"
 #include "iothub_message.h"
@@ -80,9 +81,6 @@ static const char* x509privatekey = "pkcs11:object=test-privkey;type=private?pin
 #include "certs.h"
 #endif // SET_TRUSTED_CERT_IN_SAMPLES
 
-MU_DEFINE_ENUM_STRINGS_WITHOUT_INVALID(PROV_DEVICE_RESULT, PROV_DEVICE_RESULT_VALUE);
-MU_DEFINE_ENUM_STRINGS_WITHOUT_INVALID(PROV_DEVICE_REG_STATUS, PROV_DEVICE_REG_STATUS_VALUES);
-
 #ifdef SAMPLE_OPENSSL_ENGINE
 static const char* opensslEngine = SAMPLE_OPENSSL_ENGINE;
 static const OPTION_OPENSSL_KEY_TYPE x509_key_from_engine = KEY_TYPE_ENGINE;
@@ -118,7 +116,7 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HAND
 static void registration_status_callback(PROV_DEVICE_REG_STATUS reg_status, void* user_context)
 {
     (void)user_context;
-    (void)printf("Provisioning Status: %s\r\n", MU_ENUM_TO_STRING(PROV_DEVICE_REG_STATUS, reg_status));
+    (void)printf("Provisioning Status: 0x%x\r\n", reg_status);
 }
 
 static void iothub_connection_status(IOTHUB_CLIENT_CONNECTION_STATUS result, IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason, void* user_context)
@@ -161,7 +159,7 @@ static void register_device_callback(PROV_DEVICE_RESULT register_result, const c
         }
         else
         {
-            (void)printf("Failure encountered on registration %s\r\n", MU_ENUM_TO_STRING(PROV_DEVICE_RESULT, register_result) );
+            (void)printf("Failure encountered on registration 0x%x\r\n", register_result);
         }
     }
 }
@@ -274,9 +272,8 @@ int main(void)
         else
         {
             IOTHUB_CLIENT_SAMPLE_INFO iothub_info;
-            TICK_COUNTER_HANDLE tick_counter_handle = tickcounter_create();
-            tickcounter_ms_t current_tick;
-            tickcounter_ms_t last_send_time = 0;
+            int64_t current_tick;
+            int64_t last_send_time = 0;
             size_t msg_count = 0;
             iothub_info.stop_running = false;
             iothub_info.connected = false;
@@ -312,14 +309,13 @@ int main(void)
             (void)printf("Sending one message to IoTHub every %d seconds for %d messages (Send any C2D message to the device to stop)\r\n", TIME_BETWEEN_MESSAGES_SECONDS, MESSAGES_TO_SEND);
             do
             {
-                if (iothub_info.connected)
+                if (iothub_info.connected && az_result_succeeded(az_platform_clock_msec(&current_tick)))
                 {
                     // Send a message every TIME_BETWEEN_MESSAGES_SECONDS seconds
-                    (void)tickcounter_get_current_ms(tick_counter_handle, &current_tick);
                     if ((current_tick - last_send_time) / 1000 > TIME_BETWEEN_MESSAGES_SECONDS)
                     {
                         static char msgText[1024];
-                        sprintf_s(msgText, sizeof(msgText), "{ \"message_index\" : \"%zu\" }", msg_count++);
+                        sprintf(msgText, "{ \"message_index\" : \"%zu\" }", msg_count++);
 
                         IOTHUB_MESSAGE_HANDLE msg_handle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText));
                         if (msg_handle == NULL)
@@ -334,9 +330,14 @@ int main(void)
                             }
                             else
                             {
-                                (void)tickcounter_get_current_ms(tick_counter_handle, &last_send_time);
-                                (void)printf("IoTHubClient_LL_SendEventAsync accepted message [%zu] for transmission to IoT Hub.\r\n", msg_count);
-
+                                if (az_result_succeeded(az_platform_clock_msec(&last_send_time)))
+                                {
+                                    (void)printf("IoTHubClient_LL_SendEventAsync accepted message [%zu] for transmission to IoT Hub.\r\n", msg_count);
+                                }
+                                else
+                                {
+                                    (void)printf("IoTHubClient_LL_SendEventAsync az_platform_clock_msec failed.\r\n");
+                                }
                             }
                             IoTHubMessage_Destroy(msg_handle);
                         }
@@ -352,7 +353,6 @@ int main(void)
                 IoTHubDeviceClient_LL_DoWork(device_ll_handle);
                 ThreadAPI_Sleep(1);
             }
-            tickcounter_destroy(tick_counter_handle);
             // Clean up the iothub sdk handle
             IoTHubDeviceClient_LL_Destroy(device_ll_handle);
         }

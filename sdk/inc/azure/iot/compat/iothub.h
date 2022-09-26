@@ -50,6 +50,10 @@ extern "C"
         az_result ret = az_platform_sleep_msec(milliseconds);
     }
 
+
+    /*Codes_SRS_CRT_ABSTRACTIONS_99_038: [mallocAndstrcpy_s shall allocate memory for destination buffer to fit the string in the source parameter.]*/
+    int mallocAndStrcpy_s(char** destination, const char* source);
+    
 #ifdef __cplusplus
 }
 #endif
