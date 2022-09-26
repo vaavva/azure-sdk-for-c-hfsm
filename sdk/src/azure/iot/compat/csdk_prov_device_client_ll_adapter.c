@@ -1,0 +1,32 @@
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+/*
+/home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:171: undefined reference to `IoTHub_Init'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:172: undefined reference to `prov_dev_security_init'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:181: undefined reference to `Prov_Device_MQTT_Protocol'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:199: undefined reference to `Prov_Device_LL_GetVersionString'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:200: undefined reference to `IoTHubClient_GetVersionString'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:202: undefined reference to `Prov_Device_LL_Create'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:212: undefined reference to `Prov_Device_LL_SetOption'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:213: undefined reference to `Prov_Device_LL_SetOption'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:214: undefined reference to `Prov_Device_LL_SetOption'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:221: undefined reference to `Prov_Device_LL_SetOption'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:228: undefined reference to `Prov_Device_LL_Register_Device'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:236: undefined reference to `Prov_Device_LL_DoWork'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:240: undefined reference to `Prov_Device_LL_Destroy'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:253: undefined reference to `MQTT_Protocol'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:268: undefined reference to `IoTHubDeviceClient_LL_CreateFromDeviceAuth'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:281: undefined reference to `IoTHubDeviceClient_LL_SetConnectionStatusCallback'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:286: undefined reference to `IoTHubDeviceClient_LL_SetOption'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:304: undefined reference to `IoTHubDeviceClient_LL_SetOption'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:307: undefined reference to `IoTHubDeviceClient_LL_SetMessageCallback'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:320: undefined reference to `IoTHubMessage_CreateFromByteArray'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:327: undefined reference to `IoTHubDeviceClient_LL_SendEventAsync'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:342: undefined reference to `IoTHubMessage_Destroy'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:346: undefined reference to `IoTHubDeviceClient_LL_DoWork'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:353: undefined reference to `IoTHubDeviceClient_LL_DoWork'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:357: undefined reference to `IoTHubDeviceClient_LL_Destroy'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:363: undefined reference to `prov_dev_security_deinit'
+/usr/bin/ld: /home/crispop/c/sdk/samples/iot_compat/prov_dev_client_ll_x509_sample.c:366: undefined reference to `IoTHub_Deinit'
+*/

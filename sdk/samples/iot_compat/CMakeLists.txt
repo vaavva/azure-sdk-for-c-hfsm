@@ -53,6 +53,7 @@ target_link_libraries(iothub_ll_client_x509_sample
     OpenSSL::Crypto
     az::iot::hub
     az::iot::provisioning
+    az::iot::compat::csdk
 )
 
 if(WIN32)
@@ -88,6 +89,7 @@ target_link_libraries(prov_dev_client_ll_x509_sample
     az::mosquitto
     az::iot::hub
     az::iot::provisioning
+    az::iot::compat::csdk
 )
 
 if(WIN32)

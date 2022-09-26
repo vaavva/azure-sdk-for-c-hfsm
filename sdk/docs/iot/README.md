@@ -36,6 +36,7 @@ The library targets made available via CMake are the following:
 
 - `az::iot::hub` - For Azure IoT Hub features ([API documentation here](https://azuresdkdocs.blob.core.windows.net/$web/c/az_iot/1.0.0/az__iot__hub__client_8h.html)).
 - `az::iot::provisioning` - For Azure IoT Provisioning features ([API documentation here](https://azuresdkdocs.blob.core.windows.net/$web/c/az_iot/1.0.0/az__iot__provisioning__client_8h.html)).
+- `az::iot::compat::csdk` - Azure C-SDK Compatibility layer.
 
 ### Samples
 
