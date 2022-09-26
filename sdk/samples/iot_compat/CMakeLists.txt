@@ -42,6 +42,7 @@ add_compile_definitions(iothub_ll_client_x509_sample
 target_include_directories(iothub_ll_client_x509_sample
   PRIVATE
     ${MOSQUITTO_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/sdk/inc/azure/iot/compat
 )
 
 target_link_libraries(iothub_ll_client_x509_sample
@@ -75,6 +76,7 @@ add_compile_definitions(prov_dev_client_ll_x509_sample
 target_include_directories(prov_dev_client_ll_x509_sample
   PRIVATE
     ${MOSQUITTO_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/sdk/inc/azure/iot/compat
 )
 
 target_link_libraries(prov_dev_client_ll_x509_sample

@@ -24,9 +24,6 @@
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
 
-#include <azure/iot/compat/iothub_device_client_ll.h>
-#include <azure/iot/compat/prov_device_ll_client.h>
-
 #include "mosquitto.h"
 
 static const az_span dps_endpoint

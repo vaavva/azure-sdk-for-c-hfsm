@@ -5,7 +5,7 @@
 #ifndef PROV_DEVICE_LL_CLIENT_H
 #define PROV_DEVICE_LL_CLIENT_H
 
-#include "azure/iot/compat/prov_transport.h"
+#include "azure_prov_client/prov_transport.h"
 
 #ifdef __cplusplus
 extern "C"

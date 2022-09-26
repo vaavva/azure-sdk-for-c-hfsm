@@ -9,6 +9,8 @@
 #ifndef IOTHUB_H
 #define IOTHUB_H
 
+#include <azure/core/az_platform.h>
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -41,6 +43,12 @@ extern "C"
     *
     */
     void IoTHub_Deinit();
+
+
+    AZ_INLINE void ThreadAPI_Sleep(unsigned int milliseconds)
+    {
+        az_result ret = az_platform_sleep_msec(milliseconds);
+    }
 
 #ifdef __cplusplus
 }

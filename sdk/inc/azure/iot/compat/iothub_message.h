@@ -10,6 +10,8 @@
 #ifndef IOTHUB_MESSAGE_H
 #define IOTHUB_MESSAGE_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 #include <cstddef>
 extern "C"

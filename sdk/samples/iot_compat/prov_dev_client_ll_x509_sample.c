@@ -7,11 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "azure/iot/compat/iothub.h"
-#include "azure/iot/compat/iothub_message.h"
-#include "azure/iot/compat/iothub_client_version.h"
-#include "azure/iot/compat/iothub_device_client_ll.h"
-#include "azure/iot/compat/iothub_client_options.h"
+#include "iothub.h"
+#include "iothub_message.h"
+#include "iothub_client_version.h"
+#include "iothub_device_client_ll.h"
+#include "iothub_client_options.h"
+#include "azure_prov_client/prov_device_ll_client.h"
+#include "azure_prov_client/prov_security_factory.h"
 
 // Provisioning information:
 static const char* global_prov_uri = "global.azure-devices-provisioning.net";

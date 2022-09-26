@@ -8,10 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "azure/iot/compat/iothub.h"
-#include "azure/iot/compat/iothub_device_client_ll.h"
-#include "azure/iot/compat/iothub_client_options.h"
-#include "azure/iot/compat/iothub_message.h"
+#include "iothub.h"
+#include "iothub_device_client_ll.h"
+#include "iothub_client_options.h"
+#include "iothub_message.h"
 
 /* This sample uses the _LL APIs of iothub_client for example purposes.
 Simply changing the using the convenience layer (functions not having _LL)
@@ -96,7 +96,7 @@ static void send_confirm_callback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, void
     (void)userContextCallback;
     // When a message is sent this callback will get invoked
     g_message_count_send_confirmations++;
-    (void)printf("Confirmation callback received for message %zu with result %s\r\n", g_message_count_send_confirmations, MU_ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
+    (void)printf("Confirmation callback received for message %zu with result 0x%x\r\n", g_message_count_send_confirmations, result);
 }
 
 int main(void)
