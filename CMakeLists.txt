@@ -98,6 +98,7 @@ endif()
 # User can disable samples generation by setting env variable AZ_SDK_C_NO_SAMPLES
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
   if(TRANSPORT_MOSQUITTO)
+    add_subdirectory(sdk/src/azure/iot/compat)
     add_subdirectory(sdk/samples/iot_mosquitto)
     add_subdirectory(sdk/samples/iot_compat)
   endif()
@@ -130,9 +131,6 @@ if (UNIT_TESTING)
   add_subdirectory(sdk/tests/iot/common)
   add_subdirectory(sdk/tests/iot/hub)
   add_subdirectory(sdk/tests/iot/provisioning)
-
-  #IoT Compat
-  add_subdirectory(sdk/tests/iot/compat)
 
 endif()
 
