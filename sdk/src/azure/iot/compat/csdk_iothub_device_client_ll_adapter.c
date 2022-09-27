@@ -23,7 +23,8 @@
 
 */
 
-#include "iothub.h"
+#include <azure/iot/compat/iothub.h>
+#include <azure/iot/compat/iothub_transport_ll.h>
 
 const TRANSPORT_PROVIDER* MQTT_Protocol(void)
 {

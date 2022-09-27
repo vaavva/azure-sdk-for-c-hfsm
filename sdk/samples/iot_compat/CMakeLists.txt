@@ -29,9 +29,9 @@ if (WIN32)
   #target_link_libraries(main PRIVATE PThreads4W::PThreads4W)
 endif()
 
-# Azure IoT Samples Executables
+# Azure IoT C-SDK Compat Samples Executables
 
-# Azure IoT Mosquitto Connect Sample
+# IoT Hub Client C-SDK Compat Sample
 add_executable (iothub_ll_client_x509_sample
   ${CMAKE_CURRENT_LIST_DIR}/iothub_ll_client_x509_sample.c
 )
@@ -66,40 +66,40 @@ endif()
 
 create_map_file(iothub_ll_client_x509_sample iothub_ll_client_x509_sample.map)
 
-# Mosquitto HFSM Sample
-add_executable (prov_dev_client_ll_x509_sample
-  ${CMAKE_CURRENT_LIST_DIR}/prov_dev_client_ll_x509_sample.c
-)
-add_compile_definitions(prov_dev_client_ll_x509_sample
-  LIBMOSQUITTO_STATIC
-)
-
-target_include_directories(prov_dev_client_ll_x509_sample
-  PRIVATE
-    ${MOSQUITTO_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/sdk/inc/azure/iot/compat
-)
-
-target_link_libraries(prov_dev_client_ll_x509_sample
-  PRIVATE
-    ${MOSQUITTO_LIBRARIES}
-    ${PTHREAD_LIBRARIES}
-    OpenSSL::SSL 
-    OpenSSL::Crypto
-    az::mosquitto
-    az::iot::hub
-    az::iot::provisioning
-    az::iot::compat::csdk
-)
-
-if(WIN32)
-target_link_libraries(prov_dev_client_ll_x509_sample
-  PRIVATE
-  crypt32
-  Ws2_32
-)
-endif()
-
-create_map_file(prov_dev_client_ll_x509_sample prov_dev_client_ll_x509_sample.map)
+###   # Provisioning Client C-SDK Compat Sample
+###   add_executable (prov_dev_client_ll_x509_sample
+###     ${CMAKE_CURRENT_LIST_DIR}/prov_dev_client_ll_x509_sample.c
+###   )
+###   add_compile_definitions(prov_dev_client_ll_x509_sample
+###     LIBMOSQUITTO_STATIC
+###   )
+###   
+###   target_include_directories(prov_dev_client_ll_x509_sample
+###     PRIVATE
+###       ${MOSQUITTO_INCLUDE_DIR}
+###       ${CMAKE_SOURCE_DIR}/sdk/inc/azure/iot/compat
+###   )
+###   
+###   target_link_libraries(prov_dev_client_ll_x509_sample
+###     PRIVATE
+###       ${MOSQUITTO_LIBRARIES}
+###       ${PTHREAD_LIBRARIES}
+###       OpenSSL::SSL 
+###       OpenSSL::Crypto
+###       az::mosquitto
+###       az::iot::hub
+###       az::iot::provisioning
+###       az::iot::compat::csdk
+###   )
+###   
+###   if(WIN32)
+###   target_link_libraries(prov_dev_client_ll_x509_sample
+###     PRIVATE
+###     crypt32
+###     Ws2_32
+###   )
+###   endif()
+###   
+###   create_map_file(prov_dev_client_ll_x509_sample prov_dev_client_ll_x509_sample.map)
 
 endif() # TRANSPORT_MOSQUITTO
