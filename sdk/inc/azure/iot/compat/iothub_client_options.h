@@ -117,6 +117,16 @@ extern "C"
 // the device is considered to be in a faulty state.    
 #define DEVICE_FAILURE_COUNT_RECONNECTION_THRESHOLD 5
 
+
+#define OPTION_OPENSSL_ENGINE "Engine"
+#define OPTION_OPENSSL_PRIVATE_KEY_TYPE "x509PrivatekeyType"
+
+typedef enum OPTION_OPENSSL_KEY_TYPE_TAG
+{
+    KEY_TYPE_DEFAULT,
+    KEY_TYPE_ENGINE
+} OPTION_OPENSSL_KEY_TYPE;
+
 #ifdef __cplusplus
 }
 #endif

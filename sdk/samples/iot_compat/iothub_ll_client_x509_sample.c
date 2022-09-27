@@ -54,7 +54,11 @@ and removing calls to _DoWork will yield the same results. */
 
 /* Paste in the your x509 iothub connection string  */
 /*  "HostName=<host_name>;DeviceId=<device_id>;x509=true"                      */
-static const char* connectionString = "HostName=<host_name>;DeviceId=<device_id>;x509=true";
+// HFSM_TODO: PoC doesn't support connection strings. 
+//      static const char* connectionString = "HostName=<host_name>;DeviceId=<device_id>;x509=true";
+
+static const char* hub_name = "<host_name>";
+static const char* device_name = "<device_name>";
 
 static const char* x509certificate =
 "-----BEGIN CERTIFICATE-----""\n"
@@ -129,8 +133,20 @@ int main(void)
     (void)IoTHub_Init();
 
     (void)printf("Creating IoTHub handle\r\n");
+    
+    IOTHUB_CLIENT_CONFIG config = 
+    {
+        .iotHubName = hub_name,
+        .iotHubSuffix = "azure-devices.net",
+        .deviceId = device_name,
+        .protocol = protocol,
+        .deviceKey = NULL,
+        .deviceSasToken = NULL,
+        .protocolGatewayHostName = NULL
+    };
+    
     // Create the iothub handle here
-    device_ll_handle = IoTHubDeviceClient_LL_CreateFromConnectionString(connectionString, protocol);
+    device_ll_handle = IoTHubDeviceClient_LL_Create(&config);
     if (device_ll_handle == NULL)
     {
         (void)printf("Failure creating IotHub device. Hint: Check your connection string.\r\n");
@@ -210,9 +226,6 @@ int main(void)
     }
     // Free all the sdk subsystem
     IoTHub_Deinit();
-
-    printf("Press any key to continue");
-    (void)getchar();
 
     return 0;
 }

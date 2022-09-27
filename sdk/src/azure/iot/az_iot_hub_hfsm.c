@@ -511,6 +511,9 @@ static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event)
       //              types. (e.g. ID=5: Telemetry; ID=6: Methods_Response, etc).
       //              This is required to correctly send AZ_IOT_HUB_TELEMETRY_RSP,
       //              AZ_IOT_HUB_METHODS_RSP, etc
+
+      // Pass through for upper layers to handle.
+      az_hfsm_send_event((az_hfsm*)this_policy->_internal.policy.inbound, event);
       break;
 
     default:
