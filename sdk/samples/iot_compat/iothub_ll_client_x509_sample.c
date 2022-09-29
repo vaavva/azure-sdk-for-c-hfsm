@@ -57,28 +57,17 @@ and removing calls to _DoWork will yield the same results. */
 // HFSM_TODO: PoC doesn't support connection strings. 
 //      static const char* connectionString = "HostName=<host_name>;DeviceId=<device_id>;x509=true";
 
-static const char* hub_name = "<host_name>";
-static const char* device_name = "<device_name>";
+// HFSM_TODO:
+// - add connection status callback PoC.
+// - add methods callback PoC.
 
-static const char* x509certificate =
-"-----BEGIN CERTIFICATE-----""\n"
-"MIICpDCCAYwCCQCfIjBnPxs5TzANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls""\n"
-"b2NhbGhvc3QwHhcNMTYwNjIyMjM0MzI3WhcNMTYwNjIzMjM0MzI3WjAUMRIwEAYD""\n"
-"...""\n"
-"+s88wBF907s1dcY45vsG0ldE3f7Y6anGF60nUwYao/fN/eb5FT5EHANVMmnK8zZ2""\n"
-"tjWUt5TFnAveFoQWIoIbtzlTbOxUFwMrQFzFXOrZoDJmHNWc2u6FmVAkowoOSHiE""\n"
-"dkyVdoGPCXc=""\n"
-"-----END CERTIFICATE-----";
+static const char* hub_name = "crispop-iothub1";
+static const char* device_name = "dev1-ecc";
 
-static const char* x509privatekey =
-"-----BEGIN RSA PRIVATE KEY-----""\n"
-"MIIEpQIBAAKCAQEA0zKK+Uu5I0nXq2V6+2gbdCsBXZ6j1uAgU/clsCohEAek1T8v""\n"
-"qj2tR9Mz9iy9RtXPMHwzcQ7aXDaz7RbHdw7tYXqSw8iq0Mxq2s3p4mo6gd5vEOiN""\n"
-"...""\n"
-"EyePNmkCgYEAng+12qvs0de7OhkTjX9FLxluLWxfN2vbtQCWXslLCG+Es/ZzGlNF""\n"
-"SaqVID4EAUgUqFDw0UO6SKLT+HyFjOr5qdHkfAmRzwE/0RBN69g2qLDN3Km1Px/k""\n"
-"xyJyxc700uV1eKiCdRLRuCbUeecOSZreh8YRIQQXoG8uotO5IttdVRc=""\n"
-"-----END RSA PRIVATE KEY-----";
+// HFSM_DESIGN: The certificate / key semantics change based on the underlying MQTT stack.
+//              This is similar to how these values are used with OpenSSL ENGINEs.
+static const char* x509certificate = "/home/crispop/test/dev1-ecc_cert.pem";
+static const char* x509privatekey = "/home/crispop/test/dev1-ecc_key.pem";
 
 #ifdef SAMPLE_OPENSSL_ENGINE
 static const char* opensslEngine = SAMPLE_OPENSSL_ENGINE;

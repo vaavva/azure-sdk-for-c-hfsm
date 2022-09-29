@@ -368,6 +368,13 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
       }
       break;
 
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+      {
+        az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
+        printf(LOG_APP "MQTT: PUBACK ID=%d\n", puback->id);
+      }
+      break;
+
     // Pass-through events.
     case AZ_IOT_PROVISIONING_REGISTER_REQ:
     case AZ_IOT_PROVISIONING_DISCONNECT_REQ:

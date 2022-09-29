@@ -57,6 +57,11 @@ static const size_t csdk_compat_max_topic_size = 128;
 
 typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
 {
+  // HFSM for the Compat Client
+  az_hfsm_policy compat_client_policy;
+
+  bool connected;
+
   // Endpoint information
   az_span hub_endpoint;
   az_span device_id;
@@ -64,27 +69,20 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   az_span cert_path;
   az_span key_path;
 
-  // HFSM Advanced Application
-  az_hfsm_policy app_policy; // HFSM_TODO: rename to compat_client_policy
-  az_platform_mutex disconnect_mutex;
-
-  // Provisioning
-  az_hfsm_pipeline prov_pipeline;
-  az_hfsm_iot_provisioning_policy prov_policy;
-  az_iot_provisioning_client prov_client;
-  az_hfsm_mqtt_policy prov_mqtt_policy;
-
   // Hub
   az_hfsm_pipeline hub_pipeline;
   az_hfsm_iot_hub_policy hub_policy;
   az_iot_hub_client hub_client;
   az_hfsm_mqtt_policy hub_mqtt_policy;
+
+  char* topic_buffer;
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
 
 typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
 {
   az_span topic;
   az_span payload;
+  az_iot_message_properties properties;
 } IOTHUB_MESSAGE_HANDLE_DATA;
 
 const TRANSPORT_PROVIDER* MQTT_Protocol(void) { return (TRANSPORT_PROVIDER*)0x4D515454; }
@@ -92,7 +90,7 @@ const TRANSPORT_PROVIDER* MQTT_Protocol(void) { return (TRANSPORT_PROVIDER*)0x4D
 static void az_sdk_log_callback(az_log_classification classification, az_span message);
 static bool az_sdk_log_filter_callback(az_log_classification classification);
 
-#define LOG_APP "\x1B[34mAPP: \x1B[0m"
+#define LOG_COMPAT "\x1B[34mCOMPAT: \x1B[0m"
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
 
 static void az_sdk_log_callback(az_log_classification classification, az_span message)
@@ -200,17 +198,104 @@ static bool az_sdk_log_filter_callback(az_log_classification classification)
 
 void az_platform_critical_error()
 {
-  printf(LOG_APP "\x1B[31mPANIC!\x1B[0m\n");
+  printf(LOG_COMPAT "\x1B[31mPANIC!\x1B[0m\n");
 
   while (1)
     ;
 }
 
+// ***** Single-layer C-SDK Compat Layer State Machine
+
+static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state)
+{
+  (void)child_state;
+  return NULL;
+}
+
+static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+{
+  IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = (IOTHUB_CLIENT_CORE_LL_HANDLE_DATA*)me;
+
+  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_EVENT_ERROR:
+    {
+      az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
+      printf(LOG_COMPAT "\x1B[31mERROR\x1B[0m: [AZ_RESULT:] %x\n", err_data->error_type);
+      break;
+    }
+
+    case AZ_IOT_HUB_CONNECT_RSP:
+    {
+      printf(LOG_COMPAT "HUB: Connected\n");
+    }
+    break;
+
+    case AZ_IOT_HUB_METHODS_REQ:
+    {
+      az_hfsm_iot_hub_method_request_data* method_req
+          = (az_hfsm_iot_hub_method_request_data*)event.data;
+      printf(
+          LOG_COMPAT "HUB: Method received [%.*s]\n",
+          az_span_size(method_req->name),
+          az_span_ptr(method_req->name));
+
+      az_hfsm_iot_hub_method_response_data method_rsp
+          = (az_hfsm_iot_hub_method_response_data){ .status = 0,
+                                                    .request_id = method_req->request_id,
+                                                    .topic_buffer
+                                                    = AZ_SPAN_FROM_BUFFER(client->topic_buffer),
+                                                    .payload = AZ_SPAN_EMPTY };
+
+      az_hfsm_send_event(
+          (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
+    }
+    break;
+
+    case AZ_IOT_HUB_DISCONNECT_RSP:
+      printf(LOG_COMPAT "HUB: Disconnected\n");
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+    {
+      az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
+      printf(LOG_COMPAT "MQTT: PUBACK ID=%d\n", puback->id);
+    }
+    break;
+
+    // Pass-through events.
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+    case AZ_HFSM_EVENT_TIMEOUT:
+      // Pass-through events.
+      az_hfsm_send_event((az_hfsm*)client->compat_client_policy.outbound, event);
+      break;
+
+    default:
+      printf(LOG_COMPAT "UNKNOWN event! %x\n", event.type);
+      break;
+  }
+
+  return ret;
+}
+
 static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
 {
+  client->compat_client_policy = (az_hfsm_policy){
+    .inbound = NULL,
+    .outbound = (az_hfsm_policy*)&client->hub_policy,
+  };
+
+  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)&client->compat_client_policy, root, get_parent));
+
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
       &client->hub_pipeline,
-      (az_hfsm_policy*)&client->app_policy,
+      (az_hfsm_policy*)&client->compat_client_policy,
       (az_hfsm_policy*)&client->hub_mqtt_policy));
 
   _az_RETURN_IF_FAILED(
@@ -219,7 +304,7 @@ static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
   _az_RETURN_IF_FAILED(az_hfsm_iot_hub_policy_initialize(
       &client->hub_policy,
       &client->hub_pipeline,
-      &client->app_policy,
+      &client->compat_client_policy,
       (az_hfsm_policy*)&client->hub_mqtt_policy,
       &client->hub_client,
       NULL));
@@ -237,7 +322,7 @@ static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
   return AZ_OK;
 }
 
-// C-SDK Compat layer
+// ************************************* C-SDK Compat layer ************************************ //
 
 int IoTHub_Init() { _az_RETURN_IF_FAILED(az_mqtt_init()); }
 
@@ -249,17 +334,70 @@ void IoTHub_Deinit()
   }
 }
 
+static void deallocate_compat_client(IOTHUB_DEVICE_CLIENT_LL_HANDLE client)
+{
+  if (client != NULL)
+  {
+    if (client->topic_buffer != NULL)
+    {
+      free(client->topic_buffer);
+      client->topic_buffer = NULL;
+    }
+
+    if (az_span_ptr(client->hub_endpoint) != NULL)
+    {
+      free(az_span_ptr(client->hub_endpoint));
+      client->hub_endpoint = AZ_SPAN_EMPTY;
+    }
+
+    free(client);
+  }
+}
+
 IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_CONFIG* config)
 {
   _az_PRECONDITION(config->protocol == (IOTHUB_CLIENT_TRANSPORT_PROVIDER)MQTT_Protocol);
 
+  az_result ret;
   IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = malloc(sizeof(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA));
+
+  if (client != NULL)
+  {
+    memset(client, 0, sizeof(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA));
+    client->topic_buffer = malloc(csdk_compat_max_topic_size);
+
+    size_t hub_endpoint_buffer_size = strlen(config->iotHubName) + strlen(config->iotHubSuffix) + 2;
+    client->hub_endpoint
+        = az_span_create(malloc(hub_endpoint_buffer_size), hub_endpoint_buffer_size);
+
+    if (client->topic_buffer != NULL && az_span_ptr(client->hub_endpoint) != NULL)
+    {
+      client->connected = false;
+      client->device_id = az_span_create_from_str((char*)(uintptr_t)config->deviceId);
+      az_span reminder = az_span_copy(
+          client->hub_endpoint, az_span_create_from_str((char*)(uintptr_t)config->iotHubName));
+      reminder = az_span_copy_u8(reminder, '.');
+      reminder
+          = az_span_copy(reminder, az_span_create_from_str((char*)(uintptr_t)config->iotHubSuffix));
+      az_span_copy_u8(reminder, '\0');
+
+      ret = hub_initialize(client);
+    }
+    else
+    {
+      deallocate_compat_client(client);
+      client = NULL;
+    }
+  }
+
   return client;
 }
 
 void IoTHubDeviceClient_LL_Destroy(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
 {
-  free(iotHubClientHandle);
+  // Disconnect async (disconnect will be initiated here).
+  az_result ignore = az_hfsm_pipeline_post_outbound_event(
+      &iotHubClientHandle->hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_DISCONNECT_REQ, NULL });
 }
 
 IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetOption(
@@ -333,73 +471,81 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
   // telemetry_data.out_packet_id is set to correlate the PUBACK.
 }
 
-void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle) {}
-
-IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source) 
+void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
 {
-    IOTHUB_MESSAGE_HANDLE_DATA* msg = malloc(sizeof(IOTHUB_MESSAGE_HANDLE_DATA));
-    char* topic_buffer = malloc(csdk_compat_max_topic_size);
-    char* payload_buffer = malloc(sizeof(source) + 1);
-
-    if (msg == NULL || topic_buffer == NULL || payload_buffer == NULL)
-    {
-        IoTHubMessage_Destroy(msg);
-        msg = NULL;
-    }
-    else
-    {
-        strcpy(payload_buffer, source);
-        msg->topic = az_span_create(topic_buffer, csdk_compat_max_topic_size);
-        msg->payload = az_span_create(payload_buffer, sizeof(source) + 1);
-    }
-
-    return msg;
+  // No-op: handled by the mosquitto-mqtt thread.
 }
 
-void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle) 
+IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
 {
-    IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
-    if (msg != NULL)
+  IOTHUB_MESSAGE_HANDLE_DATA* msg = malloc(sizeof(IOTHUB_MESSAGE_HANDLE_DATA));
+  char* topic_buffer = malloc(csdk_compat_max_topic_size);
+  char* properties_buffer = malloc(csdk_compat_max_topic_size);
+
+  if (msg != NULL && topic_buffer != NULL && properties_buffer != NULL
+      && az_result_succeeded(az_iot_message_properties_init(
+          &msg->properties, az_span_create(properties_buffer, csdk_compat_max_topic_size), 0)))
+  {
+    msg->topic = az_span_create(topic_buffer, csdk_compat_max_topic_size);
+    msg->payload = az_span_create_from_str((char*)(uintptr_t)source);
+  }
+  else
+  {
+    IoTHubMessage_Destroy(msg);
+    msg = NULL;
+  }
+
+  return msg;
+}
+
+void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle)
+{
+  IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
+  if (msg != NULL)
+  {
+    if (az_span_ptr(msg->topic) != NULL)
     {
-        if (az_span_ptr(msg->topic) != NULL)
-        {
-            free(az_span_ptr(msg->topic));
-            msg->topic = AZ_SPAN_EMPTY;
-        }
-
-        if (az_span_ptr(msg->payload) != NULL)
-        {
-            free(az_span_ptr(msg->payload));
-            msg->payload = AZ_SPAN_EMPTY;
-        }
-
-        free(msg);
-        msg = NULL;
+      free(az_span_ptr(msg->topic));
+      msg->topic = AZ_SPAN_EMPTY;
     }
+
+    if (az_span_ptr(msg->properties._internal.properties_buffer) != NULL)
+    {
+      free(az_span_ptr(msg->properties._internal.properties_buffer));
+      msg->properties._internal.properties_buffer = AZ_SPAN_EMPTY;
+    }
+
+    free(msg);
+    msg = NULL;
+  }
 }
 
 IOTHUB_MESSAGE_RESULT IoTHubMessage_SetMessageId(
     IOTHUB_MESSAGE_HANDLE iotHubMessageHandle,
     const char* messageId)
 {
+  return IoTHubMessage_SetProperty(iotHubMessageHandle, SYS_PROP_MESSAGE_ID, messageId);
 }
 
 IOTHUB_MESSAGE_RESULT IoTHubMessage_SetCorrelationId(
     IOTHUB_MESSAGE_HANDLE iotHubMessageHandle,
     const char* correlationId)
 {
+  return IoTHubMessage_SetProperty(iotHubMessageHandle, SYS_PROP_CORRELATION_ID, correlationId);
 }
 
 IOTHUB_MESSAGE_RESULT IoTHubMessage_SetContentTypeSystemProperty(
     IOTHUB_MESSAGE_HANDLE iotHubMessageHandle,
     const char* contentType)
 {
+  return IoTHubMessage_SetProperty(iotHubMessageHandle, SYS_PROP_CONTENT_TYPE, contentType);
 }
 
 IOTHUB_MESSAGE_RESULT IoTHubMessage_SetContentEncodingSystemProperty(
     IOTHUB_MESSAGE_HANDLE iotHubMessageHandle,
     const char* contentEncoding)
 {
+  return IoTHubMessage_SetProperty(iotHubMessageHandle, SYS_PROP_CONTENT_ENCODING, contentEncoding);
 }
 
 IOTHUB_MESSAGE_RESULT IoTHubMessage_SetProperty(
@@ -407,6 +553,15 @@ IOTHUB_MESSAGE_RESULT IoTHubMessage_SetProperty(
     const char* key,
     const char* value)
 {
+  IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
 
+  if (az_result_failed(az_iot_message_properties_append(
+          &msg->properties,
+          az_span_create_from_str((char*)(uintptr_t)key),
+          az_span_create_from_str((char*)(uintptr_t)value))))
+  {
+    return IOTHUB_MESSAGE_ERROR;
+  }
+
+  return IOTHUB_MESSAGE_OK;
 }
-
