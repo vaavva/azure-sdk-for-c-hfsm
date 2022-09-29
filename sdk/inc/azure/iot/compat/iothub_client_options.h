@@ -20,6 +20,7 @@ extern "C"
     #define OPTION_RETRY_MAX_DELAY_SECS "retry_max_delay_secs";
 
     #define OPTION_LOG_TRACE "logtrace"
+    #define OPTION_TRUSTED_CERT "TrustedCerts"
 
 #ifndef OPTION_X509_CERT_DEF
 #define OPTION_X509_CERT_DEF

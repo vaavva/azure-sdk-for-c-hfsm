@@ -76,6 +76,7 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   az_hfsm_mqtt_policy hub_mqtt_policy;
 
   char* topic_buffer;
+
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
 
 typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
@@ -92,6 +93,27 @@ static bool az_sdk_log_filter_callback(az_log_classification classification);
 
 #define LOG_COMPAT "\x1B[34mCOMPAT: \x1B[0m"
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
+
+static const char* az_result_string(az_result result)
+{
+  const char* result_str;
+
+  switch (result)
+  {
+    case AZ_ERROR_HFSM_INVALID_STATE:
+      result_str = "AZ_ERROR_HFSM_INVALID_STATE";
+      break;
+
+    case AZ_OK:
+      result_str = "AZ_OK";
+      break;
+
+    default:
+      result_str = "UNKNOWN";
+  }
+
+  return result_str;
+}
 
 static void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
@@ -110,6 +132,9 @@ static void az_sdk_log_callback(az_log_classification classification, az_span me
       break;
     case AZ_HFSM_EVENT_ERROR:
       class_str = "HFSM_ERROR";
+      break;
+    case AZ_ERROR_HFSM_INVALID_STATE:
+      class_str = "HFSM_INVALID_STATE";
       break;
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
       class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
@@ -227,7 +252,9 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ERROR:
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
-      printf(LOG_COMPAT "\x1B[31mERROR\x1B[0m: [AZ_RESULT:] %x\n", err_data->error_type);
+      printf(
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: az_result=%s\n",
+          az_result_string(err_data->error_type));
       break;
     }
 
@@ -413,8 +440,11 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetOption(
   }
   else if (!strcmp(optionName, OPTION_LOG_TRACE))
   {
-    az_log_set_message_callback(az_sdk_log_callback);
-    az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
+    if (*(bool*)value == true)
+    {
+      az_log_set_message_callback(az_sdk_log_callback);
+      az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
+    }
   }
   else if (!strcmp(optionName, OPTION_AUTO_URL_ENCODE_DECODE))
   {
@@ -433,12 +463,12 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetOption(
   }
   else if (!strcmp(optionName, OPTION_X509_CERT))
   {
-    // HFSM_TODO: not implemented.
+    iotHubClientHandle->cert_path = az_span_create_from_str((char*)(uintptr_t)value);
     result = IOTHUB_CLIENT_OK;
   }
   else if (!strcmp(optionName, OPTION_X509_PRIVATE_KEY))
   {
-    // HFSM_TODO: not implemented.
+    iotHubClientHandle->key_path = az_span_create_from_str((char*)(uintptr_t)value);
     result = IOTHUB_CLIENT_OK;
   }
   else
@@ -455,6 +485,26 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
     IOTHUB_CLIENT_EVENT_CONFIRMATION_CALLBACK eventConfirmationCallback,
     void* userContextCallback)
 {
+  if (!iotHubClientHandle->connected)
+  {
+    az_hfsm_iot_x509_auth auth = (az_hfsm_iot_x509_auth){
+      .cert = iotHubClientHandle->cert_path,
+      .key = iotHubClientHandle->key_path,
+    };
+
+    // TODO:     az_hfsm_iot_hub_connect_data connect_data = (az_hfsm_iot_hub_connect_data){
+    // TODO:       .auth = auth,
+    // TODO:       .auth_type = AZ_HFSM_IOT_AUTH_X509,
+    // TODO:       .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
+    // TODO:       .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
+    // TODO:       .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
+    // TODO:     };
+    // TODO:
+    // TODO:     az_hfsm_send_event(
+    // TODO:         (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data
+    // });
+  }
+
   IOTHUB_MESSAGE_HANDLE_DATA* msg = eventMessageHandle;
 
   az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){

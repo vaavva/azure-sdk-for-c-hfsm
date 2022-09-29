@@ -44,12 +44,10 @@ and removing calls to _DoWork will yield the same results. */
     #include "iothubtransporthttp.h"
 #endif // SAMPLE_HTTP
 
-#ifdef MBED_BUILD_TIMESTAMP
-    #define SET_TRUSTED_CERT_IN_SAMPLES
-#endif // MBED_BUILD_TIMESTAMP
+#define SET_TRUSTED_CERT_IN_SAMPLES
 
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
-    #include "certs.h"
+    static const char* certificates = "/home/crispop/test/rsa_baltimore_ca.pem";
 #endif // SET_TRUSTED_CERT_IN_SAMPLES
 
 /* Paste in the your x509 iothub connection string  */
@@ -144,8 +142,8 @@ int main(void)
     {
         // Set any option that are necessary.
         // For available options please see the iothub_sdk_options.md documentation
-        //bool traceOn = true;
-        //IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
+        bool traceOn = true;
+        IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
 
         // Setting the Trusted Certificate. This is only necessary on systems without
         // built in certificate stores.
