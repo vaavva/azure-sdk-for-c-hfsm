@@ -156,24 +156,6 @@ AZ_NODISCARD az_result az_platform_mutex_acquire(az_platform_mutex* mutex_handle
 AZ_NODISCARD az_result az_platform_mutex_release(az_platform_mutex* mutex_handle);
 AZ_NODISCARD az_result az_platform_mutex_destroy(az_platform_mutex* mutex_handle);
 
-/**
- * @brief Enqueue an element in an already initialized queue.
- * 
- * @param[in] queue_handle The queue handle. This must be initialized by the application.
- * @param[in] element The queue element.
- * @return An #az_result value indicating the result of the operation.
- */
-AZ_NODISCARD az_result az_platform_queue_push(void* queue_handle, void const* element);
-
-/**
- * @brief Dequeue an element from a queue.
- * 
- * @param[in] queue_handle The queue handle. This must be initialized by the application.
- * @param[out] out_element The queue element.
- * @return An #az_result value indicating the result of the operation.
- */
-AZ_NODISCARD az_result az_platform_queue_pop(void* queue_handle, void const** out_element);
-
 #include <azure/core/_az_cfg_suffix.h>
 
 #endif // _az_PLATFORM_H

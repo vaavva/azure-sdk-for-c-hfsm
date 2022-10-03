@@ -38,8 +38,6 @@
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
 
-static const size_t csdk_compat_max_topic_size = 128;
-
 #define SYS_PROP_MESSAGE_ID "mid"
 #define SYS_PROP_MESSAGE_CREATION_TIME_UTC "ctime"
 #define SYS_PROP_USER_ID "uid"
@@ -54,6 +52,17 @@ static const size_t csdk_compat_max_topic_size = 128;
 #define SYS_PROP_EXP "exp"
 #define SYS_PROP_TO "to"
 #define SYS_COMPONENT_NAME "sub"
+
+typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
+{
+  az_span topic;
+  az_span payload;
+  az_iot_message_properties properties;
+} IOTHUB_MESSAGE_HANDLE_DATA;
+
+#define Q_TYPE IOTHUB_MESSAGE_HANDLE_DATA*
+#define Q_SIZE AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE
+#include <azure/iot/compat/queue.h>
 
 typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
 {
@@ -76,15 +85,9 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   az_hfsm_mqtt_policy hub_mqtt_policy;
 
   char* topic_buffer;
+  queue message_queue;
 
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
-
-typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
-{
-  az_span topic;
-  az_span payload;
-  az_iot_message_properties properties;
-} IOTHUB_MESSAGE_HANDLE_DATA;
 
 const TRANSPORT_PROVIDER* MQTT_Protocol(void) { return (TRANSPORT_PROVIDER*)0x4D515454; }
 
@@ -260,7 +263,11 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 
     case AZ_IOT_HUB_CONNECT_RSP:
     {
+      client->connected = true;
       printf(LOG_COMPAT "HUB: Connected\n");
+      // TODO: Call the connection callback.
+
+      
     }
     break;
 
@@ -286,6 +293,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
     break;
 
     case AZ_IOT_HUB_DISCONNECT_RSP:
+      client->connected = false;
       printf(LOG_COMPAT "HUB: Disconnected\n");
       break;
 
@@ -391,7 +399,7 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
   if (client != NULL)
   {
     memset(client, 0, sizeof(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA));
-    client->topic_buffer = malloc(csdk_compat_max_topic_size);
+    client->topic_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
 
     size_t hub_endpoint_buffer_size = strlen(config->iotHubName) + strlen(config->iotHubSuffix) + 2;
     client->hub_endpoint
@@ -529,14 +537,14 @@ void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHan
 IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
 {
   IOTHUB_MESSAGE_HANDLE_DATA* msg = malloc(sizeof(IOTHUB_MESSAGE_HANDLE_DATA));
-  char* topic_buffer = malloc(csdk_compat_max_topic_size);
-  char* properties_buffer = malloc(csdk_compat_max_topic_size);
+  char* topic_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
+  char* properties_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
 
   if (msg != NULL && topic_buffer != NULL && properties_buffer != NULL
       && az_result_succeeded(az_iot_message_properties_init(
-          &msg->properties, az_span_create(properties_buffer, csdk_compat_max_topic_size), 0)))
+          &msg->properties, az_span_create(properties_buffer, AZ_IOT_MAX_TOPIC_SIZE), 0)))
   {
-    msg->topic = az_span_create(topic_buffer, csdk_compat_max_topic_size);
+    msg->topic = az_span_create(topic_buffer, AZ_IOT_MAX_TOPIC_SIZE);
     msg->payload = az_span_create_from_str((char*)(uintptr_t)source);
   }
   else

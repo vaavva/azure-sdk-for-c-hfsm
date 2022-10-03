@@ -39,6 +39,12 @@ enum
 
   // DPS Minimum Retry in seconds.
   AZ_IOT_PROVISIONING_RETRY_MINIMUM_TIMEOUT_SECONDS = 3,
+
+  // MQTT Maximum topic size in bytes.
+  AZ_IOT_MAX_TOPIC_SIZE = 128,
+
+  // C-SDK Compat Layer maximum number of queued messages.
+  AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE = 10,
 };
 
 #include <azure/core/_az_cfg_suffix.h>

@@ -75,7 +75,6 @@ typedef struct
   int16_t port;
   az_span username;
   az_span password;
-  az_span client_id;
   
   az_span client_certificate;
   az_span client_private_key;
@@ -112,6 +111,7 @@ typedef struct
   struct
   {
     az_hfsm_policy policy;
+    az_span client_id;
 
     // Extension point for the implementation.
     // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional 
@@ -159,10 +159,6 @@ AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default();
  * @param mqtt_hfsm The #az_hfsm MQTT state machine instance.
  * @param parent The IoT client state machine dispatcher that will receive events from this
  *                   machine.
- * @param host
- * @param port
- * @param username
- * @param password
  * @param client_id
  * @param options
  * @return AZ_NODISCARD
@@ -171,6 +167,7 @@ AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_hfsm,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
+    az_span client_id,
     az_hfsm_mqtt_policy_options const* options);
 
 /**

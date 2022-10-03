@@ -220,10 +220,32 @@ int main(int argc, char* argv[])
   mqtt_options.certificate_authority_trusted_roots
       = AZ_SPAN_FROM_STR("/home/crispop/test/rsa_baltimore_ca.pem");
 
-  _az_RETURN_IF_FAILED(az_mqtt_initialize(&mqtt_client, &pipeline, &feedback_policy, &mqtt_options));
-  _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client));
+  _az_RETURN_IF_FAILED(az_mqtt_initialize(
+      &mqtt_client, &pipeline, &feedback_policy, AZ_SPAN_FROM_STR("dev1-ecc"), &mqtt_options));
+  _az_RETURN_IF_FAILED(
+      az_hfsm_pipeline_init(&pipeline, &feedback_policy, (az_hfsm_policy*)&mqtt_client));
 
   _az_RETURN_IF_FAILED(az_platform_mutex_init(&disconnect_mutex));
+
+  // [FAILS for MosquittoMQTT] Test if MQTT PUB queuing is performed by MQTT stack prior to connect:
+  az_hfsm_mqtt_pub_data pub_data
+      = (az_hfsm_mqtt_pub_data){ .topic = AZ_SPAN_FROM_STR("devices/dev1-ecc/messages/events/"),
+                                 .payload = AZ_SPAN_FROM_STR("hello!"),
+                                 .qos = 1,
+                                 .out_id = 0 };
+
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+      &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_REQ, &pub_data }));
+
+  // [FAILS for MosquittoMQTT] Test if MQTT SUB queuing is performed by MQTT stack prior to connect:
+  az_hfsm_mqtt_sub_data sub_data
+      = (az_hfsm_mqtt_sub_data){ .topic_filter
+                                 = AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
+                                 .qos = 0,
+                                 .out_id = 0 };
+
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+      &pipeline, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data }));
 
   az_hfsm_mqtt_connect_data connect_data = (az_hfsm_mqtt_connect_data){
     .host = AZ_SPAN_FROM_STR("crispop-iothub1.azure-devices.net"),
@@ -232,7 +254,6 @@ int main(int argc, char* argv[])
                                  "?api-version=2020-09-30&DeviceClientType=azsdk-c%2F1.4.0-"
                                  "beta.1"),
     .password = AZ_SPAN_EMPTY,
-    .client_id = AZ_SPAN_FROM_STR("dev1-ecc"),
     .client_certificate = AZ_SPAN_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"),
     .client_private_key = AZ_SPAN_FROM_STR("/home/crispop/test/dev1-ecc_key.pem"),
   };
