@@ -30,14 +30,15 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 
+#include <azure/iot/internal/az_iot_hub_hfsm.h>
+#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
+#include <azure/iot/internal/az_iot_retry_hfsm.h>
+
 #include <azure/iot/compat/iothub.h>
 #include <azure/iot/compat/iothub_client_options.h>
 #include <azure/iot/compat/iothub_device_client_ll.h>
 #include <azure/iot/compat/iothub_transport_ll.h>
-
-#include <azure/iot/internal/az_iot_hub_hfsm.h>
-#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
-#include <azure/iot/internal/az_iot_retry_hfsm.h>
+#include <azure/iot/compat/az_hfsm_event_clone.h>
 
 #define SYS_PROP_MESSAGE_ID "mid"
 #define SYS_PROP_MESSAGE_CREATION_TIME_UTC "ctime"
@@ -54,14 +55,7 @@
 #define SYS_PROP_TO "to"
 #define SYS_COMPONENT_NAME "sub"
 
-typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
-{
-  az_span topic;
-  az_span payload;
-  az_iot_message_properties properties;
-} IOTHUB_MESSAGE_HANDLE_DATA;
-
-#define Q_TYPE IOTHUB_MESSAGE_HANDLE_DATA*
+#define Q_TYPE az_hfsm_event*
 #define Q_SIZE AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE
 #include <azure/iot/compat/queue.h>
 
@@ -87,9 +81,17 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   az_span username_buffer;
   az_span password_buffer;
   az_span client_id_buffer;
-  queue message_queue;
+
+  queue pending_message_queue;
+  queue sent_message_queue;
 
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
+
+typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
+{
+  int32_t refcount;
+  az_hfsm_iot_hub_telemetry_data telemetry_data;
+} IOTHUB_MESSAGE_HANDLE_DATA;
 
 const TRANSPORT_PROVIDER* MQTT_Protocol(void) { return (TRANSPORT_PROVIDER*)0x4D515454; }
 
@@ -238,7 +240,22 @@ void az_platform_critical_error()
 enum az_hfsm_event_type_compat_csdk
 {
   AZ_IOT_COMPAT_CSDK_CONNECT = _az_HFSM_MAKE_EVENT(_az_FACILITY_COMPAT_CSDK_HFSM, 0),
+  AZ_IOT_COMPAT_CSDK_TELEMETRY_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_COMPAT_CSDK_HFSM, 1),
+  AZ_IOT_COMPAT_CSDK_TELEMETRY_CALLBACK = _az_HFSM_MAKE_EVENT(_az_FACILITY_COMPAT_CSDK_HFSM, 2),
+  AZ_IOT_COMPAT_CSDK_TELEMETRY_DESTROY = _az_HFSM_MAKE_EVENT(_az_FACILITY_COMPAT_CSDK_HFSM, 3),
 };
+
+typedef struct
+{
+  IOTHUB_CLIENT_EVENT_CONFIRMATION_CALLBACK callback;
+  void* userContextCallback;
+} az_hfsm_compat_csdk_telemetry_callback_data;
+
+typedef struct
+{
+  IOTHUB_MESSAGE_HANDLE_DATA* message;
+  az_hfsm_compat_csdk_telemetry_callback_data telemetry_callback;
+} az_hfsm_compat_csdk_telemetry_req_data;
 
 static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event);
@@ -279,7 +296,7 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+      // No-op.
       break;
 
     case AZ_HFSM_EVENT_EXIT:
@@ -325,7 +342,48 @@ AZ_INLINE void _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
       (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
 }
 
-// TODO: AZ_INLINE void _enqueue
+AZ_INLINE void _telemetry_callback()
+{
+  // TODO
+}
+
+
+AZ_INLINE void _send_message(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
+{
+#if 0 // TODO
+    az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
+    .data = msg->payload,
+    .out_packet_id = 0,
+    .topic_buffer = msg->topic,
+    .properties = NULL,
+  };
+
+  az_hfsm_send_event(
+      (az_hfsm*)&client->hub_policy,
+      (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
+#endif
+}
+
+
+AZ_INLINE void _enqueue_message(
+    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client,
+    az_hfsm_event event)
+{
+  az_hfsm_event* clone;
+
+  if (az_result_failed(az_hfsm_event_clone(event, clone)))
+  {
+    az_platform_critical_error();
+  }
+
+  az_result ret = queue_enqueue(&client->pending_message_queue, clone);
+
+  if (az_result_failed(ret))
+  {
+    az_hfsm_event_destroy(clone);
+    
+  }
+}
 
 static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
 {
@@ -340,9 +398,6 @@ static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // HFSM_DESIGN: we should connect with the first DoWork.
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
       // No-op.
       break;
@@ -353,7 +408,7 @@ static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
 
     case AZ_IOT_HUB_TELEMETRY_REQ:
     {
-      // TODO: _enqueue(client, event);  request and copy all data.
+      _enqueue_message(client, event);
       break;
     }
 
@@ -386,11 +441,9 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
-      // TODO
+    case AZ_IOT_COMPAT_CSDK_CONNECT:
+      // No-op.
       break;
 
     case AZ_IOT_HUB_METHODS_REQ:
@@ -421,6 +474,7 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
       printf(LOG_COMPAT "MQTT: PUBACK ID=%d\n", puback->id);
+      // TODO: match with sent_message_queue.
     }
     break;
 
@@ -526,7 +580,8 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
         = az_span_create(malloc(hub_endpoint_buffer_size), hub_endpoint_buffer_size);
 
     if (az_span_ptr(client->topic_buffer) != NULL && az_span_ptr(client->username_buffer) != NULL
-        && az_span_ptr(client->password_buffer) != NULL && az_span_ptr(client->client_id_buffer) != NULL
+        && az_span_ptr(client->password_buffer) != NULL
+        && az_span_ptr(client->client_id_buffer) != NULL
         && az_span_ptr(client->hub_endpoint) != NULL)
     {
       client->device_id = az_span_create_from_str((char*)(uintptr_t)config->deviceId);
@@ -537,6 +592,9 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
       reminder
           = az_span_copy(reminder, az_span_create_from_str((char*)(uintptr_t)config->iotHubSuffix));
       az_span_copy_u8(reminder, '\0');
+
+      queue_init(&client->pending_message_queue);
+      queue_init(&client->sent_message_queue);
 
       ret = hub_initialize(client);
     }
@@ -615,44 +673,62 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
     IOTHUB_CLIENT_EVENT_CONFIRMATION_CALLBACK eventConfirmationCallback,
     void* userContextCallback)
 {
-  IOTHUB_MESSAGE_HANDLE_DATA* msg = eventMessageHandle;
+  IOTHUB_CLIENT_RESULT ret;
 
-  az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
-    .data = msg->payload,
-    .out_packet_id = 0,
-    .topic_buffer = msg->topic,
-    .properties = NULL,
+  az_hfsm_compat_csdk_telemetry_req_data data = (az_hfsm_compat_csdk_telemetry_req_data){
+    .telemetry_callback.callback = eventConfirmationCallback,
+    .telemetry_callback.userContextCallback = userContextCallback,
+    .message = eventMessageHandle,
   };
 
-  az_hfsm_send_event(
-      (az_hfsm*)&iotHubClientHandle->hub_policy,
-      (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
+  if (az_result_failed(az_hfsm_pipeline_post_outbound_event(
+          &iotHubClientHandle->hub_pipeline,
+          (az_hfsm_event){ AZ_IOT_COMPAT_CSDK_TELEMETRY_REQ, &data })))
+  {
+    ret = IOTHUB_CLIENT_ERROR;
+  }
+  else
+  {
+    ret = IOTHUB_CLIENT_OK;
+  }
 
-  // telemetry_data.out_packet_id is set to correlate the PUBACK.
+  return ret;
 }
 
 void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
 {
-  // TODO: connect if queue is not empty.
-
-  if (iotHubClientHandle->message_queue.count > 0)
+  if (iotHubClientHandle->pending_message_queue.count > 0)
   {
-    // TODO: Post Queue connect trigger.
+    if (az_result_failed(az_hfsm_pipeline_post_outbound_event(
+            &iotHubClientHandle->hub_pipeline,
+            (az_hfsm_event){ AZ_IOT_COMPAT_CSDK_CONNECT, NULL })))
+    {
+      az_platform_critical_error();
+    }
   }
 }
 
 IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
 {
   IOTHUB_MESSAGE_HANDLE_DATA* msg = malloc(sizeof(IOTHUB_MESSAGE_HANDLE_DATA));
+  if (msg != NULL)
+  {
+    memset(msg, 0, sizeof(IOTHUB_MESSAGE_HANDLE_DATA));
+  }
+
+  az_iot_message_properties* properties = malloc(sizeof(az_iot_message_properties));
   char* topic_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
   char* properties_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
 
-  if (msg != NULL && topic_buffer != NULL && properties_buffer != NULL
+  if (msg != NULL && properties != NULL && topic_buffer != NULL && properties_buffer != NULL
       && az_result_succeeded(az_iot_message_properties_init(
-          &msg->properties, az_span_create(properties_buffer, AZ_IOT_MAX_TOPIC_SIZE), 0)))
+          properties, az_span_create(properties_buffer, AZ_IOT_MAX_TOPIC_SIZE), 0)))
   {
-    msg->topic = az_span_create(topic_buffer, AZ_IOT_MAX_TOPIC_SIZE);
-    msg->payload = az_span_create_from_str((char*)(uintptr_t)source);
+    msg->refcount = 1;
+    msg->data.properties = properties;
+    msg->data.topic_buffer = az_span_create(topic_buffer, AZ_IOT_MAX_TOPIC_SIZE);
+    msg->data.data = az_span_create_from_str((char*)(uintptr_t)source);
+    msg->data.out_packet_id = -1;
   }
   else
   {
@@ -668,16 +744,16 @@ void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle)
   IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
   if (msg != NULL)
   {
-    if (az_span_ptr(msg->topic) != NULL)
+    if (az_span_ptr(msg->data.topic_buffer) != NULL)
     {
-      free(az_span_ptr(msg->topic));
-      msg->topic = AZ_SPAN_EMPTY;
+      free(az_span_ptr(msg->data.topic_buffer));
+      msg->data.topic_buffer = AZ_SPAN_EMPTY;
     }
 
-    if (az_span_ptr(msg->properties._internal.properties_buffer) != NULL)
+    if (az_span_ptr(msg->data.data) != NULL)
     {
-      free(az_span_ptr(msg->properties._internal.properties_buffer));
-      msg->properties._internal.properties_buffer = AZ_SPAN_EMPTY;
+      free(az_span_ptr(msg->data.data));
+      msg->data.topic_buffer = AZ_SPAN_EMPTY;
     }
 
     free(msg);
@@ -721,7 +797,7 @@ IOTHUB_MESSAGE_RESULT IoTHubMessage_SetProperty(
   IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
 
   if (az_result_failed(az_iot_message_properties_append(
-          &msg->properties,
+          msg->telemetry_data.properties,
           az_span_create_from_str((char*)(uintptr_t)key),
           az_span_create_from_str((char*)(uintptr_t)value))))
   {
