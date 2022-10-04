@@ -235,6 +235,11 @@ void az_platform_critical_error()
 }
 
 // ***** Single-layer C-SDK Compat Layer State Machine
+enum az_hfsm_event_type_compat_csdk
+{
+  AZ_IOT_COMPAT_CSDK_CONNECT = _az_HFSM_MAKE_EVENT(_az_FACILITY_COMPAT_CSDK_HFSM, 0),
+};
+
 static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event);
 static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event);
@@ -320,6 +325,8 @@ AZ_INLINE void _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
       (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
 }
 
+// TODO: AZ_INLINE void _enqueue
+
 static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_HFSM_RETURN_HANDLED;
@@ -340,10 +347,13 @@ static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
+    case AZ_IOT_COMPAT_CSDK_CONNECT:
+      _connect(client);
+      break;
+
     case AZ_IOT_HUB_TELEMETRY_REQ:
     {
-      // TODO: queue request and copy all data.
-      _connect(client);
+      // TODO: _enqueue(client, event);  request and copy all data.
       break;
     }
 
