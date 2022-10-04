@@ -74,15 +74,12 @@ AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_policy,
     az_hfsm_pipeline* pipeline,
     az_hfsm_policy* inbound_policy,
-    az_span client_id,
     az_hfsm_mqtt_policy_options const* options)
 {
   // HFSM_TODO: Preconditions
 
   mqtt_policy->_internal.options
       = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
-
-  mqtt_policy->_internal.client_id = client_id;
 
   mqtt_policy->_internal.policy.pipeline = pipeline;
 
@@ -274,13 +271,13 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
   }
 }
 
-AZ_INLINE int _az_mosquitto_init(az_hfsm_mqtt_policy* me)
+AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connect_data* data)
 {
   int rc;
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
   me->_internal.mqtt = mosquitto_new(
-      (char*)az_span_ptr(me->_internal.client_id),
+      (char*)az_span_ptr(data->client_id),
       false, // clean-session
       me);
 
@@ -297,13 +294,6 @@ AZ_INLINE int _az_mosquitto_init(az_hfsm_mqtt_policy* me)
   mosquitto_subscribe_callback_set(me->_internal.mqtt, _az_mosqitto_on_subscribe);
   mosquitto_unsubscribe_callback_set(me->_internal.mqtt, _az_mosqitto_on_unsubscribe);
   mosquitto_message_callback_set(me->_internal.mqtt, _az_mosquitto_on_message);
-
-  return MOSQ_ERR_SUCCESS;
-}
-
-AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connect_data* data)
-{
-  int rc;
 
   rc = mosquitto_tls_set(
       me->_internal.mqtt,
@@ -415,21 +405,8 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      _az_mosquitto_error_adapter(this_mqtt, _az_mosquitto_init(this_mqtt));
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
       // No-op.
-      break;
-
-    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
-      _az_mosquitto_error_adapter(
-          this_mqtt, _az_mosquitto_pub(this_mqtt, (az_hfsm_mqtt_pub_data*)event.data));
-      break;
-
-    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
-      _az_mosquitto_error_adapter(
-          this_mqtt, _az_mosquitto_sub(this_mqtt, (az_hfsm_mqtt_sub_data*)event.data));
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:

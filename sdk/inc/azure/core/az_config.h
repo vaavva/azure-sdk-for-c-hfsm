@@ -43,6 +43,12 @@ enum
   // MQTT Maximum topic size in bytes.
   AZ_IOT_MAX_TOPIC_SIZE = 128,
 
+  AZ_IOT_MAX_USERNAME_SIZE = 128,
+
+  AZ_IOT_MAX_PASSWORD_SIZE = 128,
+
+  AZ_IOT_MAX_CLIENT_ID_SIZE = 64,
+
   // C-SDK Compat Layer maximum number of queued messages.
   AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE = 10,
 };
