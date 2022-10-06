@@ -239,11 +239,11 @@ static az_hfsm_state_handler get_parent(az_hfsm_state_handler child_state)
 static bool provisioned = false;
 
 // Application - single-level HFSM
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_hfsm_policy* this_policy = (az_hfsm_policy*)me;
 
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
 
   switch (event.type)
   {

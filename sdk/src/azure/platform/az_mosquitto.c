@@ -19,9 +19,9 @@
 
 #include <azure/core/_az_cfg.h>
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event);
+static az_result root(az_hfsm* me, az_hfsm_event event);
+static az_result idle(az_hfsm* me, az_hfsm_event event);
+static az_result running(az_hfsm* me, az_hfsm_event event);
 
 static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
 {
@@ -359,9 +359,9 @@ AZ_INLINE int _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
   return rc;
 }
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_result root(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -391,9 +391,9 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
 }
 
 // Root/idle
-static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
+static az_result idle(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
 
   az_hfsm_mqtt_policy* this_mqtt = (az_hfsm_mqtt_policy*)me;
 
@@ -425,9 +425,9 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
 }
 
 // Root/running
-static az_hfsm_return_type running(az_hfsm* me, az_hfsm_event event)
+static az_result running(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
 
   az_hfsm_mqtt_policy* this_mqtt = (az_hfsm_mqtt_policy*)me;
 

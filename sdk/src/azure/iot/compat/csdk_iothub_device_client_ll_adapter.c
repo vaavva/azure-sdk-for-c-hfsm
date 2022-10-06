@@ -257,9 +257,9 @@ typedef struct
   az_hfsm_compat_csdk_telemetry_callback_data telemetry_callback;
 } az_hfsm_compat_csdk_telemetry_req_data;
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event);
+static az_result root(az_hfsm* me, az_hfsm_event event);
+static az_result disconnected(az_hfsm* me, az_hfsm_event event);
+static az_result connected(az_hfsm* me, az_hfsm_event event);
 
 static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
 {
@@ -283,9 +283,9 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
   return parent_state;
 }
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_result root(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = (IOTHUB_CLIENT_CORE_LL_HANDLE_DATA*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -385,9 +385,9 @@ AZ_INLINE void _enqueue_message(
   }
 }
 
-static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
+static az_result disconnected(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = (IOTHUB_CLIENT_CORE_LL_HANDLE_DATA*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -428,9 +428,9 @@ static az_hfsm_return_type disconnected(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
+static az_result connected(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = (IOTHUB_CLIENT_CORE_LL_HANDLE_DATA*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))

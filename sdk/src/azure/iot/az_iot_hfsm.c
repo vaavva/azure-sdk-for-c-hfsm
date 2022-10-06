@@ -27,12 +27,12 @@ const az_hfsm_event az_hfsm_event_az_iot_provisioning_done
     = { AZ_HFSM_IOT_EVENT_PROVISIONING_DONE, NULL };
 #endif
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event);
+static az_result root(az_hfsm* me, az_hfsm_event event);
+static az_result idle(az_hfsm* me, az_hfsm_event event);
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
-static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event);
+static az_result provisioning(az_hfsm* me, az_hfsm_event event);
 #endif
-static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event);
+static az_result hub(az_hfsm* me, az_hfsm_event event);
 
 // Hardcoded Azure IoT hierarchy structure
 static az_hfsm_state_handler azure_iot_hfsm_get_parent(az_hfsm_state_handler child_state)
@@ -62,9 +62,9 @@ static az_hfsm_state_handler azure_iot_hfsm_get_parent(az_hfsm_state_handler chi
 }
 
 // AzureIoT
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_result root(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   int64_t operation_msec;
 
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
@@ -169,9 +169,9 @@ static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
+static az_result idle(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -220,9 +220,9 @@ static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
 
 #ifdef AZ_IOT_HFSM_PROVISIONING_ENABLED
 // AzureIoT/Provisioning
-static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
+static az_result provisioning(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -286,9 +286,9 @@ static az_hfsm_return_type provisioning(az_hfsm* me, az_hfsm_event event)
 #endif
 
 // AzureIoT/Hub
-static az_hfsm_return_type hub(az_hfsm* me, az_hfsm_event event)
+static az_result hub(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_iot_hfsm_type* this_iot_hfsm = (az_iot_hfsm_type*)me;
   if (_az_LOG_SHOULD_WRITE(event.type))
   {

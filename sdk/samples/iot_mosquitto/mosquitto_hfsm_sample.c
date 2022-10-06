@@ -106,11 +106,11 @@ static az_hfsm_mqtt_sub_data sub_data;
 static az_platform_mutex disconnect_mutex;
 
 // Feedback client
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_hfsm_policy* this_policy = (az_hfsm_policy*)me;
 
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_result az_ret;
 
   switch (event.type)

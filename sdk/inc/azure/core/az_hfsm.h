@@ -60,19 +60,19 @@ enum az_hfsm_event_type_core
 };
 
 /**
- * @brief The type represents possible return codes from HFSM state handlers.
+ * @brief HFSM specific az_result types.
  *
  */
-typedef int32_t az_hfsm_return_type;
-
-/**
- * @brief The only allowed HFSM state return types.
- *
- */
-enum az_hfsm_return_type_core
+enum az_result_hfsm
 {
-  AZ_HFSM_RETURN_HANDLED = 0,
-  AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE = 1,
+  /**
+   * @brief Indicates to the HFSM engine that the superstate should handle the event.
+   * @details This event should not be leaked out of the HFSM system (i.e. the root state should
+   * never return this az_result type). The event indicates normal operation but was constructed as
+   * an error to detect this case.
+   *
+   */
+  AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
 };
 
 /**
@@ -133,7 +133,7 @@ typedef struct az_hfsm az_hfsm;
  * @note All HFSM states must follow the pattern of a single `switch ((int32_t)event.type)`
  *       statement. Code should not exist outside of the switch statement.
  */
-typedef az_hfsm_return_type (*az_hfsm_state_handler)(az_hfsm* me, az_hfsm_event event);
+typedef az_result (*az_hfsm_state_handler)(az_hfsm* me, az_hfsm_event event);
 
 /**
  * @brief The type of the function returning the parent of any given child state.
@@ -224,6 +224,6 @@ void az_hfsm_transition_superstate(
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] event The event being sent.
  */
-void az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
+az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
 
 #endif //_az_HFSM_H

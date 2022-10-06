@@ -20,17 +20,17 @@
 
 #include <azure/core/_az_cfg.h>
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event);
+static az_result root(az_hfsm* me, az_hfsm_event event);
 
-static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event);
+static az_result idle(az_hfsm* me, az_hfsm_event event);
+static az_result started(az_hfsm* me, az_hfsm_event event);
 
-static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event);
+static az_result connecting(az_hfsm* me, az_hfsm_event event);
+static az_result connected(az_hfsm* me, az_hfsm_event event);
+static az_result disconnecting(az_hfsm* me, az_hfsm_event event);
 
-static az_hfsm_return_type subscribing(az_hfsm* me, az_hfsm_event event);
-static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event);
+static az_result subscribing(az_hfsm* me, az_hfsm_event event);
+static az_result subscribed(az_hfsm* me, az_hfsm_event event);
 
 static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
 {
@@ -90,9 +90,9 @@ AZ_NODISCARD az_result az_hfsm_iot_hub_policy_initialize(
   return AZ_OK;
 }
 
-static az_hfsm_return_type root(az_hfsm* me, az_hfsm_event event)
+static az_result root(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -177,9 +177,9 @@ AZ_INLINE void _hub_connect(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_connect_
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ, .data = &connect_data });
 }
 
-static az_hfsm_return_type idle(az_hfsm* me, az_hfsm_event event)
+static az_result idle(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -221,9 +221,9 @@ AZ_INLINE void _hub_disconnect(az_hfsm_iot_hub_policy* me)
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, .data = NULL });
 }
 
-static az_hfsm_return_type started(az_hfsm* me, az_hfsm_event event)
+static az_result started(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -273,9 +273,9 @@ AZ_INLINE void _hub_subscribe(az_hfsm_iot_hub_policy* me)
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUB_REQ, &data });
 }
 
-static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
+static az_result connecting(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -319,9 +319,9 @@ static az_hfsm_return_type connecting(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
+static az_result connected(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -344,9 +344,9 @@ static az_hfsm_return_type connected(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
+static az_result disconnecting(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -370,9 +370,9 @@ static az_hfsm_return_type disconnecting(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_return_type subscribing(az_hfsm* me, az_hfsm_event event)
+static az_result subscribing(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -476,9 +476,9 @@ AZ_INLINE void _hub_message_parse(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_
   }
 }
 
-static az_hfsm_return_type subscribed(az_hfsm* me, az_hfsm_event event)
+static az_result subscribed(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_HFSM_RETURN_HANDLED;
+  int32_t ret = AZ_OK;
   az_hfsm_iot_hub_policy* this_policy = (az_hfsm_iot_hub_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
