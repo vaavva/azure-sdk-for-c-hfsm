@@ -725,10 +725,10 @@ IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
           properties, az_span_create(properties_buffer, AZ_IOT_MAX_TOPIC_SIZE), 0)))
   {
     msg->refcount = 1;
-    msg->data.properties = properties;
-    msg->data.topic_buffer = az_span_create(topic_buffer, AZ_IOT_MAX_TOPIC_SIZE);
-    msg->data.data = az_span_create_from_str((char*)(uintptr_t)source);
-    msg->data.out_packet_id = -1;
+    msg->telemetry_data.properties = properties;
+    msg->telemetry_data.topic_buffer = az_span_create(topic_buffer, AZ_IOT_MAX_TOPIC_SIZE);
+    msg->telemetry_data.data = az_span_create_from_str((char*)(uintptr_t)source);
+    msg->telemetry_data.out_packet_id = -1;
   }
   else
   {
@@ -744,16 +744,16 @@ void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle)
   IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
   if (msg != NULL)
   {
-    if (az_span_ptr(msg->data.topic_buffer) != NULL)
+    if (az_span_ptr(msg->telemetry_data.topic_buffer) != NULL)
     {
-      free(az_span_ptr(msg->data.topic_buffer));
-      msg->data.topic_buffer = AZ_SPAN_EMPTY;
+      free(az_span_ptr(msg->telemetry_data.topic_buffer));
+      msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
     }
 
-    if (az_span_ptr(msg->data.data) != NULL)
+    if (az_span_ptr(msg->telemetry_data.data) != NULL)
     {
-      free(az_span_ptr(msg->data.data));
-      msg->data.topic_buffer = AZ_SPAN_EMPTY;
+      free(az_span_ptr(msg->telemetry_data.data));
+      msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
     }
 
     free(msg);
