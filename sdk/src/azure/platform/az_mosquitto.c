@@ -345,12 +345,8 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      ret = _az_mosquitto_connect(this_mqtt, (az_hfsm_mqtt_connect_data*)event.data);
-      if (az_result_succeeded(ret))
-      {
-        ret = az_hfsm_transition_substate((az_hfsm*)me, idle, running);
-      }
-
+      _az_RETURN_IF_FAILED(_az_mosquitto_connect(this_mqtt, (az_hfsm_mqtt_connect_data*)event.data));
+      _az_RETURN_IF_FAILED(az_hfsm_transition_substate((az_hfsm*)me, idle, running));
       break;
 
     default:
@@ -407,11 +403,8 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      ret = az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
-      if (az_result_succeeded(ret))
-      {
-        ret = az_hfsm_transition_peer(me, running, idle);
-      }
+      _az_RETURN_IF_FAILED(az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event));
+      _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, running, idle));
       break;
 
     default:

@@ -243,7 +243,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_hfsm_policy* this_policy = (az_hfsm_policy*)me;
 
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
 
   switch (event.type)
   {
@@ -317,7 +317,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
           .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
         };
 
-        az_hfsm_send_event(
+        ret = az_hfsm_send_event(
             (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
       }
     }
@@ -334,7 +334,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
         .properties = NULL,
       };
 
-      az_hfsm_send_event(
+      ret = az_hfsm_send_event(
           (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
     }
     break;
@@ -355,7 +355,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
                                                     = AZ_SPAN_FROM_BUFFER(topic_buffer),
                                                     .payload = AZ_SPAN_EMPTY };
 
-      az_hfsm_send_event(
+      ret = az_hfsm_send_event(
           (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
     }
     break;
@@ -381,7 +381,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through provisioning events.
-      az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
+      ret = az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
       break;
 
     default:

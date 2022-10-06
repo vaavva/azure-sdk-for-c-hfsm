@@ -97,14 +97,14 @@ AZ_NODISCARD az_result az_hfsm_iot_provisioning_policy_initialize(
   policy->_internal.provisioning_client = provisioning_client;
 
   _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)policy, root, _get_parent));
-  az_hfsm_transition_substate((az_hfsm*)policy, root, idle);
+  _az_RETURN_IF_FAILED(az_hfsm_transition_substate((az_hfsm*)policy, root, idle));
 
   return AZ_OK;
 }
 
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -132,9 +132,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-AZ_INLINE void _dps_connect(
-    az_hfsm_iot_provisioning_policy* me,
-    az_hfsm_iot_provisioning_register_data* data)
+AZ_INLINE az_result
+_dps_connect(az_hfsm_iot_provisioning_policy* me, az_hfsm_iot_provisioning_register_data* data)
 {
   // Cache topic and payload buffers for later use.
   me->_internal.topic_buffer = data->topic_buffer;
@@ -161,32 +160,30 @@ AZ_INLINE void _dps_connect(
 
   size_t buffer_size;
 
-  az_hfsm_policy_error_handler(
-      (az_hfsm_policy*)me,
-      az_iot_provisioning_client_get_client_id(
-          me->_internal.provisioning_client,
-          (char*)az_span_ptr(data->client_id_buffer),
-          (size_t)az_span_size(data->client_id_buffer),
-          &buffer_size));
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_get_client_id(
+      me->_internal.provisioning_client,
+      (char*)az_span_ptr(data->client_id_buffer),
+      (size_t)az_span_size(data->client_id_buffer),
+      &buffer_size));
   connect_data.client_id = az_span_slice(data->client_id_buffer, 0, (int32_t)buffer_size);
 
-  az_hfsm_policy_error_handler(
-      (az_hfsm_policy*)me,
-      az_iot_provisioning_client_get_user_name(
-          me->_internal.provisioning_client,
-          (char*)az_span_ptr(data->username_buffer),
-          (size_t)az_span_size(data->username_buffer),
-          &buffer_size));
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_get_user_name(
+      me->_internal.provisioning_client,
+      (char*)az_span_ptr(data->username_buffer),
+      (size_t)az_span_size(data->username_buffer),
+      &buffer_size));
   connect_data.username = az_span_slice(data->username_buffer, 0, (int32_t)buffer_size);
 
-  az_hfsm_send_event(
+  _az_RETURN_IF_FAILED(az_hfsm_send_event(
       (az_hfsm*)me->_internal.policy.outbound,
-      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ, .data = &connect_data });
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ, .data = &connect_data }));
+
+  return AZ_OK;
 }
 
 static az_result idle(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -203,9 +200,10 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_IOT_PROVISIONING_REGISTER_REQ:
-      az_hfsm_transition_peer(me, idle, started);
-      az_hfsm_transition_substate(me, started, connecting);
-      _dps_connect(this_policy, (az_hfsm_iot_provisioning_register_data*)event.data);
+      _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, idle, started));
+      _az_RETURN_IF_FAILED(az_hfsm_transition_substate(me, started, connecting));
+      _az_RETURN_IF_FAILED(
+          _dps_connect(this_policy, (az_hfsm_iot_provisioning_register_data*)event.data));
       break;
 
     default:
@@ -216,16 +214,16 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-AZ_INLINE void _dps_disconnect(az_hfsm_iot_provisioning_policy* me)
+AZ_INLINE az_result _dps_disconnect(az_hfsm_iot_provisioning_policy* me)
 {
-  az_hfsm_send_event(
+  return az_hfsm_send_event(
       (az_hfsm*)me->_internal.policy.outbound,
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, .data = NULL });
 }
 
 static az_result started(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -241,13 +239,14 @@ static az_result started(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
-      az_hfsm_transition_substate(me, started, disconnecting);
-      _dps_disconnect(this_policy);
+      _az_RETURN_IF_FAILED(az_hfsm_transition_substate(me, started, disconnecting));
+      _az_RETURN_IF_FAILED(_dps_disconnect(this_policy));
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      az_hfsm_transition_peer(me, started, idle);
-      az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->inbound, event);
+      _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, started, idle));
+      _az_RETURN_IF_FAILED(
+          az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->inbound, event));
       break;
 
     default:
@@ -258,7 +257,7 @@ static az_result started(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-AZ_INLINE void _dps_subscribe(az_hfsm_iot_provisioning_policy* me)
+AZ_INLINE az_result _dps_subscribe(az_hfsm_iot_provisioning_policy* me)
 {
   // HFSM_TODO: This should be initialized by the MQTT stack and a reference held until subscribe
   // completes. AzRTOS may require pointers from an NX TCB.
@@ -268,14 +267,14 @@ AZ_INLINE void _dps_subscribe(az_hfsm_iot_provisioning_policy* me)
     .out_id = 0,
   };
 
-  az_hfsm_send_event(
+  return az_hfsm_send_event(
       (az_hfsm*)me->_internal.policy.outbound,
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUB_REQ, &data });
 }
 
 static az_result connecting(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -295,15 +294,16 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
       az_hfsm_mqtt_connack_data* data = (az_hfsm_mqtt_connack_data*)event.data;
       if (data->connack_reason == 0)
       {
-        az_hfsm_transition_peer(me, connecting, connected);
-        az_hfsm_transition_substate(me, connected, subscribing);
-        _dps_subscribe(this_policy);
+        _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, connecting, connected));
+        _az_RETURN_IF_FAILED(az_hfsm_transition_substate(me, connected, subscribing));
+        _az_RETURN_IF_FAILED(_dps_subscribe(this_policy));
       }
       else
       {
-        az_hfsm_transition_superstate(me, connecting, started);
-        az_hfsm_transition_peer(me, started, idle);
-        az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->outbound, event);
+        _az_RETURN_IF_FAILED(az_hfsm_transition_superstate(me, connecting, started));
+        _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, started, idle));
+        _az_RETURN_IF_FAILED(
+            az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->outbound, event));
       }
       break;
     }
@@ -318,7 +318,7 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
 
 static az_result connected(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -343,7 +343,7 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
 
 static az_result disconnecting(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -367,17 +367,15 @@ static az_result disconnecting(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-AZ_INLINE void _dps_register(az_hfsm_iot_provisioning_policy* me)
+AZ_INLINE az_result _dps_register(az_hfsm_iot_provisioning_policy* me)
 {
   size_t buffer_size;
 
-  az_hfsm_policy_error_handler(
-      (az_hfsm_policy*)me,
-      az_iot_provisioning_client_register_get_publish_topic(
-          me->_internal.provisioning_client,
-          (char*)az_span_ptr(me->_internal.topic_buffer),
-          (size_t)az_span_size(me->_internal.topic_buffer),
-          &buffer_size));
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_register_get_publish_topic(
+      me->_internal.provisioning_client,
+      (char*)az_span_ptr(me->_internal.topic_buffer),
+      (size_t)az_span_size(me->_internal.topic_buffer),
+      &buffer_size));
 
   // HFSM_TODO: Payload
 
@@ -388,14 +386,16 @@ AZ_INLINE void _dps_register(az_hfsm_iot_provisioning_policy* me)
     .out_id = 0,
   };
 
-  az_hfsm_send_event(
+  _az_RETURN_IF_FAILED(az_hfsm_send_event(
       (az_hfsm*)((az_hfsm_policy*)me)->outbound,
-      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, .data = &data });
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, .data = &data }));
+
+  return AZ_OK;
 }
 
 static az_result subscribing(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -427,7 +427,7 @@ static az_result subscribing(az_hfsm* me, az_hfsm_event event)
 
 static az_result subscribed(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -452,7 +452,7 @@ static az_result subscribed(az_hfsm* me, az_hfsm_event event)
 
 static az_result start_register(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -498,7 +498,7 @@ AZ_INLINE bool _dps_is_registration_complete(
 
 static az_result wait_register(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -592,7 +592,7 @@ AZ_INLINE void _dps_stop_timer(az_hfsm_iot_provisioning_policy* me)
 
 static az_result delay(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -626,7 +626,7 @@ static az_result delay(az_hfsm* me, az_hfsm_event event)
 
 static az_result query(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
