@@ -45,24 +45,20 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
   return parent_state;
 }
 
-AZ_INLINE void _az_result_error_handler(az_hfsm_mqtt_policy* me, az_result rc)
+AZ_INLINE az_result _az_result_from_mosq(int mosquitto_ret)
 {
-  (void)me;
+  az_result ret;
 
-  if (az_result_failed(rc))
+  if (mosquitto_ret == MOSQ_ERR_SUCCESS)
   {
-    az_platform_critical_error();
+    ret = AZ_OK;
   }
-}
+  else
+  {
+    ret = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, mosquitto_ret);
+  }
 
-AZ_INLINE void _az_mosquitto_error_adapter(az_hfsm_mqtt_policy* me, int rc)
-{
-  if (rc != MOSQ_ERR_SUCCESS)
-  {
-    az_hfsm_event_data_error d = { .error_type = rc };
-    az_hfsm_send_event(
-        (az_hfsm*)(((az_hfsm_policy*)me)->inbound), (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
-  }
+  return ret;
 }
 
 AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default()
@@ -92,87 +88,32 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   //              For the Mosquitto implementation, a simplified 2 level, 3 state HFSM is used.
 
   _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)mqtt_policy, root, _get_parent));
-  az_hfsm_transition_substate((az_hfsm*)mqtt_policy, root, idle);
+  _az_RETURN_IF_FAILED(az_hfsm_transition_substate((az_hfsm*)mqtt_policy, root, idle));
 
   return AZ_OK;
 }
 
-AZ_NODISCARD az_result az_mqtt_pub_data_create(az_hfsm_mqtt_pub_data* data)
-{
-  // For Mosquitto MQTT, the stack does not perform internal allocation.
-  // The application is responsible with allocating and maintaining the lifetime of the object.
-  _az_PRECONDITION_NOT_NULL(data);
-  // data->id can be NULL if the application doesn't want to correlate PUBACK.
-  _az_PRECONDITION_VALID_SPAN(data->topic, 1, false);
-  _az_PRECONDITION_VALID_SPAN(data->payload, 1, false);
+AZ_NODISCARD az_result az_mqtt_init() { return _az_result_from_mosq(mosquitto_lib_init()); }
 
-  return AZ_OK;
-}
-
-AZ_NODISCARD az_result az_mqtt_pub_data_destroy(az_hfsm_mqtt_pub_data* data)
-{
-  // For Mosquitto MQTT, the stack does not perform internal allocation.
-  // The application is responsible with allocating and maintaining the lifetime of the object.
-  _az_PRECONDITION_NOT_NULL(data);
-  return AZ_OK;
-}
-
-AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data)
-{
-  // For Mosquitto MQTT, the stack does not perform internal allocation.
-  // The application is responsible with allocating and maintaining the lifetime of the object.
-  (void)data;
-  return AZ_OK;
-}
-
-AZ_NODISCARD az_result az_mqtt_sub_data_destroy(az_hfsm_mqtt_sub_data* data)
-{
-  // For Mosquitto MQTT, the stack does not perform internal allocation.
-  // The application is responsible with allocating and maintaining the lifetime of the object.
-  _az_PRECONDITION_NOT_NULL(data);
-  return AZ_OK;
-}
-
-AZ_NODISCARD az_result az_mqtt_init()
-{
-  az_result ret = AZ_OK;
-
-  if (MOSQ_ERR_SUCCESS != mosquitto_lib_init())
-  {
-    ret = AZ_ERROR_MQTT_INIT;
-  }
-
-  return ret;
-}
-
-AZ_NODISCARD az_result az_mqtt_deinit()
-{
-  az_result ret = AZ_OK;
-
-  if (MOSQ_ERR_SUCCESS != mosquitto_lib_cleanup())
-  {
-    ret = AZ_ERROR_MQTT_INIT;
-  }
-
-  return ret;
-}
+AZ_NODISCARD az_result az_mqtt_deinit() { return _az_result_from_mosq(mosquitto_lib_cleanup()); }
 
 static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
-  az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;
+  az_result ret;
+  az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
   if (reason_code != 0)
   {
     /* If the connection fails for any reason, we don't want to keep on
      * retrying in this example, so disconnect. Without this, the client
      * will attempt to reconnect. */
-    mosquitto_disconnect(mosq);
+    az_hfsm_pipeline_post_error(me->pipeline, mosquitto_disconnect(mosq));
   }
 
-  _az_result_error_handler(
-      me,
+  az_hfsm_pipeline_post_error(
+      me->pipeline,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.policy.pipeline,
+          me->pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_RSP,
                            &(az_hfsm_mqtt_connack_data){ reason_code } }));
 }
@@ -180,12 +121,12 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
 static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
 {
   (void)mosq;
-  az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;
+  az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  _az_result_error_handler(
-      me,
+  az_hfsm_pipeline_post_error(
+      me->pipeline,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.policy.pipeline,
+          me->pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP,
                            &(az_hfsm_mqtt_disconnect_data){ .disconnect_reason = rc,
                                                             .disconnect_requested = (rc == 0) } }));
@@ -199,12 +140,12 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
 static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
 {
   (void)mosq;
-  az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;
+  az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  _az_result_error_handler(
-      me,
+  az_hfsm_pipeline_post_error(
+      me->pipeline,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.policy.pipeline,
+          me->pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUBACK_RSP, &(az_hfsm_mqtt_puback_data){ mid } }));
 }
 
@@ -219,12 +160,12 @@ static void _az_mosqitto_on_subscribe(
   (void)qos_count;
   (void)granted_qos;
 
-  az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;
+  az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  _az_result_error_handler(
-      me,
+  az_hfsm_pipeline_post_error(
+      me->pipeline,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.policy.pipeline,
+          me->pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUBACK_RSP, &(az_hfsm_mqtt_suback_data){ mid } }));
 }
 
@@ -234,7 +175,7 @@ static void _az_mosqitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int m
   (void)obj;
   (void)mid;
 
-  // Unsubscribe is not handled at the moment.
+  // Unsubscribe is not handled.
   az_platform_critical_error();
 }
 
@@ -244,12 +185,12 @@ static void _az_mosquitto_on_message(
     const struct mosquitto_message* message)
 {
   (void)mosq;
-  az_hfsm_mqtt_policy* me = (az_hfsm_mqtt_policy*)obj;
+  az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  _az_result_error_handler(
-      me,
+  az_hfsm_pipeline_post_error(
+      me->pipeline,
       az_hfsm_pipeline_post_inbound_event(
-          me->_internal.policy.pipeline,
+          me->pipeline,
           (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
                            &(az_hfsm_mqtt_recv_data){
                                .qos = (int8_t)message->qos,
@@ -271,9 +212,9 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
   }
 }
 
-AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connect_data* data)
+AZ_INLINE az_result _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connect_data* data)
 {
-  int rc;
+  az_result ret;
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
   me->_internal.mqtt = mosquitto_new(
@@ -283,7 +224,7 @@ AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connec
 
   if (me->_internal.mqtt == NULL)
   {
-    return MOSQ_ERR_NOMEM;
+    return AZ_ERROR_OUT_OF_MEMORY;
   }
 
   /* Configure callbacks. This should be done before connecting ideally. */
@@ -295,73 +236,67 @@ AZ_INLINE int _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connec
   mosquitto_unsubscribe_callback_set(me->_internal.mqtt, _az_mosqitto_on_unsubscribe);
   mosquitto_message_callback_set(me->_internal.mqtt, _az_mosquitto_on_message);
 
-  rc = mosquitto_tls_set(
+  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_tls_set(
       me->_internal.mqtt,
       (const char*)az_span_ptr(me->_internal.options.certificate_authority_trusted_roots),
       NULL,
       (const char*)az_span_ptr(data->client_certificate),
       (const char*)az_span_ptr(data->client_private_key),
-      NULL); // HFSM_TODO: Key callback for cases where the PEM files are encrypted at rest.
+      NULL))); // HFSM_TODO: Key callback for cases where the PEM files are encrypted at rest.
 
-  if (rc == MOSQ_ERR_SUCCESS)
-  {
-    rc = mosquitto_username_pw_set(
-        me->_internal.mqtt,
-        (const char*)az_span_ptr(data->username),
-        (const char*)az_span_ptr(data->password));
-  }
+  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_username_pw_set(
+      me->_internal.mqtt,
+      (const char*)az_span_ptr(data->username),
+      (const char*)az_span_ptr(data->password))));
 
-  rc = mosquitto_connect_async(
+  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_connect_async(
       (struct mosquitto*)me->_internal.mqtt,
       (char*)az_span_ptr(data->host),
       data->port,
-      AZ_MQTT_KEEPALIVE_SECONDS);
+      AZ_MQTT_KEEPALIVE_SECONDS)));
 
-  return rc;
+  return AZ_OK;
 }
 
-AZ_INLINE int _az_mosquitto_disconnect(az_hfsm_mqtt_policy* me)
+AZ_INLINE az_result _az_mosquitto_disconnect(az_hfsm_mqtt_policy* me)
 {
-  return mosquitto_disconnect((struct mosquitto*)me->_internal.mqtt);
+  return _az_result_from_mosq(mosquitto_disconnect((struct mosquitto*)me->_internal.mqtt));
 }
 
-AZ_INLINE int _az_mosquitto_pub(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_pub_data* data)
+AZ_INLINE az_result _az_mosquitto_pub(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_pub_data* data)
 {
-  return mosquitto_publish(
+  return _az_result_from_mosq(mosquitto_publish(
       me->_internal.mqtt,
       &data->out_id,
       (char*)az_span_ptr(data->topic), // Assumes properly formed NULL terminated string.
       az_span_size(data->payload),
       az_span_ptr(data->payload),
       data->qos,
-      false);
+      false));
 }
 
-AZ_INLINE int _az_mosquitto_sub(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_sub_data* data)
+AZ_INLINE az_result _az_mosquitto_sub(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_sub_data* data)
 {
-  return mosquitto_subscribe(
+  return _az_result_from_mosq(mosquitto_subscribe(
       (struct mosquitto*)me->_internal.mqtt,
       &data->out_id,
       (char*)az_span_ptr(data->topic_filter),
-      data->qos);
+      data->qos));
 }
 
-AZ_INLINE int _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
+AZ_INLINE az_result _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
 {
-  int rc;
-  rc = mosquitto_loop_stop((struct mosquitto*)me->_internal.mqtt, false);
+  _az_RETURN_IF_FAILED(
+      _az_result_from_mosq(mosquitto_loop_stop((struct mosquitto*)me->_internal.mqtt, false)));
 
-  if (rc == MOSQ_ERR_SUCCESS)
-  {
-    mosquitto_destroy((struct mosquitto*)me->_internal.mqtt);
-  }
+  mosquitto_destroy((struct mosquitto*)me->_internal.mqtt);
 
-  return rc;
+  return AZ_OK;
 }
 
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
@@ -393,7 +328,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 // Root/idle
 static az_result idle(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
 
   az_hfsm_mqtt_policy* this_mqtt = (az_hfsm_mqtt_policy*)me;
 
@@ -410,10 +345,12 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      _az_mosquitto_error_adapter(
-          this_mqtt, _az_mosquitto_connect(this_mqtt, (az_hfsm_mqtt_connect_data*)event.data));
+      ret = _az_mosquitto_connect(this_mqtt, (az_hfsm_mqtt_connect_data*)event.data);
+      if (az_result_succeeded(ret))
+      {
+        ret = az_hfsm_transition_substate((az_hfsm*)me, idle, running);
+      }
 
-      az_hfsm_transition_substate((az_hfsm*)me, idle, running);
       break;
 
     default:
@@ -427,7 +364,7 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
 // Root/running
 static az_result running(az_hfsm* me, az_hfsm_event event)
 {
-  int32_t ret = AZ_OK;
+  az_result ret = AZ_OK;
 
   az_hfsm_mqtt_policy* this_mqtt = (az_hfsm_mqtt_policy*)me;
 
@@ -439,41 +376,42 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      _az_mosquitto_error_adapter(this_mqtt, mosquitto_loop_start(this_mqtt->_internal.mqtt));
+      ret = _az_result_from_mosq(mosquitto_loop_start(this_mqtt->_internal.mqtt));
       break;
 
     case AZ_HFSM_EVENT_EXIT:
       // HFSM_TODO: A new event is likely required in case the loop can't stop.
-      _az_mosquitto_error_adapter(this_mqtt, _az_mosquitto_deinit(this_mqtt));
+      ret = _az_mosquitto_deinit(this_mqtt);
 
       // IMPORTANT: application must call mosquitto_lib_cleanup()
       // after all clients have been destroyed.
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_REQ:
-      _az_mosquitto_error_adapter(
-          this_mqtt, _az_mosquitto_pub(this_mqtt, (az_hfsm_mqtt_pub_data*)event.data));
+      ret = _az_mosquitto_pub(this_mqtt, (az_hfsm_mqtt_pub_data*)event.data);
       break;
 
     case AZ_HFSM_MQTT_EVENT_SUB_REQ:
-      _az_mosquitto_error_adapter(
-          this_mqtt, _az_mosquitto_sub(this_mqtt, (az_hfsm_mqtt_sub_data*)event.data));
+      ret = _az_mosquitto_sub(this_mqtt, (az_hfsm_mqtt_sub_data*)event.data);
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
-      _az_mosquitto_disconnect(this_mqtt);
+      ret = _az_mosquitto_disconnect(this_mqtt);
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-      az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
+      ret = az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
-      az_hfsm_transition_peer(me, running, idle);
+      ret = az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
+      if (az_result_succeeded(ret))
+      {
+        ret = az_hfsm_transition_peer(me, running, idle);
+      }
       break;
 
     default:

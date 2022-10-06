@@ -169,50 +169,6 @@ AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_policy* inbound_policy,
     az_hfsm_mqtt_policy_options const* options);
 
-/**
- * @brief Creates an MQTT PUB message.
- *
- * @details The MQTT platform implementation will allocate and correctly set the structures within
- *          this struct to point to valid memory. The application is then responsible with filling
- *          in the required information.
- *
- * @param data
- * @return AZ_NODISCARD
- */
-AZ_NODISCARD az_result az_mqtt_pub_data_create(az_hfsm_mqtt_pub_data* data);
-
-/**
- * @brief Destroys an MQTT PUB message.
- * @details The MQTT platform may need to release or dispose of the underlying MQTT structures that
- *          this #az_hfsm_mqtt_pub_data points to.
- *
- * @param data
- * @return AZ_NODISCARD
- */
-AZ_NODISCARD az_result az_mqtt_pub_data_destroy(az_hfsm_mqtt_pub_data* data);
-
-/**
- * @brief Creates an MQTT SUB message.
- *
- * @details The MQTT platform implementation will allocate and correctly set the structures within
- *          this struct to point to valid memory. The application is then responsible with filling
- *          in the required information.
- *
- * @param data
- * @return AZ_NODISCARD
- */
-AZ_NODISCARD az_result az_mqtt_sub_data_create(az_hfsm_mqtt_sub_data* data);
-
-/**
- * @brief Destroys an MQTT PUB message.
- * @details The MQTT platform may need to release or dispose of the underlying MQTT structures that
- *          this #az_hfsm_mqtt_pub_data points to.
- *
- * @param data
- * @return AZ_NODISCARD
- */
-AZ_NODISCARD az_result az_mqtt_sub_data_destroy(az_hfsm_mqtt_sub_data* data);
-
 
 // HFSM_TODO: Common way for init-once items such as mosquitto_lib_init();
 AZ_NODISCARD az_result az_mqtt_init();

@@ -110,8 +110,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_hfsm_policy* this_policy = (az_hfsm_policy*)me;
 
-  int32_t ret = AZ_OK;
-  az_result az_ret;
+  az_result ret = AZ_OK;
 
   switch (event.type)
   {
@@ -121,7 +120,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       printf(LOG_APP "CONNACK REASON=%d\n", connack_data->connack_reason);
 
       // This API is called here only for exemplification. In certain zero-copy implementations,
-      // the underlying MQTT stack will re-used pooled network packets. In that case, the
+      // the underlying MQTT stack will re-use pooled network packets. In that case, the
       // application will be given `az_span` structures with maximum sizes.
       // The application must use az_span_copy:
       //      az_span_copy(
@@ -129,13 +128,12 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       //       AZ_SPAN_FROM_STR(AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC));
       //       sub_data.qos = 0;
       //       sub_data.id = &mid;
-      az_ret = az_mqtt_sub_data_create(&sub_data);
       sub_data = (az_hfsm_mqtt_sub_data){ .topic_filter = AZ_SPAN_FROM_STR(
                                               AZ_IOT_HUB_CLIENT_METHODS_SUBSCRIBE_TOPIC),
                                           .out_id = 0,
                                           .qos = 0 };
 
-      az_hfsm_send_event(
+      ret = az_hfsm_send_event(
           (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
 
       printf(LOG_APP "SUB mID = %d\n", sub_data.out_id);
@@ -144,8 +142,6 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
       printf(LOG_APP "Subscribed\n");
-
-      az_ret = az_mqtt_sub_data_destroy(&sub_data);
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
@@ -167,7 +163,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
           LOG_APP "DISCONNECT reason=%d - %s\n",
           disconnect_data->disconnect_reason,
           disconnect_data->disconnect_requested ? "app-requested" : "unexpected");
-      az_ret = az_platform_mutex_release(&disconnect_mutex);
+      ret = az_platform_mutex_release(&disconnect_mutex);
       break;
     }
 
@@ -183,13 +179,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
+      ret = az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
       break;
-  }
-
-  if (az_result_failed(az_ret))
-  {
-    az_platform_critical_error();
   }
 
   return ret;

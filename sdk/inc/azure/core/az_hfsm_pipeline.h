@@ -65,25 +65,35 @@ AZ_NODISCARD az_result az_hfsm_pipeline_init(
  * @note The lifetime of the `event` must be maintained until the event is consumed by the
  *       HFSM. No threading guarantees exist for dispatching.
  *
- * @param[in] h The #az_hfsm to use for this call.
+ * @note This function should not be used during pipeline processing. The function can be called
+ * either from the application or from within a system-level (timer, MQTT stack, etc) callback.
+ *
+ * @param[in] h The #az_hfsm_pipeline to use for this call.
  * @param[in] event The event being sent.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_hfsm_pipeline_post_inbound_event(
-    az_hfsm_pipeline* pipeline,
-    az_hfsm_event const event);
+AZ_NODISCARD az_result
+az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
 
-AZ_NODISCARD az_result az_hfsm_pipeline_post_outbound_event(
-    az_hfsm_pipeline* pipeline,
-    az_hfsm_event const event);
+AZ_NODISCARD az_result
+az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
 
-void az_hfsm_policy_error_handler(az_hfsm_policy* policy, az_result rc);
+/**
+ * @brief Posts an inbound error event based on the #az_result `rc` parameter.
+ * @details If `rc` is not an error code, no inbound message is posted.
+ * @note This function should be used within system-level callbacks where a syncrhonous error cannot
+ * be returned.
+ *
+ * @param pipeline The #az_hfsm_pipeline.
+ * @param rc The #az_result error code.
+ */
+void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc);
 
-typedef struct 
+typedef struct
 {
   az_platform_timer platform_timer;
 
-  struct 
+  struct
   {
     az_hfsm_pipeline* pipeline;
   } _internal;
@@ -91,14 +101,13 @@ typedef struct
 
 /**
  * @brief Creates an #az_platform_timer associated with an #az_hfsm_pipeline.
- * @details When the timer elapses, a TIMEOUT _outbound_ message will be generated. The event.#data 
- *          contains a pointer to the original #az_platform_timer. 
+ * @details When the timer elapses, a TIMEOUT _outbound_ message will be generated. The event.#data
+ *          contains a pointer to the original #az_platform_timer.
  * @param pipeline The pipeline.
  * @param[in, out] out_timer The populated timer structure.
- * @return An #az_result value indicating the result of the operation. 
+ * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_hfsm_pipeline_timer_create(
-  az_hfsm_pipeline* pipeline,
-  az_hfsm_pipeline_timer* out_timer);
+AZ_NODISCARD az_result
+az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer* out_timer);
 
 #endif //_az_HFSM_PIPELINE_H

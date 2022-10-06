@@ -147,7 +147,7 @@ enum az_result_core
   AZ_ERROR_HFSM_INVALID_STATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
 
   /// MQTT initialization error.
-  AZ_ERROR_MQTT_INIT = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, 0),
+  AZ_ERROR_MQTT = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, 0),
 };
 
 /**
