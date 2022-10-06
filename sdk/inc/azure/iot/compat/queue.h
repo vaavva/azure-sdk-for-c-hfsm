@@ -46,7 +46,7 @@ static void queue_init(queue* q)
   q->end_idx = 0;
 }
 
-static az_result queue_enqueue(queue* q, Q_TYPE element)
+static AZ_NODISCARD az_result queue_enqueue(queue* q, Q_TYPE element)
 {
   _az_PRECONDITION_NOT_NULL(q);
 

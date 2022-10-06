@@ -17,9 +17,8 @@
 #include <stdint.h>
 
 #include <azure/core/az_hfsm.h>
+#include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
-
-#include <azure/core/_az_cfg.h>
 
 const az_hfsm_event az_hfsm_event_entry = { AZ_HFSM_EVENT_ENTRY, NULL };
 const az_hfsm_event az_hfsm_event_exit = { AZ_HFSM_EVENT_EXIT, NULL };
@@ -40,10 +39,12 @@ az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent ge
   return ret;
 }
 
-static void _az_hfsm_recursive_exit(az_hfsm* h, az_hfsm_state_handler source_state)
+static AZ_NODISCARD az_result _az_hfsm_recursive_exit(az_hfsm* h, az_hfsm_state_handler source_state)
 {
   _az_PRECONDITION_NOT_NULL(h);
   _az_PRECONDITION_NOT_NULL(source_state);
+
+  az_result ret;
 
   // Super-state handler making a transition must exit all substates:
   while (source_state != h->_internal.current_state)
@@ -51,15 +52,17 @@ static void _az_hfsm_recursive_exit(az_hfsm* h, az_hfsm_state_handler source_sta
     // A top-level state is mandatory to ensure an Least Common Ancestor exists.
     _az_PRECONDITION_NOT_NULL(h->_internal.current_state);
 
-    _az_PRECONDITION(AZ_OK == h->_internal.current_state(h, az_hfsm_event_exit));
+    _az_RETURN_IF_FAILED(h->_internal.current_state(h, az_hfsm_event_exit));
     az_hfsm_state_handler super_state = h->_internal.get_parent_func(h->_internal.current_state);
     _az_PRECONDITION_NOT_NULL(super_state);
 
     h->_internal.current_state = super_state;
   }
+
+  return AZ_OK;
 }
 
-void az_hfsm_transition_peer(
+AZ_NODISCARD az_result az_hfsm_transition_peer(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state)
@@ -69,18 +72,18 @@ void az_hfsm_transition_peer(
   _az_PRECONDITION_NOT_NULL(destination_state);
 
   // Super-state handler making a transition must exit all inner states:
-  _az_hfsm_recursive_exit(h, source_state);
+  _az_RETURN_IF_FAILED(_az_hfsm_recursive_exit(h, source_state));
   _az_PRECONDITION(h->_internal.current_state == source_state);
 
   // Exit the source state.
-  _az_PRECONDITION(AZ_OK == h->_internal.current_state(h, az_hfsm_event_exit));
+  _az_RETURN_IF_FAILED(h->_internal.current_state(h, az_hfsm_event_exit));
 
   // Enter the destination state:
+  _az_RETURN_IF_FAILED(destination_state(h, az_hfsm_event_entry));
   h->_internal.current_state = destination_state;
-  _az_PRECONDITION(AZ_OK == h->_internal.current_state(h, az_hfsm_event_entry));
 }
 
-void az_hfsm_transition_substate(
+AZ_NODISCARD az_result az_hfsm_transition_substate(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state)
@@ -90,17 +93,15 @@ void az_hfsm_transition_substate(
   _az_PRECONDITION_NOT_NULL(destination_state);
 
   // Super-state handler making a transition must exit all inner states:
-  _az_hfsm_recursive_exit(h, source_state);
+  _az_RETURN_IF_FAILED(_az_hfsm_recursive_exit(h, source_state));
   _az_PRECONDITION(h->_internal.current_state == source_state);
 
   // Transitions to sub-states will not exit the super-state:
+  _az_RETURN_IF_FAILED(destination_state(h, az_hfsm_event_entry));
   h->_internal.current_state = destination_state;
-
-  // All state handlers must handle ENTER/EXIT events.
-  _az_PRECONDITION(AZ_OK == h->_internal.current_state(h, az_hfsm_event_entry));
 }
 
-void az_hfsm_transition_superstate(
+AZ_NODISCARD az_result az_hfsm_transition_superstate(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state)
@@ -109,16 +110,18 @@ void az_hfsm_transition_superstate(
   _az_PRECONDITION_NOT_NULL(source_state);
   _az_PRECONDITION_NOT_NULL(destination_state);
 
+  az_result ret;
+
   // Super-state handler making a transition must exit all inner states:
-  _az_hfsm_recursive_exit(h, source_state);
+  _az_RETURN_IF_FAILED(_az_hfsm_recursive_exit(h, source_state));
   _az_PRECONDITION(h->_internal.current_state == source_state);
 
   // Transitions to super states will exit the substate but not enter the superstate again:
-  _az_PRECONDITION(AZ_OK == h->_internal.current_state(h, az_hfsm_event_exit));
+  _az_RETURN_IF_FAILED(h->_internal.current_state(h, az_hfsm_event_exit));
   h->_internal.current_state = destination_state;
 }
 
-void az_hfsm_send_event(az_hfsm* h, az_hfsm_event event)
+AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event)
 {
   _az_PRECONDITION_NOT_NULL(h);
   az_result ret;
@@ -137,5 +140,5 @@ void az_hfsm_send_event(az_hfsm* h, az_hfsm_event event)
     ret = current(h, event);
   }
 
-  _az_PRECONDITION(ret == AZ_OK);
+  return ret;
 }

@@ -23,6 +23,8 @@
 #include <azure/core/az_result.h>
 #include <stdint.h>
 
+#include <azure/core/_az_cfg_prefix.h>
+
 #define _az_HFSM_MAKE_EVENT(hfsm_id, code) \
   ((az_hfsm_event_type)(((uint32_t)(hfsm_id) << 16U) | (uint32_t)(code)))
 
@@ -175,8 +177,9 @@ az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent ge
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] source_state The source state.
  * @param[in] destination_state The destination state.
+ * @return An #az_result value indicating the result of the operation.
  */
-void az_hfsm_transition_peer(
+AZ_NODISCARD az_result az_hfsm_transition_peer(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state);
@@ -191,8 +194,9 @@ void az_hfsm_transition_peer(
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] source_state The source state.
  * @param[in] destination_state The destination state.
+ * @return An #az_result value indicating the result of the operation.
  */
-void az_hfsm_transition_substate(
+AZ_NODISCARD az_result az_hfsm_transition_substate(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state);
@@ -207,8 +211,9 @@ void az_hfsm_transition_substate(
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] source_state The source state.
  * @param[in] destination_state The destination state.
+ * @return An #az_result value indicating the result of the operation.
  */
-void az_hfsm_transition_superstate(
+AZ_NODISCARD az_result az_hfsm_transition_superstate(
     az_hfsm* h,
     az_hfsm_state_handler source_state,
     az_hfsm_state_handler destination_state);
@@ -223,7 +228,10 @@ void az_hfsm_transition_superstate(
  *
  * @param[in] h The #az_hfsm to use for this call.
  * @param[in] event The event being sent.
+ * @return An #az_result value indicating the result of the operation.
  */
-az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
+AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
+
+#include <azure/core/_az_cfg_suffix.h>
 
 #endif //_az_HFSM_H
