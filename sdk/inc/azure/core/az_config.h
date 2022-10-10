@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * @file
+ * @file az_config.h
  *
  * @brief Configurable constants used by the Azure SDK.
  *
@@ -34,13 +34,16 @@ enum
   /// The MQTT keepalive in seconds.
   AZ_MQTT_KEEPALIVE_SECONDS = 240,
 
-  // SAS Token Lifetime in minutes
+  /// Maximum time in seconds that #az_mqtt_synchronous_process_loop should block.
+  AZ_MQTT_SYNC_MAX_POLLING_SECONDS = 5,
+
+  /// SAS Token Lifetime in minutes
   AZ_IOT_SAS_TOKEN_LIFETIME_MINUTES = 60,
 
   // DPS Minimum Retry in seconds.
   AZ_IOT_PROVISIONING_RETRY_MINIMUM_TIMEOUT_SECONDS = 3,
 
-  // MQTT Maximum topic size in bytes.
+  /// MQTT Maximum topic size in bytes.
   AZ_IOT_MAX_TOPIC_SIZE = 128,
 
   AZ_IOT_MAX_USERNAME_SIZE = 128,

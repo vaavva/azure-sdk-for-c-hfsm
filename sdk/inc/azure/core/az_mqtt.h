@@ -114,10 +114,10 @@ typedef struct
     az_hfsm_policy policy;
 
     // Extension point for the implementation.
-    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional 
+    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional
     //              memory reserved for the implementation:
     az_mqtt_impl mqtt;
-    az_hfsm_mqtt_policy_options options;   
+    az_hfsm_mqtt_policy_options options;
   } _internal;
 } az_hfsm_mqtt_policy;
 
@@ -161,7 +161,7 @@ AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default();
  *                   machine.
  * @param client_id
  * @param options
- * @return AZ_NODISCARD
+ * @return #az_result
  */
 AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_mqtt_policy* mqtt_hfsm,
@@ -169,10 +169,35 @@ AZ_NODISCARD az_result az_mqtt_initialize(
     az_hfsm_policy* inbound_policy,
     az_hfsm_mqtt_policy_options const* options);
 
-
-// HFSM_TODO: Common way for init-once items such as mosquitto_lib_init();
+/**
+ * @brief Initialization of the MQTT Stack.
+ * @details Must be called at most once by the application before the MQTT stack is used.
+ *
+ * @return #az_result
+ */
 AZ_NODISCARD az_result az_mqtt_init();
+
+/**
+ * @brief Deinitialization of the MQTT Stack.
+ * @details Must be called at most once by the application to release MQTT stack resources.
+ *
+ * @return #az_result
+ */
 AZ_NODISCARD az_result az_mqtt_deinit();
+
+#ifdef TRANSPORT_MQTT_SYNC
+/**
+ * @brief Syncrhonous I/O MQTT process loop.
+ * @note Application should call this only when TRANSPORT_MQTT_SYNC is defined.
+ * @details This call will allow the MQTT stack to perform synchonous I/O. The current thread is
+ * blocked until I/O is complete.
+ * 
+ * @param mqtt_policy - The MQTT policy.
+ *
+ * @return #az_result
+ */
+AZ_NODISCARD az_result az_mqtt_synchronous_process_loop(az_hfsm_mqtt_policy* mqtt_policy);
+#endif
 
 #include <azure/core/_az_cfg_suffix.h>
 

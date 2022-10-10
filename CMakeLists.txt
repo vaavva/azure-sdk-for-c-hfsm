@@ -9,8 +9,9 @@ option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 option(TRANSPORT_CURL "Build internal http transport implementation with CURL for HTTP Pipeline" OFF)
 option(UNIT_TESTING "Build unit test projects" OFF)
 option(UNIT_TESTING_MOCKS "wrap PAL functions with mock implementation for tests" OFF)
-option(TRANSPORT_PAHO "Build IoT Samples with Paho MQTT support" OFF)
-option(TRANSPORT_MOSQUITTO "Build IoT Samples with Paho Mosquitto support" OFF)
+option(TRANSPORT_MQTT_SYNC "Build with syncrhonous I/O MQTT support" OFF)
+option(TRANSPORT_PAHO "Build with Paho MQTT support" OFF)
+option(TRANSPORT_MOSQUITTO "Build with Mosquitto MQTT support" OFF)
 option(PRECONDITIONS "Build SDK with preconditions enabled" ON)
 option(LOGGING "Build SDK with logging support" ON)
 
@@ -36,6 +37,10 @@ endif()
 # make libcurl option enabled to be visible to code
 if(TRANSPORT_CURL)
   add_compile_definitions(TRANSPORT_CURL)
+endif()
+
+if(TRANSPORT_MQTT_SYNC)
+  add_compile_definitions(TRANSPORT_MQTT_SYNC)
 endif()
 
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -98,9 +103,12 @@ endif()
 # User can disable samples generation by setting env variable AZ_SDK_C_NO_SAMPLES
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
   if(TRANSPORT_MOSQUITTO)
-    add_subdirectory(sdk/src/azure/iot/compat)
     add_subdirectory(sdk/samples/iot_mosquitto)
-    add_subdirectory(sdk/samples/iot_compat)
+
+    if(TRANSPORT_MQTT_SYNC)
+      add_subdirectory(sdk/src/azure/iot/compat)
+      add_subdirectory(sdk/samples/iot_compat)
+    endif()
   endif()
 endif()
 

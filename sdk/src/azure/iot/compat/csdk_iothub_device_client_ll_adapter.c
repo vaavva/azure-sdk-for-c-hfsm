@@ -313,7 +313,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through events.
-      az_hfsm_send_event((az_hfsm*)client->compat_client_policy.outbound, event);
+      ret = az_hfsm_send_event((az_hfsm*)client->compat_client_policy.outbound, event);
       break;
 
     default:
@@ -324,7 +324,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-AZ_INLINE void _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
+AZ_INLINE az_result _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
 {
   az_hfsm_iot_x509_auth auth = (az_hfsm_iot_x509_auth){
     .cert = client->cert_path,
@@ -338,7 +338,7 @@ AZ_INLINE void _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
     .password_buffer = client->password_buffer,
   };
 
-  az_hfsm_send_event(
+  return az_hfsm_send_event(
       (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
 }
 
@@ -461,7 +461,7 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
                                                     .topic_buffer = client->topic_buffer,
                                                     .payload = AZ_SPAN_EMPTY };
 
-      az_hfsm_send_event(
+      ret = az_hfsm_send_event(
           (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
     }
     break;

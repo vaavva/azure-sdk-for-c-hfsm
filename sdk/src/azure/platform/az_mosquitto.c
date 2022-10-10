@@ -1,7 +1,18 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-// Mosquitto Lib documentation is available at: https://mosquitto.org/api/files/mosquitto-h.html
+/**
+ * @file az_mosquitto.c
+ *
+ * @brief Contains the az_mqtt.h interface implementation with Mosquitto MQTT
+ * (https://github.com/eclipse/mosquitto).
+ *
+ * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
+ * available. To enable the blocking mode, set TRANSPORT_MQTT_SYNC.
+ *
+ * @note The Mosquitto Lib documentation is available at:
+ * https://mosquitto.org/api/files/mosquitto-h.html
+ */
 
 #include <azure/core/az_hfsm.h>
 #include <azure/core/az_mqtt.h>
@@ -96,6 +107,14 @@ AZ_NODISCARD az_result az_mqtt_initialize(
 AZ_NODISCARD az_result az_mqtt_init() { return _az_result_from_mosq(mosquitto_lib_init()); }
 
 AZ_NODISCARD az_result az_mqtt_deinit() { return _az_result_from_mosq(mosquitto_lib_cleanup()); }
+
+#ifdef TRANSPORT_MQTT_SYNC
+AZ_NODISCARD az_result az_mqtt_synchronous_process_loop(az_hfsm_mqtt_policy* mqtt_policy)
+{
+  return _az_result_from_mosq(
+      mosquitto_loop(mqtt_policy->_internal.mqtt, AZ_MQTT_SYNC_MAX_POLLING_SECONDS, 1));
+}
+#endif
 
 static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
@@ -249,11 +268,19 @@ AZ_INLINE az_result _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_
       (const char*)az_span_ptr(data->username),
       (const char*)az_span_ptr(data->password))));
 
+#ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_connect_async(
       (struct mosquitto*)me->_internal.mqtt,
       (char*)az_span_ptr(data->host),
       data->port,
       AZ_MQTT_KEEPALIVE_SECONDS)));
+#else
+  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_connect(
+      (struct mosquitto*)me->_internal.mqtt,
+      (char*)az_span_ptr(data->host),
+      data->port,
+      AZ_MQTT_KEEPALIVE_SECONDS)));
+#endif
 
   return AZ_OK;
 }
@@ -284,12 +311,26 @@ AZ_INLINE az_result _az_mosquitto_sub(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_sub_
       data->qos));
 }
 
+AZ_INLINE az_result _az_mosquitto_init(az_hfsm_mqtt_policy* me)
+{
+#ifndef TRANSPORT_MQTT_SYNC
+  struct mosquitto* mosq = (struct mosquitto*)me->_internal.mqtt;
+  return _az_result_from_mosq(mosquitto_loop_start(mosq));
+#else
+  // No-op.
+  return AZ_OK;
+#endif
+}
+
 AZ_INLINE az_result _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
 {
-  _az_RETURN_IF_FAILED(
-      _az_result_from_mosq(mosquitto_loop_stop((struct mosquitto*)me->_internal.mqtt, false)));
+  struct mosquitto* mosq = (struct mosquitto*)me->_internal.mqtt;
 
-  mosquitto_destroy((struct mosquitto*)me->_internal.mqtt);
+#ifndef TRANSPORT_MQTT_SYNC
+  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_loop_stop(mosq, false)));
+#endif
+
+  mosquitto_destroy(mosq);
 
   return AZ_OK;
 }
@@ -373,15 +414,11 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ret = _az_result_from_mosq(mosquitto_loop_start(this_mqtt->_internal.mqtt));
+      ret = _az_mosquitto_init(this_mqtt);
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      // HFSM_TODO: A new event is likely required in case the loop can't stop.
       ret = _az_mosquitto_deinit(this_mqtt);
-
-      // IMPORTANT: application must call mosquitto_lib_cleanup()
-      // after all clients have been destroyed.
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUB_REQ:
