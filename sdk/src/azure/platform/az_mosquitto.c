@@ -345,7 +345,8 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      _az_RETURN_IF_FAILED(_az_mosquitto_connect(this_mqtt, (az_hfsm_mqtt_connect_data*)event.data));
+      _az_RETURN_IF_FAILED(
+          _az_mosquitto_connect(this_mqtt, (az_hfsm_mqtt_connect_data*)event.data));
       _az_RETURN_IF_FAILED(az_hfsm_transition_substate((az_hfsm*)me, idle, running));
       break;
 
