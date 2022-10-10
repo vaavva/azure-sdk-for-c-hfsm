@@ -351,6 +351,10 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
+#ifdef TRANSPORT_MQTT_SYNC
+    // TODO: add a "DO_EVENTS" signal implementation.
+#endif
+
     case AZ_HFSM_EVENT_EXIT:
       // Exitting root state is not permitted. Flow through default:
     default:

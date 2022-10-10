@@ -14,7 +14,11 @@ az_hfsm_pipeline_init(az_hfsm_pipeline* pipeline, az_hfsm_policy* outbound, az_h
 {
   pipeline->_internal.outbound_handler = outbound;
   pipeline->_internal.inbound_handler = inbound;
+#ifndef TRANSPORT_MQTT_SYNC
   return az_platform_mutex_init(&pipeline->_internal.mutex);
+#else
+  return AZ_OK;
+#endif
 }
 
 AZ_NODISCARD az_result
@@ -22,9 +26,15 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event e
 {
   az_result ret;
 
+#ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
+#endif
+
   ret = az_hfsm_send_event((az_hfsm*)pipeline->_internal.outbound_handler, event);
+
+#ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));
+#endif
 
   return ret;
 }
@@ -34,9 +44,15 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
 {
   az_result ret;
 
+#ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
+#endif
+
   ret = az_hfsm_send_event((az_hfsm*)pipeline->_internal.inbound_handler, event);
+
+#ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));
+#endif
 
   return ret;
 }
@@ -89,7 +105,9 @@ az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer
       &out_timer->platform_timer, _az_hfsm_pipeline_timer_callback, out_timer);
 }
 
-// HFSM_TODO: Implement a sync version of the pipeline.
-// HFSM_DESIGN: Add a base-class for az_hfsm_event_data containing the size. Event data will need to
-//              either be pre-allocated by the application or copied into a queue/mailbox and
-//              de-allocated after being dispatched.
+#ifdef TRANSPORT_MQTT_SYNC
+AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline)
+{
+  // TODO: post Do_Events inbound request.
+}
+#endif

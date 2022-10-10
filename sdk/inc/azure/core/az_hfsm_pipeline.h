@@ -5,6 +5,11 @@
  * @file az_hfsm_pipeline.h
  * @brief Definition of #az_hfsm_pipeline and related types describing a bi-directional HFSM
  *        pipeline.
+ * 
+ * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
+ * available. To enable the blocking mode, set TRANSPORT_MQTT_SYNC.
+ * 
+ * @note The blocking I/O model (when TRANSPORT_MQTT_SYNC is defined) is not thread-safe.
  */
 
 #ifndef _az_HFSM_PIPELINE_H
@@ -50,7 +55,9 @@ struct az_hfsm_pipeline
   {
     az_hfsm_policy* outbound_handler;
     az_hfsm_policy* inbound_handler;
+#ifndef TRANSPORT_MQTT_SYNC
     az_platform_mutex mutex;
+#endif
   } _internal;
 };
 
@@ -88,6 +95,19 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event c
  * @param rc The #az_result error code.
  */
 void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc);
+
+#ifdef TRANSPORT_MQTT_SYNC
+/**
+ * @brief Blocking processing loop.
+ * @note Application should call this only when TRANSPORT_MQTT_SYNC is defined.
+ * @details This call will allow the MQTT stack to perform synchonous I/O. The current thread is
+ * blocked until I/O is complete.
+ *
+ * @param pipeline The #az_hfsm_pipeline.
+ * @return The #az_result error code.
+ */
+AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline);
+#endif
 
 typedef struct
 {
