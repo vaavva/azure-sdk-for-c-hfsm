@@ -54,7 +54,7 @@
 #define SYS_PROP_TO "to"
 #define SYS_COMPONENT_NAME "sub"
 
-#define Q_TYPE az_hfsm_event*
+#define Q_TYPE void*
 #define Q_SIZE AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE
 #include <azure/iot/compat/internal/queue.h>
 
@@ -94,27 +94,6 @@ typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
 
 const TRANSPORT_PROVIDER* MQTT_Protocol(void) { return (TRANSPORT_PROVIDER*)0x4D515454; }
 
-static const char* az_result_string(az_result result)
-{
-  const char* result_str;
-
-  switch (result)
-  {
-    case AZ_ERROR_HFSM_INVALID_STATE:
-      result_str = "AZ_ERROR_HFSM_INVALID_STATE";
-      break;
-
-    case AZ_OK:
-      result_str = "AZ_OK";
-      break;
-
-    default:
-      result_str = "UNKNOWN";
-  }
-
-  return result_str;
-}
-
 // ***** Single-layer C-SDK Compat Layer State Machine
 enum az_hfsm_event_type_compat_csdk
 {
@@ -126,14 +105,11 @@ enum az_hfsm_event_type_compat_csdk
 
 typedef struct
 {
+  IOTHUB_MESSAGE_HANDLE_DATA* message;
   IOTHUB_CLIENT_EVENT_CONFIRMATION_CALLBACK callback;
   void* userContextCallback;
-} az_hfsm_compat_csdk_telemetry_callback_data;
-
-typedef struct
-{
-  IOTHUB_MESSAGE_HANDLE_DATA* message;
-  az_hfsm_compat_csdk_telemetry_callback_data telemetry_callback;
+  // The packet ID is copied because message could be re-used by the application.
+  int32_t out_packet_id;
 } az_hfsm_compat_csdk_telemetry_req_data;
 
 static az_result root(az_hfsm* me, az_hfsm_event event);
@@ -226,7 +202,6 @@ AZ_INLINE void _telemetry_callback()
   // TODO
 }
 
-
 AZ_INLINE void _send_message(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
 {
 #if 0 // TODO
@@ -243,10 +218,7 @@ AZ_INLINE void _send_message(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
 #endif
 }
 
-
-AZ_INLINE void _enqueue_message(
-    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client,
-    az_hfsm_event event)
+AZ_INLINE void _enqueue_message(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client, az_hfsm_event event)
 {
   az_hfsm_event* clone;
 
@@ -260,7 +232,6 @@ AZ_INLINE void _enqueue_message(
   if (az_result_failed(ret))
   {
     az_hfsm_event_destroy(clone);
-    
   }
 }
 
@@ -554,24 +525,25 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
 {
   IOTHUB_CLIENT_RESULT ret;
 
-  az_hfsm_compat_csdk_telemetry_req_data data = (az_hfsm_compat_csdk_telemetry_req_data){
-    .telemetry_callback.callback = eventConfirmationCallback,
-    .telemetry_callback.userContextCallback = userContextCallback,
-    .message = eventMessageHandle,
-  };
-
-  if (az_result_failed(az_hfsm_pipeline_post_outbound_event(
-          &iotHubClientHandle->hub_pipeline,
-          (az_hfsm_event){ AZ_IOT_COMPAT_CSDK_TELEMETRY_REQ, &data })))
+  // TODO: enqueue message.
+  az_hfsm_compat_csdk_telemetry_req_data* request = malloc(sizeof(az_hfsm_compat_csdk_telemetry_req_data));
+  if (request == NULL)
   {
-    ret = IOTHUB_CLIENT_ERROR;
-  }
-  else
-  {
-    ret = IOTHUB_CLIENT_OK;
+    return IOTHUB_CLIENT_ERROR;
   }
 
-  return ret;
+  request->message = eventMessageHandle;
+  request->message->refcount++;
+  request->callback = eventConfirmationCallback;
+  request->userContextCallback = userContextCallback;
+  request->out_packet_id = -1;
+
+  if (az_result_failed(queue_enqueue(&iotHubClientHandle->pending_message_queue, request)))
+  {
+    return IOTHUB_CLIENT_ERROR;
+  }
+
+  return IOTHUB_CLIENT_OK;
 }
 
 void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
@@ -582,15 +554,11 @@ void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHan
   //     2. send all queued messages (if possible)
   //  - inbound, within the HFSM (blocking call)
   //     MQTT process loop.
-
-  if (iotHubClientHandle->pending_message_queue.count > 0)
+  az_result ret = az_hfsm_pipeline_syncrhonous_process_loop(&iotHubClientHandle->hub_pipeline);
+  if (az_result_failed(ret))
   {
-    if (az_result_failed(az_hfsm_pipeline_post_outbound_event(
-            &iotHubClientHandle->hub_pipeline,
-            (az_hfsm_event){ AZ_IOT_COMPAT_CSDK_CONNECT, NULL })))
-    {
-      az_platform_critical_error();
-    }
+    // HFSM_TODO: Call connection_callback
+    printf(LOG_COMPAT "Process Loop Failed: %s\n", az_result_string(ret));
   }
 }
 
@@ -630,20 +598,26 @@ void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle)
   IOTHUB_MESSAGE_HANDLE_DATA* msg = iotHubMessageHandle;
   if (msg != NULL)
   {
-    if (az_span_ptr(msg->telemetry_data.topic_buffer) != NULL)
-    {
-      free(az_span_ptr(msg->telemetry_data.topic_buffer));
-      msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
-    }
+    msg->refcount--;
 
-    if (az_span_ptr(msg->telemetry_data.data) != NULL)
+    if (msg->refcount <= 0)
     {
-      free(az_span_ptr(msg->telemetry_data.data));
-      msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
-    }
 
-    free(msg);
-    msg = NULL;
+      if (az_span_ptr(msg->telemetry_data.topic_buffer) != NULL)
+      {
+        free(az_span_ptr(msg->telemetry_data.topic_buffer));
+        msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
+      }
+
+      if (az_span_ptr(msg->telemetry_data.data) != NULL)
+      {
+        free(az_span_ptr(msg->telemetry_data.data));
+        msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
+      }
+
+      free(msg);
+      msg = NULL;
+    }
   }
 }
 

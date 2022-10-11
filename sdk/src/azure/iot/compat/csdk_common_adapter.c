@@ -81,6 +81,27 @@ az_result az_hfsm_event_destroy(az_hfsm_event* event)
   return ret;
 }
 
+const char* az_result_string(az_result result)
+{
+  const char* result_str;
+
+  switch (result)
+  {
+    case AZ_ERROR_HFSM_INVALID_STATE:
+      result_str = "AZ_ERROR_HFSM_INVALID_STATE";
+      break;
+
+    case AZ_OK:
+      result_str = "AZ_OK";
+      break;
+
+    default:
+      result_str = "UNKNOWN";
+  }
+
+  return result_str;
+}
+
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
   const char* class_str;

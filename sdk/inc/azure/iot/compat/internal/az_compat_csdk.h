@@ -19,6 +19,7 @@
 #define LOG_COMPAT "\x1B[34mCOMPAT: \x1B[0m"
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
 
+const char* az_result_string(az_result result);
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
 
