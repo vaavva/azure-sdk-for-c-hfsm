@@ -115,8 +115,6 @@ static const char* az_result_string(az_result result)
   return result_str;
 }
 
-
-
 // ***** Single-layer C-SDK Compat Layer State Machine
 enum az_hfsm_event_type_compat_csdk
 {
@@ -578,6 +576,13 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
 
 void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
 {
+  // TODO: Pipeline process (will call both below items automatically)
+  //  - outbound, within the HFSM (blocking call)
+  //     1. connect (if not already)
+  //     2. send all queued messages (if possible)
+  //  - inbound, within the HFSM (blocking call)
+  //     MQTT process loop.
+
   if (iotHubClientHandle->pending_message_queue.count > 0)
   {
     if (az_result_failed(az_hfsm_pipeline_post_outbound_event(
