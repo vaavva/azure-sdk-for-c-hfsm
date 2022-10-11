@@ -113,7 +113,7 @@ AZ_NODISCARD az_result az_mqtt_deinit() { return _az_result_from_mosq(mosquitto_
 AZ_NODISCARD az_result az_mqtt_synchronous_process_loop(az_hfsm_mqtt_policy* mqtt_policy)
 {
   return _az_result_from_mosq(
-      mosquitto_loop(mqtt_policy->_internal.mqtt, AZ_MQTT_SYNC_MAX_POLLING_SECONDS, 1));
+      mosquitto_loop(mqtt_policy->_internal.mqtt, AZ_MQTT_SYNC_MAX_POLLING_SECONDS * 1000, 1));
 }
 #endif
 
