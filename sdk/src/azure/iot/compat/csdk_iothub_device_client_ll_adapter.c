@@ -113,6 +113,7 @@ typedef struct
 
 static az_result root(az_hfsm* me, az_hfsm_event event);
 static az_result disconnected(az_hfsm* me, az_hfsm_event event);
+static az_result connecting(az_hfsm* me, az_hfsm_event event);
 static az_result connected(az_hfsm* me, az_hfsm_event event);
 
 static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
@@ -123,7 +124,7 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
   {
     parent_state = NULL;
   }
-  else if (child_state == disconnected || child_state == connected)
+  else if (child_state == disconnected || child_state == connecting || child_state == connected)
   {
     parent_state = root;
   }
@@ -215,11 +216,42 @@ static az_result disconnected(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      ret = az_hfsm_transition_peer(me, disconnected, connecting);
       ret = _connect(client);
       break;
 
+    default:
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
+
+  return ret;
+}
+
+static az_result connecting(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_OK;
+  IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = (IOTHUB_CLIENT_CORE_LL_HANDLE_DATA*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("compat-csdk/root/connecting"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      // No-op.
+      break;
+
     case AZ_IOT_HUB_CONNECT_RSP:
-      ret = az_hfsm_transition_peer(me, disconnected, connected);
+      ret = az_hfsm_transition_peer(me, connecting, connected);
+      break;
+
+    case AZ_IOT_HUB_DISCONNECT_RSP:
+      ret = az_hfsm_transition_peer(me, connecting, disconnected);
       break;
 
     default:
@@ -244,7 +276,7 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
-      // Try to empty the send queue.
+      // HFSM_TODO: Try to empty the send queue.
       break;
 
     case AZ_HFSM_EVENT_EXIT:
@@ -259,7 +291,7 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
       printf(LOG_COMPAT "MQTT: PUBACK ID=%d\n", puback->id);
-      // TODO: match with sent_message_queue.
+      // HFSM_TODO: match with sent_message_queue.
     }
     break;
 
@@ -384,7 +416,7 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
     client->client_id_buffer
         = az_span_create(malloc(AZ_IOT_MAX_CLIENT_ID_SIZE), AZ_IOT_MAX_CLIENT_ID_SIZE);
 
-    size_t hub_endpoint_buffer_size = strlen(config->iotHubName) + strlen(config->iotHubSuffix) + 2;
+    size_t hub_endpoint_buffer_size = strlen(config->iotHubName) + strlen(config->iotHubSuffix) + 1;
     client->hub_endpoint
         = az_span_create(malloc(hub_endpoint_buffer_size), hub_endpoint_buffer_size);
 
@@ -400,7 +432,6 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
       reminder = az_span_copy_u8(reminder, '.');
       reminder
           = az_span_copy(reminder, az_span_create_from_str((char*)(uintptr_t)config->iotHubSuffix));
-      az_span_copy_u8(reminder, '\0');
 
       queue_init(&client->pending_message_queue);
       queue_init(&client->sent_message_queue);

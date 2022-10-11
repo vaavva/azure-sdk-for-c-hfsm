@@ -178,6 +178,7 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
       // No-op.
       break;
 
@@ -185,7 +186,7 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_TELEMETRY_REQ:
     case AZ_IOT_HUB_METHODS_RSP:
       ret = AZ_ERROR_HFSM_INVALID_STATE;
-      break;
+      break;      
 
     case AZ_IOT_HUB_CONNECT_REQ:
       _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, idle, started));
