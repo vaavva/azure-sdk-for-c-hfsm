@@ -372,9 +372,11 @@ _hub_telemetry_send(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_telemetry_data* 
     .out_id = 0,
   };
 
-  return az_hfsm_send_event(
+  _az_RETURN_IF_FAILED(az_hfsm_send_event(
       (az_hfsm*)me->_internal.policy.outbound,
-      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, &mqtt_data });
+      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, &mqtt_data }));
+
+  data->out_packet_id = mqtt_data.out_id;
 }
 
 // Important regarding the type of messages received:

@@ -54,7 +54,9 @@
 #define SYS_PROP_TO "to"
 #define SYS_COMPONENT_NAME "sub"
 
-#define Q_TYPE void*
+typedef struct az_hfsm_compat_csdk_telemetry_req_data az_hfsm_compat_csdk_telemetry_req_data;
+
+#define Q_TYPE az_hfsm_compat_csdk_telemetry_req_data*
 #define Q_SIZE AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE
 #include <azure/iot/compat/internal/queue.h>
 
@@ -80,8 +82,8 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   az_span password_buffer;
   az_span client_id_buffer;
 
-  queue pending_message_queue;
-  queue sent_message_queue;
+  queue pub_message_queue;
+  queue puback_message_queue;
 
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
 
@@ -102,14 +104,14 @@ enum az_hfsm_event_type_compat_csdk
   AZ_IOT_COMPAT_CSDK_TELEMETRY_DESTROY = _az_HFSM_MAKE_EVENT(_az_FACILITY_COMPAT_CSDK_HFSM, 3),
 };
 
-typedef struct
+struct az_hfsm_compat_csdk_telemetry_req_data
 {
   IOTHUB_MESSAGE_HANDLE_DATA* message;
   IOTHUB_CLIENT_EVENT_CONFIRMATION_CALLBACK callback;
   void* userContextCallback;
   // The packet ID is copied because message could be re-used by the application.
   int32_t out_packet_id;
-} az_hfsm_compat_csdk_telemetry_req_data;
+};
 
 static az_result root(az_hfsm* me, az_hfsm_event event);
 static az_result disconnected(az_hfsm* me, az_hfsm_event event);
@@ -262,6 +264,57 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
+AZ_INLINE az_result _send_message(
+    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me,
+    az_hfsm_compat_csdk_telemetry_req_data* message)
+{
+}
+
+AZ_INLINE az_result _process_outbound(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me)
+{
+  while (me->pub_message_queue.count > 0
+         && AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE - me->puback_message_queue.count > 0)
+  {
+    az_hfsm_compat_csdk_telemetry_req_data* message;
+    _az_RETURN_IF_FAILED(queue_peek(&me->pub_message_queue, &message));
+    _az_RETURN_IF_FAILED(az_hfsm_send_event(
+        (az_hfsm*)me->compat_client_policy.outbound,
+        (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &message->message->telemetry_data }));
+
+    _az_RETURN_IF_FAILED(queue_dequeue(&me->pub_message_queue, &message));
+
+    // If the I/O succeeded, copy the message ID in case the Application decides to reuse the
+    // message object.
+    message->out_packet_id = message->message->telemetry_data.out_packet_id;
+
+    _az_RETURN_IF_FAILED(queue_enqueue(&me->puback_message_queue, message));
+  }
+
+  return AZ_OK;
+}
+
+AZ_INLINE az_result _process_puback(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me, az_hfsm_mqtt_puback_data* data)
+{
+    az_hfsm_compat_csdk_telemetry_req_data* message;
+    _az_RETURN_IF_FAILED(queue_peek(&me->puback_message_queue, &message));
+    
+    if (message->out_packet_id == data->id)
+    {
+      _az_RETURN_IF_FAILED(queue_dequeue(&me->puback_message_queue, &message));
+      if (message->callback != NULL)
+      {
+        // Call the application send message callback.
+        message->callback(IOTHUB_CLIENT_CONFIRMATION_OK, message->userContextCallback);
+      }
+    }
+
+    if (message->out_packet_id < data->id)
+    {
+      // MQTT protocol violation: PUBACK must be acknowledge in order.
+      az_platform_critical_error();
+    }
+}
+
 static az_result connected(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
@@ -275,12 +328,12 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
-      // HFSM_TODO: Try to empty the send queue.
-      break;
-
     case AZ_HFSM_EVENT_EXIT:
       // No-op.
+      break;
+
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      ret = _process_outbound(client);
       break;
 
     case AZ_IOT_HUB_DISCONNECT_RSP:
@@ -290,8 +343,7 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
     {
       az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
-      printf(LOG_COMPAT "MQTT: PUBACK ID=%d\n", puback->id);
-      // HFSM_TODO: match with sent_message_queue.
+      ret = _process_puback(client, puback);
     }
     break;
 
@@ -433,8 +485,8 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
       reminder
           = az_span_copy(reminder, az_span_create_from_str((char*)(uintptr_t)config->iotHubSuffix));
 
-      queue_init(&client->pending_message_queue);
-      queue_init(&client->sent_message_queue);
+      queue_init(&client->pub_message_queue);
+      queue_init(&client->puback_message_queue);
 
       ret = hub_initialize(client);
     }
@@ -535,7 +587,7 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
   request->userContextCallback = userContextCallback;
   request->out_packet_id = -1;
 
-  if (az_result_failed(queue_enqueue(&iotHubClientHandle->pending_message_queue, request)))
+  if (az_result_failed(queue_enqueue(&iotHubClientHandle->pub_message_queue, request)))
   {
     return IOTHUB_CLIENT_ERROR;
   }
