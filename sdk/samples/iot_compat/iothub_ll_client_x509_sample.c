@@ -82,6 +82,21 @@ typedef struct EVENT_INSTANCE_TAG
     size_t messageTrackingId;  // For tracking the messages within the user callback.
 } EVENT_INSTANCE;
 
+static void connection_status_callback(IOTHUB_CLIENT_CONNECTION_STATUS result, IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason, void* user_context)
+{
+    (void)reason;
+    (void)user_context;
+    // This sample DOES NOT take into consideration network outages.
+    if (result == IOTHUB_CLIENT_CONNECTION_AUTHENTICATED)
+    {
+        (void)printf("The device client is connected to iothub\r\n");
+    }
+    else
+    {
+        (void)printf("The device client has been disconnected\r\n");
+    }
+}
+
 static void send_confirm_callback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, void* userContextCallback)
 {
     (void)userContextCallback;
@@ -142,8 +157,8 @@ int main(void)
     {
         // Set any option that are necessary.
         // For available options please see the iothub_sdk_options.md documentation
-        bool traceOn = true;
-        IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
+        // bool traceOn = true;
+        // IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
 
         // Setting the Trusted Certificate. This is only necessary on systems without
         // built in certificate stores.
@@ -157,6 +172,9 @@ int main(void)
         //ONLY valid for use with MQTT
         bool urlEncodeOn = true;
         (void)IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_AUTO_URL_ENCODE_DECODE, &urlEncodeOn);
+
+        (void)IoTHubDeviceClient_LL_SetConnectionStatusCallback(device_ll_handle, connection_status_callback, NULL);
+
 #endif
         // Set the X509 certificates in the SDK
         if (

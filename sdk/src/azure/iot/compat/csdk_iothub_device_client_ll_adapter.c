@@ -85,6 +85,9 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   queue pub_message_queue;
   queue puback_message_queue;
 
+  IOTHUB_CLIENT_CONNECTION_STATUS_CALLBACK connection_status_callback;
+  void* connection_status_callback_user_context;
+
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
 
 typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
@@ -230,6 +233,17 @@ static az_result disconnected(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
+AZ_INLINE void _connection_status_callback(
+    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me,
+    IOTHUB_CLIENT_CONNECTION_STATUS result,
+    IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason)
+{
+  if (me->connection_status_callback != NULL)
+  {
+    me->connection_status_callback(result, reason, me->connection_status_callback_user_context);
+  }
+}
+
 static az_result connecting(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
@@ -250,10 +264,14 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
 
     case AZ_IOT_HUB_CONNECT_RSP:
       ret = az_hfsm_transition_peer(me, connecting, connected);
+      _connection_status_callback(
+          client, IOTHUB_CLIENT_CONNECTION_AUTHENTICATED, IOTHUB_CLIENT_CONNECTION_OK);
       break;
 
     case AZ_IOT_HUB_DISCONNECT_RSP:
       ret = az_hfsm_transition_peer(me, connecting, disconnected);
+      _connection_status_callback(
+          client, IOTHUB_CLIENT_CONNECTION_UNAUTHENTICATED, IOTHUB_CLIENT_CONNECTION_NO_NETWORK);
       break;
 
     default:
@@ -262,12 +280,6 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
   }
 
   return ret;
-}
-
-AZ_INLINE az_result _send_message(
-    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me,
-    az_hfsm_compat_csdk_telemetry_req_data* message)
-{
 }
 
 AZ_INLINE az_result _process_outbound(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me)
@@ -293,26 +305,28 @@ AZ_INLINE az_result _process_outbound(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me)
   return AZ_OK;
 }
 
-AZ_INLINE az_result _process_puback(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me, az_hfsm_mqtt_puback_data* data)
+AZ_INLINE az_result
+_process_puback(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me, az_hfsm_mqtt_puback_data* data)
 {
-    az_hfsm_compat_csdk_telemetry_req_data* message;
-    _az_RETURN_IF_FAILED(queue_peek(&me->puback_message_queue, &message));
-    
-    if (message->out_packet_id == data->id)
-    {
-      _az_RETURN_IF_FAILED(queue_dequeue(&me->puback_message_queue, &message));
-      if (message->callback != NULL)
-      {
-        // Call the application send message callback.
-        message->callback(IOTHUB_CLIENT_CONFIRMATION_OK, message->userContextCallback);
-      }
-    }
+  az_hfsm_compat_csdk_telemetry_req_data* message;
+  _az_RETURN_IF_FAILED(queue_peek(&me->puback_message_queue, &message));
 
-    if (message->out_packet_id < data->id)
+  if (message->out_packet_id == data->id)
+  {
+    _az_RETURN_IF_FAILED(queue_dequeue(&me->puback_message_queue, &message));
+    if (message->callback != NULL)
     {
-      // MQTT protocol violation: PUBACK must be acknowledge in order.
-      az_platform_critical_error();
+      // Call the application send message callback.
+      message->callback(IOTHUB_CLIENT_CONFIRMATION_OK, message->userContextCallback);
     }
+  }
+  else if (message->out_packet_id < data->id)
+  {
+    // MQTT protocol violation: PUBACK must be acknowledge in order.
+    az_platform_critical_error();
+  }
+
+  return AZ_OK;
 }
 
 static az_result connected(az_hfsm* me, az_hfsm_event event)
@@ -610,6 +624,19 @@ void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHan
     printf(LOG_COMPAT "Process Loop Failed: %s (%x)\n", az_result_string(ret), ret);
   }
 }
+
+IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetConnectionStatusCallback(
+    IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle,
+    IOTHUB_CLIENT_CONNECTION_STATUS_CALLBACK connectionStatusCallback,
+    void* userContextCallback)
+{
+  iotHubClientHandle->connection_status_callback = connectionStatusCallback;
+  iotHubClientHandle->connection_status_callback_user_context = userContextCallback;
+
+  return IOTHUB_CLIENT_OK;
+}
+
+// ************************************* C-SDK Message  **************************************** //
 
 IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
 {
