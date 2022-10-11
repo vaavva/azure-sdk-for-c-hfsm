@@ -18,11 +18,11 @@
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
-#include <azure/iot/az_iot_common.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
+#include <azure/iot/az_iot_common.h>
 
 #include <mosquitto.h>
 #include <pthread.h>
@@ -108,14 +108,6 @@ AZ_NODISCARD az_result az_mqtt_initialize(
 AZ_NODISCARD az_result az_mqtt_init() { return _az_result_from_mosq(mosquitto_lib_init()); }
 
 AZ_NODISCARD az_result az_mqtt_deinit() { return _az_result_from_mosq(mosquitto_lib_cleanup()); }
-
-#ifdef TRANSPORT_MQTT_SYNC
-AZ_NODISCARD az_result az_mqtt_synchronous_process_loop(az_hfsm_mqtt_policy* mqtt_policy)
-{
-  return _az_result_from_mosq(
-      mosquitto_loop(mqtt_policy->_internal.mqtt, AZ_MQTT_SYNC_MAX_POLLING_SECONDS * 1000, 1));
-}
-#endif
 
 static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
@@ -340,7 +332,8 @@ AZ_INLINE az_result _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
 AZ_INLINE az_result _az_mosquitto_process_loop(az_hfsm_mqtt_policy* me)
 {
   struct mosquitto* mosq = (struct mosquitto*)me->_internal.mqtt;
-  return _az_result_from_mosq(mosquitto_loop(mosq, AZ_MQTT_SYNC_MAX_POLLING_SECONDS, 1));
+  return _az_result_from_mosq(mosquitto_loop(
+      mosq, AZ_MQTT_SYNC_MAX_POLLING_SECONDS * 1000, AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE));
 }
 #endif
 

@@ -157,8 +157,8 @@ int main(void)
     {
         // Set any option that are necessary.
         // For available options please see the iothub_sdk_options.md documentation
-        // bool traceOn = true;
-        // IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
+        bool traceOn = true;
+        IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
 
         // Setting the Trusted Certificate. This is only necessary on systems without
         // built in certificate stores.

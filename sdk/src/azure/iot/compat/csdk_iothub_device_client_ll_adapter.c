@@ -308,19 +308,21 @@ AZ_INLINE az_result _process_outbound(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me)
 AZ_INLINE az_result
 _process_puback(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me, az_hfsm_mqtt_puback_data* data)
 {
-  az_hfsm_compat_csdk_telemetry_req_data* message;
-  _az_RETURN_IF_FAILED(queue_peek(&me->puback_message_queue, &message));
+  az_hfsm_compat_csdk_telemetry_req_data* request;
+  _az_RETURN_IF_FAILED(queue_peek(&me->puback_message_queue, &request));
 
-  if (message->out_packet_id == data->id)
+  if (request->out_packet_id == data->id)
   {
-    _az_RETURN_IF_FAILED(queue_dequeue(&me->puback_message_queue, &message));
-    if (message->callback != NULL)
+    _az_RETURN_IF_FAILED(queue_dequeue(&me->puback_message_queue, &request));
+    if (request->callback != NULL)
     {
       // Call the application send message callback.
-      message->callback(IOTHUB_CLIENT_CONFIRMATION_OK, message->userContextCallback);
+      request->callback(IOTHUB_CLIENT_CONFIRMATION_OK, request->userContextCallback);
+      IoTHubMessage_Destroy(request->message);
+      free(request);
     }
   }
-  else if (message->out_packet_id < data->id)
+  else if (request->out_packet_id < data->id)
   {
     // MQTT protocol violation: PUBACK must be acknowledge in order.
     az_platform_critical_error();
@@ -649,15 +651,20 @@ IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
   az_iot_message_properties* properties = malloc(sizeof(az_iot_message_properties));
   char* topic_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
   char* properties_buffer = malloc(AZ_IOT_MAX_TOPIC_SIZE);
+  size_t data_size = strlen(source) + 1;
+  char* data_buffer = malloc(data_size);
 
   if (msg != NULL && properties != NULL && topic_buffer != NULL && properties_buffer != NULL
+      && data_buffer != NULL
       && az_result_succeeded(az_iot_message_properties_init(
           properties, az_span_create(properties_buffer, AZ_IOT_MAX_TOPIC_SIZE), 0)))
   {
     msg->refcount = 1;
     msg->telemetry_data.properties = properties;
     msg->telemetry_data.topic_buffer = az_span_create(topic_buffer, AZ_IOT_MAX_TOPIC_SIZE);
-    msg->telemetry_data.data = az_span_create_from_str((char*)(uintptr_t)source);
+    memcpy(data_buffer, source, data_size);
+
+    msg->telemetry_data.data = az_span_create(data_buffer, data_size);
     msg->telemetry_data.out_packet_id = -1;
   }
   else
@@ -678,7 +685,6 @@ void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle)
 
     if (msg->refcount <= 0)
     {
-
       if (az_span_ptr(msg->telemetry_data.topic_buffer) != NULL)
       {
         free(az_span_ptr(msg->telemetry_data.topic_buffer));
@@ -691,8 +697,12 @@ void IoTHubMessage_Destroy(IOTHUB_MESSAGE_HANDLE iotHubMessageHandle)
         msg->telemetry_data.topic_buffer = AZ_SPAN_EMPTY;
       }
 
+      if (az_span_ptr(msg->telemetry_data.properties->_internal.properties_buffer))
+      {
+        free(az_span_ptr(msg->telemetry_data.properties->_internal.properties_buffer));
+      }
+
       free(msg);
-      msg = NULL;
     }
   }
 }
