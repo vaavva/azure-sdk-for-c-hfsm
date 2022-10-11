@@ -66,7 +66,6 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   // Endpoint information
   az_span hub_endpoint;
   az_span device_id;
-  az_span ca_path;
   az_span cert_path;
   az_span key_path;
 
@@ -159,8 +158,9 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
       printf(
-          LOG_COMPAT "\x1B[31mERROR\x1B[0m: az_result=%s\n",
-          az_result_string(err_data->error_type));
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: az_result=%s (%x)\n",
+          az_result_string(err_data->error_type),
+          err_data->error_type);
       break;
     }
 
@@ -197,44 +197,6 @@ AZ_INLINE az_result _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
       (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
 }
 
-AZ_INLINE void _telemetry_callback()
-{
-  // TODO
-}
-
-AZ_INLINE void _send_message(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
-{
-#if 0 // TODO
-    az_hfsm_iot_hub_telemetry_data telemetry_data = (az_hfsm_iot_hub_telemetry_data){
-    .data = msg->payload,
-    .out_packet_id = 0,
-    .topic_buffer = msg->topic,
-    .properties = NULL,
-  };
-
-  az_hfsm_send_event(
-      (az_hfsm*)&client->hub_policy,
-      (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
-#endif
-}
-
-AZ_INLINE void _enqueue_message(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client, az_hfsm_event event)
-{
-  az_hfsm_event* clone;
-
-  if (az_result_failed(az_hfsm_event_clone(event, clone)))
-  {
-    az_platform_critical_error();
-  }
-
-  az_result ret = queue_enqueue(&client->pending_message_queue, clone);
-
-  if (az_result_failed(ret))
-  {
-    az_hfsm_event_destroy(clone);
-  }
-}
-
 static az_result disconnected(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
@@ -252,25 +214,15 @@ static az_result disconnected(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
-    case AZ_IOT_COMPAT_CSDK_CONNECT:
-      _connect(client);
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      ret = _connect(client);
       break;
-
-    case AZ_IOT_HUB_TELEMETRY_REQ:
-    {
-      _enqueue_message(client, event);
-      break;
-    }
 
     case AZ_IOT_HUB_CONNECT_RSP:
-    {
-      printf(LOG_COMPAT "HUB: Connected\n");
-      // TODO: Call the connection callback.
-    }
-    break;
+      ret = az_hfsm_transition_peer(me, disconnected, connected);
+      break;
 
     default:
-      // TODO
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
@@ -291,10 +243,25 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      // Try to empty the send queue.
+      break;
+
     case AZ_HFSM_EVENT_EXIT:
-    case AZ_IOT_COMPAT_CSDK_CONNECT:
       // No-op.
       break;
+
+    case AZ_IOT_HUB_DISCONNECT_RSP:
+      ret = az_hfsm_transition_peer(me, connected, disconnected);
+      break;
+
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+    {
+      az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
+      printf(LOG_COMPAT "MQTT: PUBACK ID=%d\n", puback->id);
+      // TODO: match with sent_message_queue.
+    }
+    break;
 
     case AZ_IOT_HUB_METHODS_REQ:
     {
@@ -305,6 +272,8 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
           az_span_size(method_req->name),
           az_span_ptr(method_req->name));
 
+      // Callback (should be set).
+
       az_hfsm_iot_hub_method_response_data method_rsp
           = (az_hfsm_iot_hub_method_response_data){ .status = 0,
                                                     .request_id = method_req->request_id,
@@ -313,18 +282,6 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
 
       ret = az_hfsm_send_event(
           (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
-    }
-    break;
-
-    case AZ_IOT_HUB_DISCONNECT_RSP:
-      printf(LOG_COMPAT "HUB: Disconnected\n");
-      break;
-
-    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-    {
-      az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
-      printf(LOG_COMPAT "MQTT: PUBACK ID=%d\n", puback->id);
-      // TODO: match with sent_message_queue.
     }
     break;
 
@@ -344,6 +301,8 @@ static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
   };
 
   _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)&client->compat_client_policy, root, _get_parent));
+  _az_RETURN_IF_FAILED(
+      az_hfsm_transition_substate((az_hfsm*)&client->compat_client_policy, root, disconnected));
 
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
       &client->hub_pipeline,
@@ -362,8 +321,8 @@ static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
       NULL));
 
   // MQTT
+  // HFSM_DESIGN: The Trusted Certificates are set within SetOption
   az_hfsm_mqtt_policy_options mqtt_options = az_hfsm_mqtt_policy_options_default();
-  mqtt_options.certificate_authority_trusted_roots = client->ca_path;
 
   _az_RETURN_IF_FAILED(az_mqtt_initialize(
       &client->hub_mqtt_policy,
@@ -509,6 +468,12 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetOption(
     iotHubClientHandle->key_path = az_span_create_from_str((char*)(uintptr_t)value);
     result = IOTHUB_CLIENT_OK;
   }
+  else if (!strcmp(optionName, OPTION_TRUSTED_CERT))
+  {
+    iotHubClientHandle->hub_mqtt_policy._internal.options.certificate_authority_trusted_roots
+        = az_span_create_from_str((char*)(uintptr_t)value);
+    result = IOTHUB_CLIENT_OK;
+  }
   else
   {
     result = IOTHUB_CLIENT_ERROR;
@@ -526,7 +491,8 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
   IOTHUB_CLIENT_RESULT ret;
 
   // TODO: enqueue message.
-  az_hfsm_compat_csdk_telemetry_req_data* request = malloc(sizeof(az_hfsm_compat_csdk_telemetry_req_data));
+  az_hfsm_compat_csdk_telemetry_req_data* request
+      = malloc(sizeof(az_hfsm_compat_csdk_telemetry_req_data));
   if (request == NULL)
   {
     return IOTHUB_CLIENT_ERROR;
@@ -558,7 +524,7 @@ void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHan
   if (az_result_failed(ret))
   {
     // HFSM_TODO: Call connection_callback
-    printf(LOG_COMPAT "Process Loop Failed: %s\n", az_result_string(ret));
+    printf(LOG_COMPAT "Process Loop Failed: %s (%x)\n", az_result_string(ret), ret);
   }
 }
 
