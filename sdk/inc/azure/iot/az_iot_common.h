@@ -59,6 +59,8 @@ enum az_log_classification_iot
   AZ_LOG_MQTT_RECEIVED_PAYLOAD
   = _az_LOG_MAKE_CLASSIFICATION(_az_FACILITY_IOT_MQTT, 2), ///< Accepted MQTT payload received.
 
+  AZ_LOG_HFSM_MQTT_STACK = _az_LOG_MAKE_CLASSIFICATION(_az_FACILITY_IOT_MQTT, 3),
+
   AZ_LOG_IOT_RETRY = _az_LOG_MAKE_CLASSIFICATION(_az_FACILITY_IOT, 1), ///< IoT Client retry.
 
   AZ_LOG_IOT_SAS_TOKEN

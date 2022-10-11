@@ -6,9 +6,16 @@
  * @brief Common C-SDK Compat API implementations.
  *
  */
-#include <azure/iot/compat/az_hfsm_event_clone.h>
 #include <malloc.h>
 #include <string.h>
+#include <azure/az_iot.h>
+#include <azure/core/az_mqtt.h>
+#include <azure/iot/internal/az_iot_hub_hfsm.h>
+#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
+#include <azure/iot/internal/az_iot_retry_hfsm.h>
+
+#include <azure/iot/compat/internal/az_compat_csdk.h>
+#include <azure/iot/compat/internal/az_hfsm_event_clone.h>
 
 #define ENOMEM 12 /* Out of memory */
 #define EINVAL 22 /* Invalid argument */
@@ -72,4 +79,121 @@ az_result az_hfsm_event_destroy(az_hfsm_event* event)
   }
 
   return ret;
+}
+
+void az_sdk_log_callback(az_log_classification classification, az_span message)
+{
+  const char* class_str;
+
+  switch (classification)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      class_str = "HFSM_ENTRY";
+      break;
+    case AZ_HFSM_EVENT_EXIT:
+      class_str = "HFSM_EXIT";
+      break;
+    case AZ_HFSM_EVENT_TIMEOUT:
+      class_str = "HFSM_TIMEOUT";
+      break;
+    case AZ_HFSM_EVENT_ERROR:
+      class_str = "HFSM_ERROR";
+      break;
+    case AZ_ERROR_HFSM_INVALID_STATE:
+      class_str = "HFSM_INVALID_STATE";
+      break;
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      class_str = "AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUB_RECV_IND";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUB_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_PUBACK_RSP";
+      break;
+    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
+      class_str = "AZ_HFSM_MQTT_EVENT_SUB_REQ";
+      break;
+    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
+      class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
+      break;
+    case AZ_LOG_HFSM_MQTT_STACK:
+      class_str = "AZ_LOG_HFSM_MQTT_STACK";
+      break;
+    case AZ_LOG_MQTT_RECEIVED_TOPIC:
+      class_str = "AZ_LOG_MQTT_RECEIVED_TOPIC";
+      break;
+    case AZ_LOG_MQTT_RECEIVED_PAYLOAD:
+      class_str = "AZ_LOG_MQTT_RECEIVED_PAYLOAD";
+      break;
+    case AZ_IOT_PROVISIONING_REGISTER_REQ:
+      class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
+      break;
+    case AZ_IOT_HUB_CONNECT_REQ:
+      class_str = "AZ_IOT_HUB_CONNECT_REQ";
+      break;
+    case AZ_IOT_HUB_CONNECT_RSP:
+      class_str = "AZ_IOT_HUB_CONNECT_RSP";
+      break;
+    case AZ_IOT_HUB_DISCONNECT_REQ:
+      class_str = "AZ_IOT_HUB_DISCONNECT_REQ";
+      break;
+    case AZ_IOT_HUB_DISCONNECT_RSP:
+      class_str = "AZ_IOT_HUB_DISCONNECT_RSP";
+      break;
+    case AZ_IOT_HUB_TELEMETRY_REQ:
+      class_str = "AZ_IOT_HUB_TELEMETRY_REQ";
+      break;
+    case AZ_IOT_HUB_METHODS_REQ:
+      class_str = "AZ_IOT_HUB_METHODS_REQ";
+      break;
+    case AZ_IOT_HUB_METHODS_RSP:
+      class_str = "AZ_IOT_HUB_METHODS_RSP";
+      break;
+    default:
+      class_str = NULL;
+  }
+
+  if (class_str == NULL)
+  {
+    printf(LOG_SDK "[\x1B[31mUNKNOWN: %x\x1B[0m] %s\n", classification, az_span_ptr(message));
+  }
+  else if (classification == AZ_HFSM_EVENT_ERROR)
+  {
+    printf(LOG_SDK "[\x1B[31m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
+  }
+  else
+  {
+    printf(LOG_SDK "[\x1B[35m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
+  }
+}
+
+bool az_sdk_log_filter_callback(az_log_classification classification)
+{
+  (void)classification;
+  // Enable all logging.
+  return true;
+}
+
+void az_platform_critical_error()
+{
+  printf(LOG_COMPAT "\x1B[31mPANIC!\x1B[0m\n");
+
+  while (1)
+    ;
 }

@@ -18,6 +18,7 @@
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
+#include <azure/iot/az_iot_common.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
@@ -335,10 +336,18 @@ AZ_INLINE az_result _az_mosquitto_deinit(az_hfsm_mqtt_policy* me)
   return AZ_OK;
 }
 
+#ifdef TRANSPORT_MQTT_SYNC
+AZ_INLINE az_result _az_mosquitto_process_loop(az_hfsm_mqtt_policy* me)
+{
+  struct mosquitto* mosq = (struct mosquitto*)me->_internal.mqtt;
+  return _az_result_from_mosq(mosquitto_loop(mosq, AZ_MQTT_SYNC_MAX_POLLING_SECONDS, 1));
+}
+#endif
+
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_result ret = AZ_OK;
-  (void)me;
+  az_hfsm_mqtt_policy* this_mqtt = (az_hfsm_mqtt_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -352,7 +361,9 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       break;
 
 #ifdef TRANSPORT_MQTT_SYNC
-    // TODO: add a "DO_EVENTS" signal implementation.
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      ret = _az_mosquitto_process_loop(this_mqtt);
+      break;
 #endif
 
     case AZ_HFSM_EVENT_EXIT:

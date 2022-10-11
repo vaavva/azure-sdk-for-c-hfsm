@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * @file
+ * @file az_mqtt.h
  *
  * @brief This header defines the types and functions your application uses to leverage MQTT pub/sub
  * functionality.
@@ -147,8 +147,6 @@ enum az_hfsm_event_type_mqtt
   AZ_HFSM_MQTT_EVENT_SUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
 
   AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 18),
-
-  AZ_LOG_HFSM_MQTT_STACK = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 19),
 };
 
 AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default();
@@ -184,20 +182,6 @@ AZ_NODISCARD az_result az_mqtt_init();
  * @return #az_result
  */
 AZ_NODISCARD az_result az_mqtt_deinit();
-
-#ifdef TRANSPORT_MQTT_SYNC
-/**
- * @brief Syncrhonous I/O MQTT process loop.
- * @note Application should call this only when TRANSPORT_MQTT_SYNC is defined.
- * @details This call will allow the MQTT stack to perform synchonous I/O. The current thread is
- * blocked until I/O is complete.
- * 
- * @param mqtt_policy - The MQTT policy.
- *
- * @return #az_result
- */
-AZ_NODISCARD az_result az_mqtt_synchronous_process_loop(az_hfsm_mqtt_policy* mqtt_policy);
-#endif
 
 #include <azure/core/_az_cfg_suffix.h>
 

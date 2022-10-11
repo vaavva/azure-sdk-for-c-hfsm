@@ -108,6 +108,14 @@ az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer
 #ifdef TRANSPORT_MQTT_SYNC
 AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline)
 {
-  // TODO: post Do_Events inbound request.
+  // Process outbound events if any have been cached by the upper layers (e.g. API). This call is
+  // blocking.
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
+      pipeline, (az_hfsm_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
+
+  // Process inbound events (e.g. network read). This call is blocking. When configurable, it should
+  // wait at most AZ_MQTT_SYNC_MAX_POLLING_SECONDS.
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_inbound_event(
+      pipeline, (az_hfsm_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
 }
 #endif

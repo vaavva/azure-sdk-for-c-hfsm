@@ -22,7 +22,6 @@
 
 #include <azure/az_iot.h>
 #include <azure/core/az_hfsm_pipeline.h>
-#include <azure/core/az_log.h>
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
@@ -31,14 +30,14 @@
 #include <azure/core/internal/az_result_internal.h>
 
 #include <azure/iot/internal/az_iot_hub_hfsm.h>
-#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
-#include <azure/iot/internal/az_iot_retry_hfsm.h>
 
 #include <azure/iot/compat/iothub.h>
 #include <azure/iot/compat/iothub_client_options.h>
 #include <azure/iot/compat/iothub_device_client_ll.h>
 #include <azure/iot/compat/iothub_transport_ll.h>
-#include <azure/iot/compat/az_hfsm_event_clone.h>
+
+#include <azure/iot/compat/internal/az_compat_csdk.h>
+#include <azure/iot/compat/internal/az_hfsm_event_clone.h>
 
 #define SYS_PROP_MESSAGE_ID "mid"
 #define SYS_PROP_MESSAGE_CREATION_TIME_UTC "ctime"
@@ -57,7 +56,7 @@
 
 #define Q_TYPE az_hfsm_event*
 #define Q_SIZE AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE
-#include <azure/iot/compat/queue.h>
+#include <azure/iot/compat/internal/queue.h>
 
 typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
 {
@@ -95,12 +94,6 @@ typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
 
 const TRANSPORT_PROVIDER* MQTT_Protocol(void) { return (TRANSPORT_PROVIDER*)0x4D515454; }
 
-static void az_sdk_log_callback(az_log_classification classification, az_span message);
-static bool az_sdk_log_filter_callback(az_log_classification classification);
-
-#define LOG_COMPAT "\x1B[34mCOMPAT: \x1B[0m"
-#define LOG_SDK "\x1B[33mSDK: \x1B[0m"
-
 static const char* az_result_string(az_result result)
 {
   const char* result_str;
@@ -122,119 +115,7 @@ static const char* az_result_string(az_result result)
   return result_str;
 }
 
-static void az_sdk_log_callback(az_log_classification classification, az_span message)
-{
-  const char* class_str;
 
-  switch (classification)
-  {
-    case AZ_HFSM_EVENT_ENTRY:
-      class_str = "HFSM_ENTRY";
-      break;
-    case AZ_HFSM_EVENT_EXIT:
-      class_str = "HFSM_EXIT";
-      break;
-    case AZ_HFSM_EVENT_TIMEOUT:
-      class_str = "HFSM_TIMEOUT";
-      break;
-    case AZ_HFSM_EVENT_ERROR:
-      class_str = "HFSM_ERROR";
-      break;
-    case AZ_ERROR_HFSM_INVALID_STATE:
-      class_str = "HFSM_INVALID_STATE";
-      break;
-    case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_RSP";
-      break;
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP";
-      break;
-    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUB_RECV_IND";
-      break;
-    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUB_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUBACK_RSP";
-      break;
-    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_SUB_REQ";
-      break;
-    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
-      break;
-    case AZ_LOG_HFSM_MQTT_STACK:
-      class_str = "AZ_LOG_HFSM_MQTT_STACK";
-      break;
-    case AZ_LOG_MQTT_RECEIVED_TOPIC:
-      class_str = "AZ_LOG_MQTT_RECEIVED_TOPIC";
-      break;
-    case AZ_LOG_MQTT_RECEIVED_PAYLOAD:
-      class_str = "AZ_LOG_MQTT_RECEIVED_PAYLOAD";
-      break;
-    case AZ_IOT_PROVISIONING_REGISTER_REQ:
-      class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
-      break;
-    case AZ_IOT_HUB_CONNECT_REQ:
-      class_str = "AZ_IOT_HUB_CONNECT_REQ";
-      break;
-    case AZ_IOT_HUB_CONNECT_RSP:
-      class_str = "AZ_IOT_HUB_CONNECT_RSP";
-      break;
-    case AZ_IOT_HUB_DISCONNECT_REQ:
-      class_str = "AZ_IOT_HUB_DISCONNECT_REQ";
-      break;
-    case AZ_IOT_HUB_DISCONNECT_RSP:
-      class_str = "AZ_IOT_HUB_DISCONNECT_RSP";
-      break;
-    case AZ_IOT_HUB_TELEMETRY_REQ:
-      class_str = "AZ_IOT_HUB_TELEMETRY_REQ";
-      break;
-    case AZ_IOT_HUB_METHODS_REQ:
-      class_str = "AZ_IOT_HUB_METHODS_REQ";
-      break;
-    case AZ_IOT_HUB_METHODS_RSP:
-      class_str = "AZ_IOT_HUB_METHODS_RSP";
-      break;
-    default:
-      class_str = NULL;
-  }
-
-  if (class_str == NULL)
-  {
-    printf(LOG_SDK "[\x1B[31mUNKNOWN: %x\x1B[0m] %s\n", classification, az_span_ptr(message));
-  }
-  else if (classification == AZ_HFSM_EVENT_ERROR)
-  {
-    printf(LOG_SDK "[\x1B[31m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
-  }
-  else
-  {
-    printf(LOG_SDK "[\x1B[35m%s\x1B[0m] %s\n", class_str, az_span_ptr(message));
-  }
-}
-
-static bool az_sdk_log_filter_callback(az_log_classification classification)
-{
-  (void)classification;
-  // Enable all logging.
-  return true;
-}
-
-void az_platform_critical_error()
-{
-  printf(LOG_COMPAT "\x1B[31mPANIC!\x1B[0m\n");
-
-  while (1)
-    ;
-}
 
 // ***** Single-layer C-SDK Compat Layer State Machine
 enum az_hfsm_event_type_compat_csdk

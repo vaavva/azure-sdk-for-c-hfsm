@@ -97,6 +97,12 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event c
 void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc);
 
 #ifdef TRANSPORT_MQTT_SYNC
+
+enum az_hfsm_even_type_pipeline
+{
+  AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
+};
+
 /**
  * @brief Blocking processing loop.
  * @note Application should call this only when TRANSPORT_MQTT_SYNC is defined.
