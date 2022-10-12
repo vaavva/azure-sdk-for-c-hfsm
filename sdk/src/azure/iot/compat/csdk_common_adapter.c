@@ -15,7 +15,6 @@
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
 
 #include <azure/iot/compat/internal/az_compat_csdk.h>
-#include <azure/iot/compat/internal/az_hfsm_event_clone.h>
 
 #define ENOMEM 12 /* Out of memory */
 #define EINVAL 22 /* Invalid argument */
@@ -53,32 +52,6 @@ int mallocAndStrcpy_s(char** destination, const char* source)
     }
   }
   return result;
-}
-
-az_result az_hfsm_event_clone(az_hfsm_event original, az_hfsm_event* out_clone)
-{
-  az_result ret;
-
-  switch (original.type)
-  {
-    default:
-      out_clone = NULL;
-      ret = AZ_ERROR_OUT_OF_MEMORY;
-  }
-
-  return ret;
-}
-
-az_result az_hfsm_event_destroy(az_hfsm_event* event)
-{
-  az_result ret;
-  switch (event->type)
-  {
-    default:
-        ret = AZ_ERROR_NOT_IMPLEMENTED;
-  }
-
-  return ret;
 }
 
 const char* az_result_string(az_result result)

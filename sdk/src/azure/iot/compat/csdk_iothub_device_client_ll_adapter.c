@@ -37,7 +37,6 @@
 #include <azure/iot/compat/iothub_transport_ll.h>
 
 #include <azure/iot/compat/internal/az_compat_csdk.h>
-#include <azure/iot/compat/internal/az_hfsm_event_clone.h>
 
 #define SYS_PROP_MESSAGE_ID "mid"
 #define SYS_PROP_MESSAGE_CREATION_TIME_UTC "ctime"
@@ -435,6 +434,11 @@ static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
 
 // ************************************* C-SDK Compat layer ************************************ //
 
+const char* IoTHubClient_GetVersionString()
+{
+  // TODO:
+}
+
 int IoTHub_Init() { _az_RETURN_IF_FAILED(az_mqtt_init()); }
 
 void IoTHub_Deinit()
@@ -514,6 +518,14 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
   }
 
   return client;
+}
+
+IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_CreateFromDeviceAuth(
+    const char* iothub_uri,
+    const char* device_id,
+    IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
+{
+  // TODO
 }
 
 void IoTHubDeviceClient_LL_Destroy(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
@@ -638,7 +650,20 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetConnectionStatusCallback(
   return IOTHUB_CLIENT_OK;
 }
 
+IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetMessageCallback(
+    IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle,
+    IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC messageCallback,
+    void* userContextCallback)
+{
+  // TODO
+}
+
 // ************************************* C-SDK Message  **************************************** //
+
+IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromByteArray(const unsigned char* byteArray, size_t size)
+{
+  // TODO
+}
 
 IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromString(const char* source)
 {

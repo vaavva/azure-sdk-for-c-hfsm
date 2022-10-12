@@ -13,8 +13,6 @@ extern "C" {
 #include <stddef.h>
 #endif /* __cplusplus */
 
-#include "azure_prov_client/prov_transport.h"
-
 const PROV_DEVICE_TRANSPORT_PROVIDER* Prov_Device_MQTT_Protocol();
 
 #ifdef __cplusplus

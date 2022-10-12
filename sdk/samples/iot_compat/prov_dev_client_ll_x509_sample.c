@@ -18,8 +18,8 @@
 
 // Provisioning information:
 static const char* global_prov_uri = "global.azure-devices-provisioning.net";
-static const char* id_scope = "<ID SCOPE>";
-static const char* registration_id = "<registration-id>";   // Case sensitive.
+static const char* id_scope = "0ne00003E26";
+static const char* registration_id = "dev1-ecc";   // Case sensitive.
 
 //
 // The protocol you wish to use should be uncommented
@@ -36,18 +36,12 @@ static const char* registration_id = "<registration-id>";   // Case sensitive.
 // For development-time only: configure a hardcoded Trusted Root Authorities store.
 //#define SET_TRUSTED_CERT_IN_SAMPLES
 
-static const char* x509certificate =
-"-----BEGIN CERTIFICATE-----\n"
-"MIIBVjCB/aADAgECAhRMqqc/rOqEW+Afbkw4XyMLu1PUaTAKBggqhkjOPQQDAjAT\n"
-"..."
-"dwjNGPacV5zzgA==\n"
-"-----END CERTIFICATE-----\n";
+// HFSM_DESIGN: The certificate / key semantics change based on the underlying MQTT stack.
+//              This is similar to how these values are used with OpenSSL ENGINEs.
+static const char* x509certificate = "/home/crispop/test/dev1-ecc_cert.pem";
 
 #ifndef SAMPLE_OPENSSL_ENGINE
-static const char* x509privatekey =
-"-----BEGIN EC PARAMETERS-----\n"
-"..."
-"-----END EC PRIVATE KEY-----\n";
+static const char* x509privatekey = "/home/crispop/test/dev1-ecc_key.pem";
 #else
 // PKCS#11 Example. Other OpenSSL Engines will require a different key ID.
 static const char* x509privatekey = "pkcs11:object=test-privkey;type=private?pin-value=<yourPin>";
