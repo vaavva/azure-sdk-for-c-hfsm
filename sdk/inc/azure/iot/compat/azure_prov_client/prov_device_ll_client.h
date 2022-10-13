@@ -10,6 +10,23 @@ extern "C"
 {
 #endif /* __cplusplus */
 
+#define PROV_REGISTRATION_ID "registration_id"
+#define PROV_OPTION_LOG_TRACE "logtrace"
+#define PROV_OPTION_TIMEOUT "provisioning_timeout"
+
+#define OPTION_LOG_TRACE "logtrace"
+#define OPTION_TRUSTED_CERT "TrustedCerts"
+
+#ifndef OPTION_X509_CERT_DEF
+#define OPTION_X509_CERT_DEF
+    #define OPTION_X509_CERT "x509certificate"
+#endif
+
+#ifndef OPTION_X509_PRIVATE_KEY_DEF
+#define OPTION_X509_PRIVATE_KEY_DEF
+    #define OPTION_X509_PRIVATE_KEY "x509privatekey"
+#endif
+
   struct PROV_DEVICE_TRANSPORT_PROVIDER_TAG;
   typedef struct PROV_DEVICE_TRANSPORT_PROVIDER_TAG PROV_DEVICE_TRANSPORT_PROVIDER;
 
@@ -17,15 +34,15 @@ extern "C"
 
   typedef enum
   {
-      TRANSPORT_HSM_TYPE_X509,
-      TRANSPORT_HSM_TYPE_SYMM_KEY
+    TRANSPORT_HSM_TYPE_X509,
+    TRANSPORT_HSM_TYPE_SYMM_KEY
   } TRANSPORT_HSM_TYPE;
 
   typedef enum
   {
-      PROV_DEVICE_TRANSPORT_RESULT_OK,
-      PROV_DEVICE_TRANSPORT_RESULT_UNAUTHORIZED,
-      PROV_DEVICE_TRANSPORT_RESULT_ERROR
+    PROV_DEVICE_TRANSPORT_RESULT_OK,
+    PROV_DEVICE_TRANSPORT_RESULT_UNAUTHORIZED,
+    PROV_DEVICE_TRANSPORT_RESULT_ERROR
   } PROV_DEVICE_TRANSPORT_RESULT;
 
   typedef struct PROV_INSTANCE_INFO_TAG* PROV_DEVICE_LL_HANDLE;
@@ -57,10 +74,6 @@ extern "C"
     PROV_DEVICE_REG_STATUS_ERROR,
     PROV_DEVICE_REG_HUB_NOT_SPECIFIED
   } PROV_DEVICE_REG_STATUS;
-
-  static const char* const PROV_REGISTRATION_ID = "registration_id";
-  static const char* const PROV_OPTION_LOG_TRACE = "logtrace";
-  static const char* const PROV_OPTION_TIMEOUT = "provisioning_timeout";
 
   typedef void (*PROV_DEVICE_CLIENT_REGISTER_DEVICE_CALLBACK)(
       PROV_DEVICE_RESULT register_result,

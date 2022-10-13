@@ -434,10 +434,7 @@ static az_result hub_initialize(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
 
 // ************************************* C-SDK Compat layer ************************************ //
 
-const char* IoTHubClient_GetVersionString()
-{
-  // TODO:
-}
+const char* IoTHubClient_GetVersionString() { return "2.0.0-alpha"; }
 
 int IoTHub_Init() { _az_RETURN_IF_FAILED(az_mqtt_init()); }
 
@@ -581,6 +578,7 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetOption(
   }
   else if (!strcmp(optionName, OPTION_TRUSTED_CERT))
   {
+    // HFSM_TODO: keep CA certs for MQTT policy only.
     iotHubClientHandle->hub_mqtt_policy._internal.options.certificate_authority_trusted_roots
         = az_span_create_from_str((char*)(uintptr_t)value);
     result = IOTHUB_CLIENT_OK;
