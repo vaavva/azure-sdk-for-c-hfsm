@@ -70,7 +70,7 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   az_span cert_path;
   az_span key_path;
 
-  // Hub
+  // Hub Pipeline
   az_hfsm_pipeline hub_pipeline;
   az_hfsm_iot_hub_policy hub_policy;
   az_iot_hub_client hub_client;
