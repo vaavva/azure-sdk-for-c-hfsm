@@ -50,7 +50,6 @@ typedef struct PROV_INSTANCE_INFO_TAG
   // Endpoint information
   az_span dps_endpoint;
   az_span id_scope;
-  az_span registration_id;
 
   // Provisioning Pipeline
   az_hfsm_pipeline prov_pipeline;
@@ -64,6 +63,9 @@ typedef struct PROV_INSTANCE_INFO_TAG
   char username_buffer[AZ_IOT_MAX_USERNAME_SIZE];
   char password_buffer[AZ_IOT_MAX_PASSWORD_SIZE];
   char client_id_buffer[AZ_IOT_MAX_CLIENT_ID_SIZE];
+
+  char hub_name_buffer[AZ_IOT_MAX_HUB_NAME_SIZE];
+  char device_id_name_buffer[AZ_IOT_MAX_CLIENT_ID_SIZE];
 
   // We support a single pending register request instead of a queue.
   az_hfsm_compat_csdk_register_req register_request_data;
@@ -143,6 +145,13 @@ AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
 {
   _az_PRECONDITION(client->register_request_data.initialized);
 
+  if (client->register_request_data.reg_status_cb != NULL)
+  {
+    client->register_request_data.reg_status_cb(
+        PROV_DEVICE_REG_STATUS_REGISTERING,
+        client->register_request_data.reg_status_cb_user_context);
+  }
+
   return az_hfsm_send_event(
       (az_hfsm*)client->compat_client_policy.outbound,
       (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ,
@@ -183,9 +192,63 @@ AZ_INLINE az_result _handle_register_result(
     PROV_INSTANCE_INFO* client,
     az_hfsm_iot_provisioning_register_response_data* data)
 {
-  // TODO: handle callbacks.
+  PROV_DEVICE_REG_STATUS reg_status;
+  PROV_DEVICE_RESULT device_result;
 
-  return AZ_ERROR_NOT_IMPLEMENTED;
+  switch (data->operation_status)
+  {
+    case AZ_IOT_PROVISIONING_STATUS_UNASSIGNED:
+      reg_status = PROV_DEVICE_REG_HUB_NOT_SPECIFIED;
+      device_result = PROV_DEVICE_RESULT_HUB_NOT_SPECIFIED;
+      break;
+
+    case AZ_IOT_PROVISIONING_STATUS_ASSIGNING:
+      reg_status = PROV_DEVICE_REG_STATUS_ASSIGNING;
+      device_result = PROV_DEVICE_RESULT_HUB_NOT_SPECIFIED;
+      break;
+
+    case AZ_IOT_PROVISIONING_STATUS_ASSIGNED:
+      reg_status = PROV_DEVICE_REG_STATUS_ASSIGNED;
+      device_result = PROV_DEVICE_RESULT_OK;
+      break;
+
+    case AZ_IOT_PROVISIONING_STATUS_FAILED:
+      reg_status = PROV_DEVICE_REG_STATUS_ERROR;
+      device_result = PROV_DEVICE_RESULT_ERROR;
+      break;
+
+    case AZ_IOT_PROVISIONING_STATUS_DISABLED:
+      reg_status = PROV_DEVICE_REG_STATUS_ERROR;
+      device_result = PROV_DEVICE_RESULT_DISABLED;
+      break;
+  }
+
+  if (client->register_request_data.reg_status_cb != NULL)
+  {
+    client->register_request_data.reg_status_cb(
+        reg_status, client->register_request_data.reg_status_cb_user_context);
+  }
+
+  if (client->register_request_data.register_callback != NULL)
+  {
+    az_span_to_str(
+        client->hub_name_buffer,
+        sizeof(client->hub_name_buffer),
+        data->registration_state.assigned_hub_hostname);
+
+    az_span_to_str(
+        client->device_id_name_buffer,
+        sizeof(client->device_id_name_buffer),
+        data->registration_state.device_id);
+
+    client->register_request_data.register_callback(
+        device_result,
+        client->hub_name_buffer,
+        client->device_id_name_buffer,
+        client->register_request_data.register_callback_user_context);
+  }
+
+  return AZ_OK;
 }
 
 static az_result running(az_hfsm* me, az_hfsm_event event)
@@ -267,8 +330,9 @@ static az_result prov_initialize(PROV_INSTANCE_INFO* client)
       (az_hfsm_policy*)&client->compat_client_policy,
       (az_hfsm_policy*)&client->prov_mqtt_policy));
 
+  // Cannot initialize client w/o registration_id. Set this to a non-empty temporary value.
   _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
-      &client->prov_client, client->dps_endpoint, client->id_scope, client->registration_id, NULL));
+      &client->prov_client, client->dps_endpoint, client->id_scope, AZ_SPAN_FROM_STR("N/A"), NULL));
 
   _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
       &client->prov_policy,
@@ -304,9 +368,6 @@ PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(
 
     client->dps_endpoint = az_span_create_from_str((char*)(uintptr_t)uri);
     client->id_scope = az_span_create_from_str((char*)(uintptr_t)scope_id);
-
-    // Cannot initialize client w/o registration_id. Set this to a non-empty temporary value.
-    client->registration_id = AZ_SPAN_FROM_STR("N/A");
 
     if (az_result_failed(prov_initialize(client)))
     {
@@ -377,7 +438,8 @@ PROV_DEVICE_RESULT Prov_Device_LL_SetOption(
   }
   else if (!strcmp(optionName, PROV_REGISTRATION_ID))
   {
-    handle->registration_id = az_span_create_from_str((char*)(uintptr_t)value);
+    handle->prov_client._internal.registration_id
+        = az_span_create_from_str((char*)(uintptr_t)value);
     result = PROV_DEVICE_RESULT_OK;
   }
   else
@@ -408,7 +470,6 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(
     PROV_DEVICE_CLIENT_REGISTER_STATUS_CALLBACK reg_status_cb,
     void* status_user_ctext)
 {
-
   handle->register_request_data.register_data = (az_hfsm_iot_provisioning_register_data){
     .auth = security_provider,
     .auth_type = AZ_HFSM_IOT_AUTH_X509,

@@ -487,6 +487,8 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_CreateFromDeviceAuth(
     IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
   // TODO
+
+  return NULL;
 }
 
 void IoTHubDeviceClient_LL_Destroy(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)

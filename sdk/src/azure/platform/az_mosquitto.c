@@ -31,7 +31,8 @@
 
 #include <azure/core/_az_cfg.h>
 
-static az_result root(az_hfsm* me, az_hfsm_event event);
+    static az_result
+    root(az_hfsm* me, az_hfsm_event event);
 static az_result idle(az_hfsm* me, az_hfsm_event event);
 static az_result running(az_hfsm* me, az_hfsm_event event);
 
@@ -358,6 +359,14 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       ret = _az_mosquitto_process_loop(this_mqtt);
       break;
 #endif
+
+    case AZ_HFSM_EVENT_ERROR:
+      if (az_result_failed(
+              az_hfsm_send_event((az_hfsm*)this_mqtt->_internal.policy.inbound, event)))
+      {
+        az_platform_critical_error();
+      }
+      break;
 
     case AZ_HFSM_EVENT_EXIT:
       // Exitting root state is not permitted. Flow through default:

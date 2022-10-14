@@ -71,8 +71,10 @@ static const char* x509privatekey = "pkcs11:object=test-privkey;type=private?pin
 #include "azure_prov_client/prov_transport_http_client.h"
 #endif // SAMPLE_HTTP
 
+#define SET_TRUSTED_CERT_IN_SAMPLES
+
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
-#include "certs.h"
+    static const char* certificates = "/home/crispop/test/rsa_baltimore_ca.pem";
 #endif // SET_TRUSTED_CERT_IN_SAMPLES
 
 #ifdef SAMPLE_OPENSSL_ENGINE
@@ -107,10 +109,37 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HAND
     return IOTHUBMESSAGE_ACCEPTED;
 }
 
+static const char* get_prov_device_reg_status_string(PROV_DEVICE_REG_STATUS reg_status)
+{
+    const char* str;
+    switch (reg_status)
+    {
+        case PROV_DEVICE_REG_STATUS_REGISTERING:
+            str = "PROV_DEVICE_REG_STATUS_REGISTERING";
+            break;
+        case PROV_DEVICE_REG_STATUS_ASSIGNED:
+            str= "PROV_DEVICE_REG_STATUS_ASSIGNED";
+            break;
+        case PROV_DEVICE_REG_STATUS_ASSIGNING:
+            str = "PROV_DEVICE_REG_STATUS_ASSIGNING";
+            break;
+        case PROV_DEVICE_REG_STATUS_ERROR:
+            str = "PROV_DEVICE_REG_STATUS_ERROR";
+            break;
+        case PROV_DEVICE_REG_HUB_NOT_SPECIFIED:
+            str = "PROV_DEVICE_REG_HUB_NOT_SPECIFIED";
+            break;
+        default:
+            str = "UNKNOWN PROV_DEVICE_REG_STATUS";
+    }
+
+    return str;
+}
+
 static void registration_status_callback(PROV_DEVICE_REG_STATUS reg_status, void* user_context)
 {
     (void)user_context;
-    (void)printf("Provisioning Status: 0x%x\r\n", reg_status);
+    (void)printf("Provisioning Status: %s (0x%x)\r\n", get_prov_device_reg_status_string(reg_status), reg_status);
 }
 
 static void iothub_connection_status(IOTHUB_CLIENT_CONNECTION_STATUS result, IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason, void* user_context)

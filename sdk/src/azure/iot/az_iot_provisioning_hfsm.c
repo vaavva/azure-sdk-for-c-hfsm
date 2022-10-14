@@ -105,7 +105,7 @@ AZ_NODISCARD az_result az_hfsm_iot_provisioning_policy_initialize(
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_result ret = AZ_OK;
-  (void)me;
+  az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -116,6 +116,14 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_EVENT_ENTRY:
       // No-op.
+      break;
+
+    case AZ_HFSM_EVENT_ERROR:
+      if (az_result_failed(
+          az_hfsm_send_event((az_hfsm*)this_policy->_internal.policy.inbound, event)))
+      {
+        az_platform_critical_error();
+      }
       break;
 
     case AZ_HFSM_EVENT_EXIT:
