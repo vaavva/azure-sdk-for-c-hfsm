@@ -144,7 +144,7 @@ AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
   _az_PRECONDITION(client->register_request_data.initialized);
 
   return az_hfsm_send_event(
-      (az_hfsm*)client,
+      (az_hfsm*)client->compat_client_policy.outbound,
       (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ,
                        &client->register_request_data.register_data });
 }
@@ -234,7 +234,7 @@ static az_hfsm_iot_x509_auth security_provider;
 
 int prov_dev_security_init(SECURE_DEVICE_TYPE hsm_type)
 {
-  security_provider = (az_hfsm_iot_x509_auth) {
+  security_provider = (az_hfsm_iot_x509_auth){
     .cert = AZ_SPAN_EMPTY,
     .key = AZ_SPAN_EMPTY,
   };
@@ -253,6 +253,15 @@ const char* Prov_Device_LL_GetVersionString() { return "2.0.0-alpha"; }
 
 static az_result prov_initialize(PROV_INSTANCE_INFO* client)
 {
+  client->compat_client_policy = (az_hfsm_policy){
+    .inbound = NULL,
+    .outbound = (az_hfsm_policy*)&client->prov_policy,
+  };
+
+  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)&client->compat_client_policy, root, _get_parent));
+  _az_RETURN_IF_FAILED(
+      az_hfsm_transition_substate((az_hfsm*)&client->compat_client_policy, root, idle));
+
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
       &client->prov_pipeline,
       (az_hfsm_policy*)&client->compat_client_policy,
@@ -295,7 +304,9 @@ PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(
 
     client->dps_endpoint = az_span_create_from_str((char*)(uintptr_t)uri);
     client->id_scope = az_span_create_from_str((char*)(uintptr_t)scope_id);
-    client->registration_id = AZ_SPAN_EMPTY;
+
+    // Cannot initialize client w/o registration_id. Set this to a non-empty temporary value.
+    client->registration_id = AZ_SPAN_FROM_STR("N/A");
 
     if (az_result_failed(prov_initialize(client)))
     {
@@ -307,7 +318,17 @@ PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(
   return client;
 }
 
-void Prov_Device_LL_Destroy(PROV_DEVICE_LL_HANDLE handle) {}
+void Prov_Device_LL_Destroy(PROV_DEVICE_LL_HANDLE handle)
+{
+  // Disconnect async (disconnect will be initiated here).
+  if (az_result_failed(az_hfsm_pipeline_post_outbound_event(
+          &handle->prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_DISCONNECT_REQ, NULL })))
+  {
+    az_platform_critical_error();
+  }
+
+  free(handle);
+}
 
 PROV_DEVICE_RESULT Prov_Device_LL_SetOption(
     PROV_DEVICE_LL_HANDLE handle,
@@ -369,12 +390,14 @@ PROV_DEVICE_RESULT Prov_Device_LL_SetOption(
 
 void Prov_Device_LL_DoWork(PROV_DEVICE_LL_HANDLE handle)
 {
+  _az_PRECONDITION(handle->register_request_data.initialized);
 
   az_result ret = az_hfsm_pipeline_syncrhonous_process_loop(&handle->prov_pipeline);
   if (az_result_failed(ret))
   {
     // HFSM_TODO: Call connection_callback
     printf(LOG_COMPAT "Process Loop Failed: %s (%x)\n", az_result_string(ret), ret);
+    az_platform_critical_error();
   }
 }
 
@@ -400,6 +423,8 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(
   handle->register_request_data.register_callback_user_context = user_context;
   handle->register_request_data.reg_status_cb = reg_status_cb;
   handle->register_request_data.reg_status_cb_user_context = status_user_ctext;
+
+  handle->register_request_data.initialized = true;
 
   return PROV_DEVICE_RESULT_OK;
 }

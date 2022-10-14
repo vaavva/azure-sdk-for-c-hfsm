@@ -6,13 +6,13 @@
  * @brief Common C-SDK Compat API implementations.
  *
  */
-#include <malloc.h>
-#include <string.h>
 #include <azure/az_iot.h>
 #include <azure/core/az_mqtt.h>
 #include <azure/iot/internal/az_iot_hub_hfsm.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
+#include <malloc.h>
+#include <string.h>
 
 #include <azure/iot/compat/internal/az_compat_csdk.h>
 
@@ -77,7 +77,17 @@ const char* az_result_string(az_result result)
       break;
 
     default:
-      result_str = "UNKNOWN";
+    {
+      az_result mqtt_error_mask = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, 0);
+      if ((result & mqtt_error_mask) == mqtt_error_mask)
+      {
+        result_str = "MQTT_STACK_ERROR";
+      }
+      else
+      {
+        result_str = "UNKNOWN";
+      }
+    }
   }
 
   return result_str;
