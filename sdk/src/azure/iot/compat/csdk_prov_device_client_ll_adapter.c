@@ -2,6 +2,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license
 // information.
 
+/**
+ * @file csdk_prov_device_client_ll_adapter.c
+ * @brief C-SDK Compat implementation for the IoT Provisioning LL client.
+ * @details The following APIs rely on heap allocations (malloc/free) to create objects.
+ *
+ */
+
+// HFSM_TODO: This implementation is proof-of-concept only.
+
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <azure/az_iot.h>
 #include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_mqtt.h>
@@ -13,14 +25,25 @@
 
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
-#include <azure/iot/compat/iothub_client_options.h>
 #include <azure/iot/compat/azure_prov_client/prov_device_ll_client.h>
 #include <azure/iot/compat/azure_prov_client/prov_security_factory.h>
 #include <azure/iot/compat/azure_prov_client/prov_transport_mqtt_client.h>
+#include <azure/iot/compat/iothub_client_options.h>
 
 #include <azure/iot/compat/internal/az_compat_csdk.h>
 
-struct PROV_INSTANCE_INFO_TAG
+typedef struct
+{
+  az_hfsm_iot_provisioning_register_data register_data;
+  bool initialized;
+
+  PROV_DEVICE_CLIENT_REGISTER_DEVICE_CALLBACK register_callback;
+  void* register_callback_user_context;
+  PROV_DEVICE_CLIENT_REGISTER_STATUS_CALLBACK reg_status_cb;
+  void* reg_status_cb_user_context;
+} az_hfsm_compat_csdk_register_req;
+
+typedef struct PROV_INSTANCE_INFO_TAG
 {
   az_hfsm_policy compat_client_policy;
 
@@ -28,8 +51,6 @@ struct PROV_INSTANCE_INFO_TAG
   az_span dps_endpoint;
   az_span id_scope;
   az_span registration_id;
-  az_span cert_path;
-  az_span key_path;
 
   // Provisioning Pipeline
   az_hfsm_pipeline prov_pipeline;
@@ -37,14 +58,172 @@ struct PROV_INSTANCE_INFO_TAG
   az_iot_provisioning_client prov_client;
   az_hfsm_mqtt_policy prov_mqtt_policy;
 
-  az_span topic_buffer;
-  az_span username_buffer;
-  az_span password_buffer;
-  az_span client_id_buffer;
+  // Generated values
+  char topic_buffer[AZ_IOT_MAX_TOPIC_SIZE];
+  char payload_buffer[AZ_IOT_MAX_PAYLOAD_SIZE];
+  char username_buffer[AZ_IOT_MAX_USERNAME_SIZE];
+  char password_buffer[AZ_IOT_MAX_PASSWORD_SIZE];
+  char client_id_buffer[AZ_IOT_MAX_CLIENT_ID_SIZE];
 
-  PROV_DEVICE_CLIENT_REGISTER_DEVICE_CALLBACK register_callback;
-  PROV_DEVICE_CLIENT_REGISTER_STATUS_CALLBACK reg_status_cb;
-};
+  // We support a single pending register request instead of a queue.
+  az_hfsm_compat_csdk_register_req register_request_data;
+} PROV_INSTANCE_INFO;
+
+static az_result root(az_hfsm* me, az_hfsm_event event);
+static az_result idle(az_hfsm* me, az_hfsm_event event);
+static az_result running(az_hfsm* me, az_hfsm_event event);
+
+static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
+{
+  az_hfsm_state_handler parent_state;
+
+  if (child_state == root)
+  {
+    parent_state = NULL;
+  }
+  else if (child_state == idle || child_state == running)
+  {
+    parent_state = root;
+  }
+  else
+  {
+    // Unknown state.
+    az_platform_critical_error();
+    parent_state = NULL;
+  }
+
+  return parent_state;
+}
+
+static az_result root(az_hfsm* me, az_hfsm_event event)
+{
+  az_result ret = AZ_OK;
+  PROV_INSTANCE_INFO* client = (PROV_INSTANCE_INFO*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("compat-csdk-prov/root"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      // No-op.
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+    case AZ_HFSM_EVENT_ERROR:
+    {
+      az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
+      printf(
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: az_result=%s (%x)\n",
+          az_result_string(err_data->error_type),
+          err_data->error_type);
+
+      break;
+    }
+
+    // Pass-through events.
+    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
+    case AZ_HFSM_EVENT_TIMEOUT:
+      // Pass-through events.
+      ret = az_hfsm_send_event((az_hfsm*)client->compat_client_policy.outbound, event);
+      break;
+
+    default:
+      printf(LOG_COMPAT "UNKNOWN event! %x\n", event.type);
+      az_platform_critical_error();
+      break;
+  }
+
+  return ret;
+}
+
+AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
+{
+  _az_PRECONDITION(client->register_request_data.initialized);
+
+  return az_hfsm_send_event(
+      (az_hfsm*)client,
+      (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ,
+                       &client->register_request_data.register_data });
+}
+
+static az_result idle(az_hfsm* me, az_hfsm_event event)
+{
+  int32_t ret = AZ_OK;
+  PROV_INSTANCE_INFO* client = (PROV_INSTANCE_INFO*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("compat-csdk-prov/root/idle"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
+      break;
+
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, idle, running));
+      _az_RETURN_IF_FAILED(_register(client));
+      break;
+
+    default:
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
+
+  return ret;
+}
+
+AZ_INLINE az_result _handle_register_result(
+    PROV_INSTANCE_INFO* client,
+    az_hfsm_iot_provisioning_register_response_data* data)
+{
+  // TODO: handle callbacks.
+
+  return AZ_ERROR_NOT_IMPLEMENTED;
+}
+
+static az_result running(az_hfsm* me, az_hfsm_event event)
+{
+  az_result ret = AZ_OK;
+  PROV_INSTANCE_INFO* client = (PROV_INSTANCE_INFO*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("compat-csdk-prov/root/running"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
+      break;
+
+    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
+      // No-op.
+      break;
+
+    case AZ_IOT_PROVISIONING_REGISTER_RSP:
+    {
+      az_hfsm_iot_provisioning_register_response_data* data
+          = (az_hfsm_iot_provisioning_register_response_data*)event.data;
+      ret = _handle_register_result(client, data);
+      break;
+    }
+
+    default:
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
+
+  return ret;
+}
 
 // ************************************* C-SDK Compat layer ************************************ //
 
@@ -55,7 +234,10 @@ static az_hfsm_iot_x509_auth security_provider;
 
 int prov_dev_security_init(SECURE_DEVICE_TYPE hsm_type)
 {
-  memset(&security_provider, 0, sizeof(security_provider));
+  security_provider = (az_hfsm_iot_x509_auth) {
+    .cert = AZ_SPAN_EMPTY,
+    .key = AZ_SPAN_EMPTY,
+  };
 }
 
 void prov_dev_security_deinit()
@@ -67,8 +249,34 @@ const PROV_DEVICE_TRANSPORT_PROVIDER* Prov_Device_MQTT_Protocol(void)
   return (PROV_DEVICE_TRANSPORT_PROVIDER*)0x4D515454;
 }
 
-const char* Prov_Device_LL_GetVersionString() {
-  return "2.0.0-alpha";
+const char* Prov_Device_LL_GetVersionString() { return "2.0.0-alpha"; }
+
+static az_result prov_initialize(PROV_INSTANCE_INFO* client)
+{
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_init(
+      &client->prov_pipeline,
+      (az_hfsm_policy*)&client->compat_client_policy,
+      (az_hfsm_policy*)&client->prov_mqtt_policy));
+
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
+      &client->prov_client, client->dps_endpoint, client->id_scope, client->registration_id, NULL));
+
+  _az_RETURN_IF_FAILED(az_hfsm_iot_provisioning_policy_initialize(
+      &client->prov_policy,
+      &client->prov_pipeline,
+      &client->compat_client_policy,
+      (az_hfsm_policy*)&client->prov_mqtt_policy,
+      &client->prov_client,
+      NULL));
+
+  // MQTT
+  _az_RETURN_IF_FAILED(az_mqtt_initialize(
+      &client->prov_mqtt_policy,
+      &client->prov_pipeline,
+      (az_hfsm_policy*)&client->prov_policy,
+      NULL));
+
+  return AZ_OK;
 }
 
 PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(
@@ -76,8 +284,27 @@ PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(
     const char* scope_id,
     PROV_DEVICE_TRANSPORT_PROVIDER_FUNCTION protocol)
 {
+  _az_PRECONDITION(protocol == (PROV_DEVICE_TRANSPORT_PROVIDER_FUNCTION)Prov_Device_MQTT_Protocol);
 
-  return NULL;
+  // HFSM_TODO: param checking throughout the file.
+  PROV_INSTANCE_INFO* client = malloc(sizeof(PROV_INSTANCE_INFO));
+
+  if (client != NULL)
+  {
+    memset(client, 0, sizeof(PROV_INSTANCE_INFO));
+
+    client->dps_endpoint = az_span_create_from_str((char*)(uintptr_t)uri);
+    client->id_scope = az_span_create_from_str((char*)(uintptr_t)scope_id);
+    client->registration_id = AZ_SPAN_EMPTY;
+
+    if (az_result_failed(prov_initialize(client)))
+    {
+      free(client);
+      client = NULL;
+    }
+  }
+
+  return client;
 }
 
 void Prov_Device_LL_Destroy(PROV_DEVICE_LL_HANDLE handle) {}
@@ -113,18 +340,23 @@ PROV_DEVICE_RESULT Prov_Device_LL_SetOption(
   }
   else if (!strcmp(optionName, OPTION_X509_CERT))
   {
-    handle->cert_path = az_span_create_from_str((char*)(uintptr_t)value);
+    security_provider.cert = az_span_create_from_str((char*)(uintptr_t)value);
     result = PROV_DEVICE_RESULT_OK;
   }
   else if (!strcmp(optionName, OPTION_X509_PRIVATE_KEY))
   {
-    handle->key_path = az_span_create_from_str((char*)(uintptr_t)value);
+    security_provider.key = az_span_create_from_str((char*)(uintptr_t)value);
     result = PROV_DEVICE_RESULT_OK;
   }
   else if (!strcmp(optionName, OPTION_TRUSTED_CERT))
   {
     handle->prov_mqtt_policy._internal.options.certificate_authority_trusted_roots
         = az_span_create_from_str((char*)(uintptr_t)value);
+    result = PROV_DEVICE_RESULT_OK;
+  }
+  else if (!strcmp(optionName, PROV_REGISTRATION_ID))
+  {
+    handle->registration_id = az_span_create_from_str((char*)(uintptr_t)value);
     result = PROV_DEVICE_RESULT_OK;
   }
   else
@@ -135,7 +367,16 @@ PROV_DEVICE_RESULT Prov_Device_LL_SetOption(
   return result;
 }
 
-void Prov_Device_LL_DoWork(PROV_DEVICE_LL_HANDLE handle) {}
+void Prov_Device_LL_DoWork(PROV_DEVICE_LL_HANDLE handle)
+{
+
+  az_result ret = az_hfsm_pipeline_syncrhonous_process_loop(&handle->prov_pipeline);
+  if (az_result_failed(ret))
+  {
+    // HFSM_TODO: Call connection_callback
+    printf(LOG_COMPAT "Process Loop Failed: %s (%x)\n", az_result_string(ret), ret);
+  }
+}
 
 PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(
     PROV_DEVICE_LL_HANDLE handle,
@@ -144,5 +385,21 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(
     PROV_DEVICE_CLIENT_REGISTER_STATUS_CALLBACK reg_status_cb,
     void* status_user_ctext)
 {
-  return PROV_DEVICE_RESULT_ERROR;
+
+  handle->register_request_data.register_data = (az_hfsm_iot_provisioning_register_data){
+    .auth = security_provider,
+    .auth_type = AZ_HFSM_IOT_AUTH_X509,
+    .client_id_buffer = AZ_SPAN_FROM_BUFFER(handle->client_id_buffer),
+    .username_buffer = AZ_SPAN_FROM_BUFFER(handle->username_buffer),
+    .password_buffer = AZ_SPAN_FROM_BUFFER(handle->password_buffer),
+    .topic_buffer = AZ_SPAN_FROM_BUFFER(handle->topic_buffer),
+    .payload_buffer = AZ_SPAN_FROM_BUFFER(handle->payload_buffer),
+  };
+
+  handle->register_request_data.register_callback = register_callback;
+  handle->register_request_data.register_callback_user_context = user_context;
+  handle->register_request_data.reg_status_cb = reg_status_cb;
+  handle->register_request_data.reg_status_cb_user_context = status_user_ctext;
+
+  return PROV_DEVICE_RESULT_OK;
 }

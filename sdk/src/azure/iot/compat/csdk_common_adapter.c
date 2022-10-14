@@ -60,6 +60,14 @@ const char* az_result_string(az_result result)
 
   switch (result)
   {
+    case AZ_ERROR_NOT_IMPLEMENTED:
+      result_str = "AZ_ERROR_NOT_IMPLEMENTED";
+      break;
+
+    case AZ_ERROR_OUT_OF_MEMORY:
+      result_str = "AZ_ERROR_OUT_OF_MEMORY";
+      break;
+
     case AZ_ERROR_HFSM_INVALID_STATE:
       result_str = "AZ_ERROR_HFSM_INVALID_STATE";
       break;

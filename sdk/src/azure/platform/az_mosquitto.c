@@ -450,6 +450,10 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
       _az_RETURN_IF_FAILED(az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event));
+
+      // HFSM_TODO: This exits the state which also destroys the MQTT object. This should not happen
+      // inside of the state machine (i.e. the on_disconnect callback). Instead, the application
+      // (API) should be responsible with the destroy call.
       _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, running, idle));
       break;
 
