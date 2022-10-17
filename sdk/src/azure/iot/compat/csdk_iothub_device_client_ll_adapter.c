@@ -87,6 +87,9 @@ typedef struct IOTHUB_CLIENT_CORE_LL_HANDLE_DATA_TAG
   IOTHUB_CLIENT_CONNECTION_STATUS_CALLBACK connection_status_callback;
   void* connection_status_callback_user_context;
 
+  IOTHUB_DEVICE_CLIENT_LL_HANDLE message_callback;
+  void* message_callback_user_context;
+
 } IOTHUB_CLIENT_CORE_LL_HANDLE_DATA;
 
 typedef struct IOTHUB_MESSAGE_HANDLE_DATA_TAG
@@ -652,7 +655,8 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SetMessageCallback(
     IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC messageCallback,
     void* userContextCallback)
 {
-  // TODO
+  iotHubClientHandle->message_callback = messageCallback;
+  iotHubClientHandle->message_callback_user_context = userContextCallback;
 
   return IOTHUB_CLIENT_ERROR;
 }
