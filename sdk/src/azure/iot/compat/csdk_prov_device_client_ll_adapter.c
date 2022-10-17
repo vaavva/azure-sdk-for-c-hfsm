@@ -290,11 +290,6 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
 
 // ************************************* C-SDK Compat layer ************************************ //
 
-// HFSM_DESIGN: C-SDK allows a single security provider instance.
-//              This instance is used by APIs that imply the security type such as
-//              IoTHubDeviceClient_LL_CreateFromDeviceAuth.
-static az_hfsm_iot_x509_auth security_provider;
-
 int prov_dev_security_init(SECURE_DEVICE_TYPE hsm_type)
 {
   security_provider = (az_hfsm_iot_x509_auth){

@@ -444,6 +444,20 @@ void IoTHub_Deinit()
   }
 }
 
+static AZ_NODISCARD az_result _csdk_iothub_client_init(
+    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client,
+    az_span hub_endpoint,
+    az_span device_id)
+{
+  client->hub_endpoint = hub_endpoint;
+  client->device_id = device_id;
+
+  queue_init(&client->pub_message_queue);
+  queue_init(&client->puback_message_queue);
+
+  return hub_initialize(client);
+}
+
 IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_CONFIG* config)
 {
   _az_PRECONDITION(config->protocol == (IOTHUB_CLIENT_TRANSPORT_PROVIDER)MQTT_Protocol);
@@ -464,14 +478,12 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_Create(const IOTHUB_CLIENT_
     reminder
         = az_span_copy(reminder, az_span_create_from_str((char*)(uintptr_t)config->iotHubSuffix));
 
-    client->hub_endpoint = az_span_slice(client->hub_endpoint, 0, hub_endpoint_size);
-    client->device_id = az_span_create_from_str((char*)(uintptr_t)config->deviceId);
     // HFSM_TODO: client_options (e.g. moduleID)
 
-    queue_init(&client->pub_message_queue);
-    queue_init(&client->puback_message_queue);
-
-    if (az_result_failed(hub_initialize(client)))
+    if (az_result_failed(_csdk_iothub_client_init(
+            client,
+            az_span_slice(client->hub_endpoint, 0, hub_endpoint_size),
+            az_span_create_from_str((char*)(uintptr_t)config->deviceId))))
     {
       free(client);
       client = NULL;
@@ -486,9 +498,31 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE IoTHubDeviceClient_LL_CreateFromDeviceAuth(
     const char* device_id,
     IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
-  // TODO
+  _az_PRECONDITION(protocol == (IOTHUB_CLIENT_TRANSPORT_PROVIDER)MQTT_Protocol);
 
-  return NULL;
+  az_result ret;
+  IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client = malloc(sizeof(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA));
+
+  if (client != NULL)
+  {
+    memset(client, 0, sizeof(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA));
+    // HFSM_TODO: client_options (e.g. moduleID)
+
+    if (az_result_failed(_csdk_iothub_client_init(
+            client,
+            az_span_create_from_str((char*)(uintptr_t)iothub_uri),
+            az_span_create_from_str((char*)(uintptr_t)device_id))))
+    {
+      free(client);
+      client = NULL;
+    }
+
+    // Configure the client based on the HSM interface.
+    client->cert_path = security_provider.cert;
+    client->key_path = security_provider.key;
+  }
+
+  return client;
 }
 
 void IoTHubDeviceClient_LL_Destroy(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)

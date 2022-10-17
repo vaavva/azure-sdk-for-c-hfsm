@@ -19,6 +19,12 @@
 #define ENOMEM 12 /* Out of memory */
 #define EINVAL 22 /* Invalid argument */
 
+// HFSM_DESIGN: C-SDK allows a single security provider instance.
+//              This instance is used by APIs that imply the security type such as
+//              IoTHubDeviceClient_LL_CreateFromDeviceAuth.
+// HFSM_TODO: Implement the HSM (Hardware Security Module) interface.
+az_hfsm_iot_x509_auth security_provider;
+
 int mallocAndStrcpy_s(char** destination, const char* source)
 {
   int result;
