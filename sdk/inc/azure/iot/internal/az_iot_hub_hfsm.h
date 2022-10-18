@@ -56,6 +56,12 @@ typedef struct
 
 typedef struct
 {
+  az_iot_hub_client_c2d_request topic_info;
+  az_span payload;
+} az_hfsm_iot_hub_c2d_request_data;
+
+typedef struct
+{
   int16_t port;
 } az_hfsm_iot_hub_policy_options;
 
@@ -66,6 +72,7 @@ typedef struct
     az_hfsm_policy policy;
     az_iot_hub_client* hub_client;
     az_hfsm_iot_hub_policy_options options;
+    int16_t sub_remaining;
   } _internal;
 } az_hfsm_iot_hub_policy;
 
@@ -86,6 +93,9 @@ enum az_hfsm_event_type_hub_hfsm
   /// Methods
   AZ_IOT_HUB_METHODS_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_HUB_HFSM, 6),
   AZ_IOT_HUB_METHODS_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_HUB_HFSM, 7),
+
+  /// C2D
+  AZ_IOT_HUB_C2D_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_HUB_HFSM, 8),
 };
 
 AZ_NODISCARD az_hfsm_iot_hub_policy_options az_hfsm_iot_hub_policy_options_default();

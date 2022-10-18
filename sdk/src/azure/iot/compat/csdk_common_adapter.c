@@ -189,6 +189,9 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_IOT_HUB_METHODS_RSP:
       class_str = "AZ_IOT_HUB_METHODS_RSP";
       break;
+    case AZ_IOT_HUB_C2D_REQ:
+      class_str = "AZ_IOT_HUB_C2D_REQ";
+      break;
     default:
       class_str = NULL;
   }
