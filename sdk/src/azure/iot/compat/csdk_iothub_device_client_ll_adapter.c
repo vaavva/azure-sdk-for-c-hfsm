@@ -158,7 +158,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
       printf(
-          LOG_COMPAT "\x1B[31mERROR\x1B[0m: az_result=%s (%x)\n",
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: IoT Hub Client %p az_result=%s (%x)\n",
+          me,
           az_result_string(err_data->error_type),
           err_data->error_type);
       break;
@@ -308,22 +309,34 @@ AZ_INLINE az_result _process_outbound(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me)
   return AZ_OK;
 }
 
-AZ_INLINE void _telemetry_c2d_message_callback(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me, az_hfsm_compat_csdk_telemetry_req_data* request)
+AZ_INLINE void _telemetry_c2d_message_callback(
+    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me,
+    az_hfsm_compat_csdk_telemetry_req_data* request)
 {
-    if (request->callback != NULL)
-    {
-      // Call the per-message application send message callback.
-      request->callback(IOTHUB_CLIENT_CONFIRMATION_OK, request->userContextCallback);
-    }
+  if (request->callback != NULL)
+  {
+    // Call the per-message application send message callback.
+    request->callback(IOTHUB_CLIENT_CONFIRMATION_OK, request->userContextCallback);
+  }
 }
 
-AZ_INLINE void _c2d_c2d_message_callback(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me, az_hfsm_compat_csdk_telemetry_req_data* request)
+AZ_INLINE void _c2d_c2d_message_callback(
+    IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me,
+    az_hfsm_iot_hub_c2d_request_data* request)
 {
-    if (me->c2d_message_callback != NULL)
-    {
-      // Call the client application send message callback.
-      me->c2d_message_callback(request->message, me->c2d_message_callback_user_context);
-    }
+  if (me->c2d_message_callback != NULL)
+  {
+    IOTHUB_MESSAGE_HANDLE_DATA message = (IOTHUB_MESSAGE_HANDLE_DATA){
+      .refcount = 1,
+      .telemetry_data.data = request->payload,
+      .telemetry_data.topic_buffer = AZ_SPAN_EMPTY,
+      .telemetry_data.out_packet_id = 0,
+      .telemetry_data.properties = NULL,
+    };
+
+    IOTHUBMESSAGE_DISPOSITION_RESULT ret
+        = me->c2d_message_callback(&message, me->c2d_message_callback_user_context);
+  }
 }
 
 AZ_INLINE az_result
@@ -381,6 +394,12 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
       ret = _process_puback(client, puback);
     }
     break;
+
+    case AZ_IOT_HUB_C2D_REQ:
+    {
+      az_hfsm_iot_hub_c2d_request_data* c2d_req;
+      _c2d_c2d_message_callback(client, c2d_req);
+    }
 
     case AZ_IOT_HUB_METHODS_REQ:
     {

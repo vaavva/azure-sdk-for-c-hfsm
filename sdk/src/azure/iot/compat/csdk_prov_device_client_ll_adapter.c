@@ -118,7 +118,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
       printf(
-          LOG_COMPAT "\x1B[31mERROR\x1B[0m: az_result=%s (%x)\n",
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: Prov Client %p az_result=%s (%x)\n",
+          me,
           az_result_string(err_data->error_type),
           err_data->error_type);
 

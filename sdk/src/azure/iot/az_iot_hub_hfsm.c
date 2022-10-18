@@ -284,6 +284,8 @@ AZ_INLINE az_result _hub_subscribe(az_hfsm_iot_hub_policy* me)
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUB_REQ, &data }));
 
   me->_internal.sub_remaining++;
+
+  return AZ_OK;
 }
 
 static az_result connecting(az_hfsm* me, az_hfsm_event event)

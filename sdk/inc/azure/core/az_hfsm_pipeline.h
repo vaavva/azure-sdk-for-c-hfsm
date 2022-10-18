@@ -96,8 +96,10 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event c
  */
 void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc);
 
-#ifdef TRANSPORT_MQTT_SYNC
+// HFSM_TODO: policy_send_inbound / policy_send_outbound.
+//            Handle errors by continuing the inbound operation in order to preserve the call-stack.
 
+#ifdef TRANSPORT_MQTT_SYNC
 enum az_hfsm_even_type_pipeline
 {
   AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
@@ -113,7 +115,7 @@ enum az_hfsm_even_type_pipeline
  * @return The #az_result error code.
  */
 AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline);
-#endif
+#endif // TRANSPORT_MQTT_SYNC
 
 typedef struct
 {
