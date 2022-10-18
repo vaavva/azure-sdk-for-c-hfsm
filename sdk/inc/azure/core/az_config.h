@@ -35,7 +35,7 @@ enum
   AZ_MQTT_KEEPALIVE_SECONDS = 240,
 
   /// Maximum time in seconds that #az_mqtt_synchronous_process_loop should block.
-  AZ_MQTT_SYNC_MAX_POLLING_SECONDS = 5,
+  AZ_MQTT_SYNC_MAX_POLLING_MILLISECONDS = 500,
 
   /// SAS Token Lifetime in minutes
   AZ_IOT_SAS_TOKEN_LIFETIME_MINUTES = 60,

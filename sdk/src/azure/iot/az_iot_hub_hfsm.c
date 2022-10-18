@@ -337,7 +337,7 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-az_result _try_parse_methods(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* data)
+AZ_NODISCARD az_result _try_parse_methods(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* data)
 {
   az_hfsm_iot_hub_method_request_data request;
   _az_RETURN_IF_FAILED(az_iot_hub_client_methods_parse_received_topic(
@@ -350,7 +350,7 @@ az_result _try_parse_methods(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data*
   return AZ_OK;
 }
 
-az_result _try_parse_c2d(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* data)
+AZ_NODISCARD az_result _try_parse_c2d(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* data)
 {
   az_hfsm_iot_hub_c2d_request_data request;
   _az_RETURN_IF_FAILED(az_iot_hub_client_c2d_parse_received_topic(
@@ -366,7 +366,7 @@ az_result _try_parse_c2d(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* dat
 az_result _hub_message_parse(az_hfsm_iot_hub_policy* me, az_hfsm_mqtt_recv_data* data)
 {
   az_result ret;
-  ret == _try_parse_methods(me, data);
+  ret = _try_parse_methods(me, data);
 
   if (ret == AZ_ERROR_IOT_TOPIC_NO_MATCH)
   {

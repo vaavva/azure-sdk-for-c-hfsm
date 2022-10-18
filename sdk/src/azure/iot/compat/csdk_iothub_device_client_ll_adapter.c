@@ -331,7 +331,7 @@ AZ_INLINE void _c2d_c2d_message_callback(
       .telemetry_data.data = request->payload,
       .telemetry_data.topic_buffer = AZ_SPAN_EMPTY,
       .telemetry_data.out_packet_id = 0,
-      .telemetry_data.properties = NULL,
+      .telemetry_data.properties = &request->topic_info.properties,
     };
 
     IOTHUBMESSAGE_DISPOSITION_RESULT ret
@@ -392,15 +392,16 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
       ret = _process_puback(client, puback);
+      break;
     }
-    break;
 
     case AZ_IOT_HUB_C2D_REQ:
     {
-      az_hfsm_iot_hub_c2d_request_data* c2d_req;
+      az_hfsm_iot_hub_c2d_request_data* c2d_req = (az_hfsm_iot_hub_c2d_request_data*)event.data;
       _c2d_c2d_message_callback(client, c2d_req);
+      break;
     }
-
+    
     case AZ_IOT_HUB_METHODS_REQ:
     {
       az_hfsm_iot_hub_method_request_data* method_req

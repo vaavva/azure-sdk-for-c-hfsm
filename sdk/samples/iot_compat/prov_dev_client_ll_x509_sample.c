@@ -189,7 +189,7 @@ static void register_device_callback(PROV_DEVICE_RESULT register_result, const c
 
 int main(void)
 {
-    bool traceOn = true;
+    bool traceOn = false;
 
     (void)IoTHub_Init();
     (void)prov_dev_security_init(SECURE_DEVICE_TYPE_X509);
@@ -241,7 +241,7 @@ int main(void)
     }
     else
     {
-        // Prov_Device_LL_SetOption(user_ctx.handle, PROV_OPTION_LOG_TRACE, &traceOn);
+        Prov_Device_LL_SetOption(user_ctx.handle, PROV_OPTION_LOG_TRACE, &traceOn);
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
         // Setting the Trusted Certificate. This is only necessary on systems without
         // built in certificate stores.
@@ -306,7 +306,7 @@ int main(void)
             // Set any option that are necessary.
             // For available options please see the iothub_sdk_options.md documentation
 
-            // IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
+            IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
 
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
             // Setting the Trusted Certificate. This is only necessary on systems without

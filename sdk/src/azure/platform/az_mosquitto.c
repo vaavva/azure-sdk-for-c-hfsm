@@ -334,7 +334,7 @@ AZ_INLINE az_result _az_mosquitto_process_loop(az_hfsm_mqtt_policy* me)
 {
   struct mosquitto* mosq = (struct mosquitto*)me->_internal.mqtt;
   return _az_result_from_mosq(mosquitto_loop(
-      mosq, AZ_MQTT_SYNC_MAX_POLLING_SECONDS * 1000, AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE));
+      mosq, AZ_MQTT_SYNC_MAX_POLLING_MILLISECONDS, AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE));
 }
 #endif
 
