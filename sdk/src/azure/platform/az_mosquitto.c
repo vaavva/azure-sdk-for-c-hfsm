@@ -119,15 +119,18 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
     /* If the connection fails for any reason, we don't want to keep on
      * retrying in this example, so disconnect. Without this, the client
      * will attempt to reconnect. */
-    az_hfsm_pipeline_post_error(me->pipeline, mosquitto_disconnect(mosq));
+    mosquitto_disconnect(mosq);
   }
 
-  az_hfsm_pipeline_post_error(
+  ret = az_hfsm_pipeline_post_inbound_event(
       me->pipeline,
-      az_hfsm_pipeline_post_inbound_event(
-          me->pipeline,
-          (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_RSP,
-                           &(az_hfsm_mqtt_connack_data){ reason_code } }));
+      (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_CONNECT_RSP,
+                       &(az_hfsm_mqtt_connack_data){ reason_code } });
+
+  if (az_result_failed(ret))
+  {
+    az_platform_critical_error();
+  }
 }
 
 static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
@@ -135,13 +138,15 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
   (void)mosq;
   az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  az_hfsm_pipeline_post_error(
+  az_result ret = az_hfsm_pipeline_post_inbound_event(
       me->pipeline,
-      az_hfsm_pipeline_post_inbound_event(
-          me->pipeline,
-          (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP,
-                           &(az_hfsm_mqtt_disconnect_data){ .disconnect_reason = rc,
-                                                            .disconnect_requested = (rc == 0) } }));
+      (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP,
+                       &(az_hfsm_mqtt_disconnect_data){ .disconnect_reason = rc,
+                                                        .disconnect_requested = (rc == 0) } });
+  if (az_result_failed(ret))
+  {
+    az_platform_critical_error();
+  }
 }
 
 /* Callback called when the client knows to the best of its abilities that a
@@ -154,11 +159,14 @@ static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
   (void)mosq;
   az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  az_hfsm_pipeline_post_error(
+  az_result ret = az_hfsm_pipeline_post_inbound_event(
       me->pipeline,
-      az_hfsm_pipeline_post_inbound_event(
-          me->pipeline,
-          (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUBACK_RSP, &(az_hfsm_mqtt_puback_data){ mid } }));
+      (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUBACK_RSP, &(az_hfsm_mqtt_puback_data){ mid } });
+
+  if (az_result_failed(ret))
+  {
+    az_platform_critical_error();
+  }
 }
 
 static void _az_mosqitto_on_subscribe(
@@ -174,11 +182,14 @@ static void _az_mosqitto_on_subscribe(
 
   az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  az_hfsm_pipeline_post_error(
+  az_result ret = az_hfsm_pipeline_post_inbound_event(
       me->pipeline,
-      az_hfsm_pipeline_post_inbound_event(
-          me->pipeline,
-          (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUBACK_RSP, &(az_hfsm_mqtt_suback_data){ mid } }));
+      (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUBACK_RSP, &(az_hfsm_mqtt_suback_data){ mid } });
+
+  if (az_result_failed(ret))
+  {
+    az_platform_critical_error();
+  }
 }
 
 static void _az_mosqitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int mid)
@@ -199,16 +210,19 @@ static void _az_mosquitto_on_message(
   (void)mosq;
   az_hfsm_policy* me = (az_hfsm_policy*)obj;
 
-  az_hfsm_pipeline_post_error(
+  az_result ret = az_hfsm_pipeline_post_inbound_event(
       me->pipeline,
-      az_hfsm_pipeline_post_inbound_event(
-          me->pipeline,
-          (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
-                           &(az_hfsm_mqtt_recv_data){
-                               .qos = (int8_t)message->qos,
-                               .id = (int32_t)message->mid,
-                               .payload = az_span_create(message->payload, message->payloadlen),
-                               .topic = az_span_create_from_str(message->topic) } }));
+      (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_PUB_RECV_IND,
+                       &(az_hfsm_mqtt_recv_data){
+                           .qos = (int8_t)message->qos,
+                           .id = (int32_t)message->mid,
+                           .payload = az_span_create(message->payload, message->payloadlen),
+                           .topic = az_span_create_from_str(message->topic) } });
+
+  if (az_result_failed(ret))
+  {
+    az_platform_critical_error();
+  }
 }
 
 static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, const char* str)

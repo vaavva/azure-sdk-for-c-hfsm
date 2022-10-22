@@ -85,17 +85,6 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event co
 AZ_NODISCARD az_result
 az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
 
-/**
- * @brief Posts an inbound error event based on the #az_result `rc` parameter.
- * @details If `rc` is not an error code, no inbound message is posted.
- * @note This function should be used within system-level callbacks where a syncrhonous error cannot
- * be returned.
- *
- * @param pipeline The #az_hfsm_pipeline.
- * @param rc The #az_result error code.
- */
-void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc);
-
 AZ_NODISCARD az_result
 az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
 

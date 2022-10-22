@@ -57,22 +57,6 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
   return ret;
 }
 
-void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc)
-{
-  if (az_result_failed(rc))
-  {
-    az_hfsm_event_data_error d
-        = { .error_type = rc, .sender_hfsm = (az_hfsm*)pipeline->_internal.inbound_handler };
-    az_result ret
-        = az_hfsm_pipeline_post_inbound_event(pipeline, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
-
-    if (az_result_failed(ret))
-    {
-      az_platform_critical_error();
-    }
-  }
-}
-
 AZ_NODISCARD az_result
 az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
 {
@@ -103,10 +87,27 @@ az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const
 static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
 {
   az_hfsm_pipeline_timer* timer = (az_hfsm_pipeline_timer*)sdk_data;
-  az_result ret = az_hfsm_pipeline_post_outbound_event(
-      timer->_internal.pipeline, (az_hfsm_event){ .type = AZ_HFSM_EVENT_TIMEOUT, .data = timer });
+  az_hfsm_event timer_event = (az_hfsm_event){ .type = AZ_HFSM_EVENT_TIMEOUT, .data = timer };
 
-  az_hfsm_pipeline_post_error(timer->_internal.pipeline, ret);
+  az_result ret = az_hfsm_pipeline_post_outbound_event(timer->_internal.pipeline, timer_event);
+
+  if (az_result_failed(ret))
+  {
+    ret = az_hfsm_pipeline_post_inbound_event(
+        timer->_internal.pipeline,
+        (az_hfsm_event){
+            .type = AZ_HFSM_EVENT_ERROR,
+            .data = &(az_hfsm_event_data_error){
+                .error_type = ret,
+                .sender_event = timer_event,
+                .sender_hfsm = (az_hfsm*)timer->_internal.pipeline->_internal.outbound_handler,
+            } });
+  }
+
+  if (az_result_failed(ret))
+  {
+    az_platform_critical_error();
+  }
 }
 
 AZ_NODISCARD az_result
