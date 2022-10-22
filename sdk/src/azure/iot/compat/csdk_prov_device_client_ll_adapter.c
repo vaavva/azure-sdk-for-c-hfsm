@@ -118,10 +118,11 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
       printf(
-          LOG_COMPAT "\x1B[31mERROR\x1B[0m: Prov Client %p az_result=%s (%x)\n",
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: Prov Client %p az_result=%s (%x) hfsm=%p\n",
           me,
           az_result_string(err_data->error_type),
-          err_data->error_type);
+          err_data->error_type,
+          err_data->origin);
 
       break;
     }
@@ -130,7 +131,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through events.
-      ret = az_hfsm_send_event((az_hfsm*)client->compat_client_policy.outbound, event);
+      ret = az_hfsm_pipeline_send_outbound_event((az_hfsm_policy*)me, event);
       break;
 
     default:
@@ -153,8 +154,8 @@ AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
         client->register_request_data.reg_status_cb_user_context);
   }
 
-  return az_hfsm_send_event(
-      (az_hfsm*)client->compat_client_policy.outbound,
+  return az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)client,
       (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ,
                        &client->register_request_data.register_data });
 }

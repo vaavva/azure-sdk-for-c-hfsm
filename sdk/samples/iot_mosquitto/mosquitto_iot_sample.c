@@ -254,7 +254,10 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ERROR:
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
-      printf(LOG_APP "\x1B[31mERROR\x1B[0m: [AZ_RESULT:] %x\n", err_data->error_type);
+      printf(
+          LOG_APP "\x1B[31mERROR\x1B[0m: [AZ_RESULT:] %x HFSM: %p\n",
+          err_data->error_type,
+          err_data->origin);
       break;
     }
 
@@ -369,11 +372,11 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       break;
 
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-      {
-        az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
-        printf(LOG_APP "MQTT: PUBACK ID=%d\n", puback->id);
-      }
-      break;
+    {
+      az_hfsm_mqtt_puback_data* puback = (az_hfsm_mqtt_puback_data*)event.data;
+      printf(LOG_APP "MQTT: PUBACK ID=%d\n", puback->id);
+    }
+    break;
 
     // Pass-through events.
     case AZ_IOT_PROVISIONING_REGISTER_REQ:
@@ -381,7 +384,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through provisioning events.
-      ret = az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
+      ret = az_hfsm_pipeline_send_outbound_event((this_policy, event);
       break;
 
     default:
@@ -432,7 +435,7 @@ int main(int argc, char* argv[])
   // HFSM_DESIGN: declarative API
   az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
     .auth = auth,
-    .auth_type = AZ_HFSM_IOT_AUTH_X509,                           // HFSM_DESIGN: dynamic typing
+    .auth_type = AZ_HFSM_IOT_AUTH_X509, // HFSM_DESIGN: dynamic typing
     .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
     .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
     .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),

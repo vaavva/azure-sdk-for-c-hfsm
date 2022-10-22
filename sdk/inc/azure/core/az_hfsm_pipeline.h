@@ -5,10 +5,10 @@
  * @file az_hfsm_pipeline.h
  * @brief Definition of #az_hfsm_pipeline and related types describing a bi-directional HFSM
  *        pipeline.
- * 
+ *
  * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
  * available. To enable the blocking mode, set TRANSPORT_MQTT_SYNC.
- * 
+ *
  * @note The blocking I/O model (when TRANSPORT_MQTT_SYNC is defined) is not thread-safe.
  */
 
@@ -96,8 +96,11 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event c
  */
 void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc);
 
-// HFSM_TODO: policy_send_inbound / policy_send_outbound.
-//            Handle errors by continuing the inbound operation in order to preserve the call-stack.
+AZ_NODISCARD az_result
+az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
+
+AZ_NODISCARD az_result
+az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
 
 #ifdef TRANSPORT_MQTT_SYNC
 enum az_hfsm_even_type_pipeline
@@ -116,6 +119,11 @@ enum az_hfsm_even_type_pipeline
  */
 AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline);
 #endif // TRANSPORT_MQTT_SYNC
+
+/**
+ * @brief Pipeline interval timer interface
+ *
+ */
 
 typedef struct
 {

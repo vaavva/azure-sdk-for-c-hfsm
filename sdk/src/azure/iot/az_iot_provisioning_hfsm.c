@@ -120,7 +120,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 
     case AZ_HFSM_EVENT_ERROR:
       if (az_result_failed(
-          az_hfsm_send_event((az_hfsm*)this_policy->_internal.policy.inbound, event)))
+              az_hfsm_send_event((az_hfsm*)this_policy->_internal.policy.inbound, event)))
       {
         az_platform_critical_error();
       }
@@ -181,8 +181,8 @@ _dps_connect(az_hfsm_iot_provisioning_policy* me, az_hfsm_iot_provisioning_regis
       &buffer_size));
   connect_data.username = az_span_slice(data->username_buffer, 0, (int32_t)buffer_size);
 
-  _az_RETURN_IF_FAILED(az_hfsm_send_event(
-      (az_hfsm*)me->_internal.policy.outbound,
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)me,
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ, .data = &connect_data }));
 
   return AZ_OK;
@@ -274,9 +274,8 @@ AZ_INLINE az_result _dps_subscribe(az_hfsm_iot_provisioning_policy* me)
     .out_id = 0,
   };
 
-  return az_hfsm_send_event(
-      (az_hfsm*)me->_internal.policy.outbound,
-      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUB_REQ, &data });
+  return az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)me, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUB_REQ, &data });
 }
 
 static az_result connecting(az_hfsm* me, az_hfsm_event event)
@@ -310,7 +309,7 @@ static az_result connecting(az_hfsm* me, az_hfsm_event event)
         _az_RETURN_IF_FAILED(az_hfsm_transition_superstate(me, connecting, started));
         _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, started, idle));
         _az_RETURN_IF_FAILED(
-            az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->outbound, event));
+            az_hfsm_pipeline_send_outbound_event((az_hfsm_policy*)this_policy, event));
       }
       break;
     }
@@ -393,9 +392,8 @@ AZ_INLINE az_result _dps_register(az_hfsm_iot_provisioning_policy* me)
     .out_id = 0,
   };
 
-  _az_RETURN_IF_FAILED(az_hfsm_send_event(
-      (az_hfsm*)((az_hfsm_policy*)me)->outbound,
-      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, .data = &data }));
+  _az_RETURN_IF_FAILED(az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)me, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, .data = &data }));
 
   return AZ_OK;
 }
@@ -574,9 +572,8 @@ AZ_INLINE az_result _dps_send_query(az_hfsm_iot_provisioning_policy* me)
     .out_id = 0
   };
 
-  return az_hfsm_send_event(
-      (az_hfsm*)((az_hfsm_policy*)me)->outbound,
-      (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, .data = &data });
+  return az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)me, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, .data = &data });
 }
 
 AZ_INLINE az_result _dps_start_timer(az_hfsm_iot_provisioning_policy* me)

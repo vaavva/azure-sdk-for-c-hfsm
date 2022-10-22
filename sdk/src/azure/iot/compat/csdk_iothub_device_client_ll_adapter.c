@@ -158,10 +158,11 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
       printf(
-          LOG_COMPAT "\x1B[31mERROR\x1B[0m: IoT Hub Client %p az_result=%s (%x)\n",
+          LOG_COMPAT "\x1B[31mERROR\x1B[0m: IoT Hub Client %p az_result=%s (%x) hfsm=%p\n",
           me,
           az_result_string(err_data->error_type),
-          err_data->error_type);
+          err_data->error_type,
+          err_data->origin);
       break;
     }
 
@@ -169,7 +170,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through events.
-      ret = az_hfsm_send_event((az_hfsm*)client->compat_client_policy.outbound, event);
+      ret = az_hfsm_pipeline_send_outbound_event((az_hfsm_pipeline*)client, event);
       break;
 
     default:
@@ -293,8 +294,9 @@ AZ_INLINE az_result _process_outbound(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* me)
   {
     az_hfsm_compat_csdk_telemetry_req_data* message;
     _az_RETURN_IF_FAILED(queue_peek(&me->pub_message_queue, &message));
-    _az_RETURN_IF_FAILED(az_hfsm_send_event(
-        (az_hfsm*)me->compat_client_policy.outbound,
+
+    _az_RETURN_IF_FAILED(az_hfsm_pipeline_send_outbound_event(
+        (az_hfsm_policy*)me,
         (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &message->message->telemetry_data }));
 
     _az_RETURN_IF_FAILED(queue_dequeue(&me->pub_message_queue, &message));
@@ -401,7 +403,7 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
       _c2d_c2d_message_callback(client, c2d_req);
       break;
     }
-    
+
     case AZ_IOT_HUB_METHODS_REQ:
     {
       az_hfsm_iot_hub_method_request_data* method_req

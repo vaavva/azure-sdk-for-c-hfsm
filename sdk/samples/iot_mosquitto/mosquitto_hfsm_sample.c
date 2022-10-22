@@ -170,7 +170,10 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ERROR:
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
-      printf(LOG_APP "MQTT CLIENT ERROR: [AZ_RESULT:] %d\n", err_data->error_type);
+      printf(
+          LOG_APP "MQTT CLIENT ERROR: [AZ_RESULT:] %d HFSM: %p\n",
+          err_data->error_type,
+          err_data->origin);
       break;
     }
 
@@ -179,7 +182,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      ret = az_hfsm_send_event((az_hfsm*)this_policy->outbound, event);
+      ret = az_hfsm_pipeline_send_outbound_event(this_policy, event);
       break;
   }
 

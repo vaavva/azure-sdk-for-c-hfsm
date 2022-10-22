@@ -78,6 +78,12 @@ enum az_result_hfsm
 };
 
 /**
+ * @brief The type representing a Hierarchical Finite State Machine (HFSM) object.
+ *
+ */
+typedef struct az_hfsm az_hfsm;
+
+/**
  * @brief The type represents an event handled by HFSM.
  *
  */
@@ -107,6 +113,7 @@ typedef struct
    *
    */
   az_result error_type;
+  az_hfsm* origin;
 } az_hfsm_event_data_error;
 
 /**
@@ -122,12 +129,6 @@ extern const az_hfsm_event az_hfsm_event_entry;
  * @note The entry and exit events must not expect a `data` field.
  */
 extern const az_hfsm_event az_hfsm_event_exit;
-
-/**
- * @brief The type representing a Hierarchical Finite State Machine (HFSM) object.
- *
- */
-typedef struct az_hfsm az_hfsm;
 
 /**
  * @brief The function signature for all HFSM states.

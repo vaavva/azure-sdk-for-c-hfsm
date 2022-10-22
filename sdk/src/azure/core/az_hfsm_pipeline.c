@@ -61,7 +61,8 @@ void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc)
 {
   if (az_result_failed(rc))
   {
-    az_hfsm_event_data_error d = { .error_type = rc };
+    az_hfsm_event_data_error d
+        = { .error_type = rc, .error_type = pipeline->_internal.inbound_handler };
     az_result ret
         = az_hfsm_pipeline_post_inbound_event(pipeline, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
 
@@ -70,6 +71,23 @@ void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc)
       az_platform_critical_error();
     }
   }
+}
+
+AZ_NODISCARD az_result
+az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
+{
+  az_result ret = az_hfsm_send_event((az_hfsm*)policy->inbound, event);
+  if (az_result_failed(ret))
+  {
+    // TODO: send the ERROR event instead towards the application.
+  }
+}
+
+AZ_NODISCARD az_result
+az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
+{
+  // The error is flowed back to the application.
+  return az_hfsm_send_event((az_hfsm*)policy->outbound, event);
 }
 
 static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
