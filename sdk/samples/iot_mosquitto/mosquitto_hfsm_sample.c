@@ -173,7 +173,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       printf(
           LOG_APP "MQTT CLIENT ERROR: [AZ_RESULT:] %d HFSM: %p\n",
           err_data->error_type,
-          err_data->origin);
+          err_data->sender_hfsm);
       break;
     }
 

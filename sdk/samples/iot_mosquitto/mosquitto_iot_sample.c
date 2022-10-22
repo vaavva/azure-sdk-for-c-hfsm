@@ -257,7 +257,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       printf(
           LOG_APP "\x1B[31mERROR\x1B[0m: [AZ_RESULT:] %x HFSM: %p\n",
           err_data->error_type,
-          err_data->origin);
+          err_data->sender_hfsm);
       break;
     }
 
@@ -384,7 +384,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through provisioning events.
-      ret = az_hfsm_pipeline_send_outbound_event((this_policy, event);
+      ret = az_hfsm_pipeline_send_outbound_event(this_policy, event);
       break;
 
     default:

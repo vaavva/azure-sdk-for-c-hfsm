@@ -419,6 +419,7 @@ _hub_telemetry_send(az_hfsm_iot_hub_policy* me, az_hfsm_iot_hub_telemetry_data* 
       (az_hfsm_policy*)me, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_REQ, &mqtt_data }));
 
   data->out_packet_id = mqtt_data.out_id;
+  return AZ_OK;
 }
 
 // Important regarding the type of messages received:
