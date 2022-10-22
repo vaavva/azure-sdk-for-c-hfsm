@@ -31,8 +31,7 @@
 
 #include <azure/core/_az_cfg.h>
 
-    static az_result
-    root(az_hfsm* me, az_hfsm_event event);
+static az_result root(az_hfsm* me, az_hfsm_event event);
 static az_result idle(az_hfsm* me, az_hfsm_event event);
 static az_result running(az_hfsm* me, az_hfsm_event event);
 
@@ -361,8 +360,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 #endif
 
     case AZ_HFSM_EVENT_ERROR:
-      if (az_result_failed(
-              az_hfsm_send_event((az_hfsm*)this_mqtt->_internal.policy.inbound, event)))
+      if (az_result_failed(az_hfsm_pipeline_send_indbound_event((az_hfsm_policy*)this_mqtt, event)))
       {
         az_platform_critical_error();
       }
@@ -454,11 +452,11 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
     case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
     case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-      ret = az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event);
+      ret = az_hfsm_pipeline_send_indbound_event((az_hfsm_policy*)me, event);
       break;
 
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      _az_RETURN_IF_FAILED(az_hfsm_send_event((az_hfsm*)(((az_hfsm_policy*)me)->inbound), event));
+      _az_RETURN_IF_FAILED(az_hfsm_pipeline_send_indbound_event((az_hfsm_policy*)me, event));
 
       // HFSM_TODO: This exits the state which also destroys the MQTT object. This should not happen
       // inside of the state machine (i.e. the on_disconnect callback). Instead, the application

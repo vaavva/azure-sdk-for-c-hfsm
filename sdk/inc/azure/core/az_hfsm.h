@@ -113,7 +113,8 @@ typedef struct
    *
    */
   az_result error_type;
-  az_hfsm* origin;
+  az_hfsm* sender_hfsm;
+  az_hfsm_event sender_event;
 } az_hfsm_event_data_error;
 
 /**

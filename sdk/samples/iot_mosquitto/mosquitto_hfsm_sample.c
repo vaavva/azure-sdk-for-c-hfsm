@@ -133,8 +133,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
                                           .out_id = 0,
                                           .qos = 0 };
 
-      ret = az_hfsm_send_event(
-          (az_hfsm*)&mqtt_client, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
+      ret = az_hfsm_pipeline_send_outbound_event(
+          this_policy, (az_hfsm_event){ AZ_HFSM_MQTT_EVENT_SUB_REQ, &sub_data });
 
       printf(LOG_APP "SUB mID = %d\n", sub_data.out_id);
       break;

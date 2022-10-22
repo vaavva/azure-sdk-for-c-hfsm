@@ -162,7 +162,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
           me,
           az_result_string(err_data->error_type),
           err_data->error_type,
-          err_data->origin);
+          err_data->sender_hfsm);
       break;
     }
 
@@ -170,7 +170,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_IOT_HUB_DISCONNECT_REQ:
     case AZ_HFSM_EVENT_TIMEOUT:
       // Pass-through events.
-      ret = az_hfsm_pipeline_send_outbound_event((az_hfsm_pipeline*)client, event);
+      ret = az_hfsm_pipeline_send_outbound_event((az_hfsm_policy*)client, event);
       break;
 
     default:
@@ -196,8 +196,8 @@ AZ_INLINE az_result _connect(IOTHUB_CLIENT_CORE_LL_HANDLE_DATA* client)
     .password_buffer = AZ_SPAN_FROM_BUFFER(client->password_buffer),
   };
 
-  return az_hfsm_send_event(
-      (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
+  return az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)client, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
 }
 
 static az_result disconnected(az_hfsm* me, az_hfsm_event event)
@@ -422,8 +422,8 @@ static az_result connected(az_hfsm* me, az_hfsm_event event)
                                                     = AZ_SPAN_FROM_BUFFER(client->topic_buffer),
                                                     .payload = AZ_SPAN_EMPTY };
 
-      ret = az_hfsm_send_event(
-          (az_hfsm*)&client->hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
+      ret = az_hfsm_pipeline_send_outbound_event(
+          (az_hfsm_policy*)client, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
     }
     break;
 

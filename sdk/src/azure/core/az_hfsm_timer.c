@@ -25,7 +25,7 @@ static void _az_hfsm_timer_callback(void* sdk_data)
   _az_PRECONDITION_NOT_NULL(data->_internal.event);
 
   // The event is processed on the timer thread.
-  az_hfsm_send_event(data->_internal.target_hfsm, *data->_internal.event);
+  az_result ret = az_hfsm_send_event(data->_internal.target_hfsm, *data->_internal.event);
 }
 
 AZ_NODISCARD az_result az_hfsm_timer_create(

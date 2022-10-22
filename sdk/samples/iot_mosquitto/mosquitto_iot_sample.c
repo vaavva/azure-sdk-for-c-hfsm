@@ -320,8 +320,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
           .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
         };
 
-        ret = az_hfsm_send_event(
-            (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
+        ret = az_hfsm_pipeline_send_outbound_event(
+            this_policy, (az_hfsm_event){ AZ_IOT_HUB_CONNECT_REQ, &connect_data });
       }
     }
     break;
@@ -337,8 +337,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
         .properties = NULL,
       };
 
-      ret = az_hfsm_send_event(
-          (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
+      ret = az_hfsm_pipeline_send_outbound_event(
+          this_policy, (az_hfsm_event){ AZ_IOT_HUB_TELEMETRY_REQ, &telemetry_data });
     }
     break;
 
@@ -358,8 +358,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
                                                     = AZ_SPAN_FROM_BUFFER(topic_buffer),
                                                     .payload = AZ_SPAN_EMPTY };
 
-      ret = az_hfsm_send_event(
-          (az_hfsm*)&hub_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
+      ret = az_hfsm_pipeline_send_outbound_event(
+          this_policy, (az_hfsm_event){ AZ_IOT_HUB_METHODS_RSP, &method_rsp });
     }
     break;
 

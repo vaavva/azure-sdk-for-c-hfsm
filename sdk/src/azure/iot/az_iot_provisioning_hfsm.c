@@ -120,7 +120,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
 
     case AZ_HFSM_EVENT_ERROR:
       if (az_result_failed(
-              az_hfsm_send_event((az_hfsm*)this_policy->_internal.policy.inbound, event)))
+              az_hfsm_pipeline_send_indbound_event((az_hfsm_policy*)this_policy, event)))
       {
         az_platform_critical_error();
       }
@@ -223,8 +223,8 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
 
 AZ_INLINE az_result _dps_disconnect(az_hfsm_iot_provisioning_policy* me)
 {
-  return az_hfsm_send_event(
-      (az_hfsm*)me->_internal.policy.outbound,
+  return az_hfsm_pipeline_send_outbound_event(
+      (az_hfsm_policy*)me,
       (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, .data = NULL });
 }
 
@@ -253,7 +253,7 @@ static az_result started(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
       _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, started, idle));
       _az_RETURN_IF_FAILED(
-          az_hfsm_send_event((az_hfsm*)((az_hfsm_policy*)this_policy)->inbound, event));
+          az_hfsm_pipeline_send_indbound_event((az_hfsm_policy*)this_policy, event));
       break;
 
     default:
@@ -533,8 +533,8 @@ static az_result wait_register(az_hfsm* me, az_hfsm_event event)
         _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, connected, disconnecting));
         _az_RETURN_IF_FAILED(_dps_disconnect(this_policy));
 
-        _az_RETURN_IF_FAILED(az_hfsm_send_event(
-            (az_hfsm*)((az_hfsm_policy*)this_policy)->inbound,
+        _az_RETURN_IF_FAILED(az_hfsm_pipeline_send_indbound_event(
+            (az_hfsm_policy*)this_policy,
             (az_hfsm_event){ .type = AZ_IOT_PROVISIONING_REGISTER_RSP,
                              .data = (az_hfsm_iot_provisioning_register_response_data*)&this_policy
                                          ->_internal.register_response }));

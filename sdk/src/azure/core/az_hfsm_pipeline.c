@@ -62,7 +62,7 @@ void az_hfsm_pipeline_post_error(az_hfsm_pipeline* pipeline, az_result rc)
   if (az_result_failed(rc))
   {
     az_hfsm_event_data_error d
-        = { .error_type = rc, .error_type = pipeline->_internal.inbound_handler };
+        = { .error_type = rc, .sender_hfsm = (az_hfsm*)pipeline->_internal.inbound_handler };
     az_result ret
         = az_hfsm_pipeline_post_inbound_event(pipeline, (az_hfsm_event){ AZ_HFSM_EVENT_ERROR, &d });
 
@@ -79,8 +79,18 @@ az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const
   az_result ret = az_hfsm_send_event((az_hfsm*)policy->inbound, event);
   if (az_result_failed(ret))
   {
-    // TODO: send the ERROR event instead towards the application.
+    // Replace the original event with an error event that is flowed to the application.
+    ret = az_hfsm_send_event(
+        (az_hfsm*)policy->inbound,
+        (az_hfsm_event){ AZ_HFSM_EVENT_ERROR,
+                         &(az_hfsm_event_data_error){
+                             .error_type = ret,
+                             .sender_hfsm = (az_hfsm*)policy->inbound,
+                             .sender_event = event,
+                         } });
   }
+
+  return ret;
 }
 
 AZ_NODISCARD az_result

@@ -122,7 +122,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
           me,
           az_result_string(err_data->error_type),
           err_data->error_type,
-          err_data->origin);
+          err_data->sender_hfsm);
 
       break;
     }
