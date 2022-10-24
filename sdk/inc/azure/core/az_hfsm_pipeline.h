@@ -67,7 +67,7 @@ AZ_NODISCARD az_result az_hfsm_pipeline_init(
     az_hfsm_policy* inbound);
 
 /**
- * @brief Queues an event to a HFSM object.
+ * @brief Queues an inbound event to the pipeline.
  *
  * @note The lifetime of the `event` must be maintained until the event is consumed by the
  *       HFSM. No threading guarantees exist for dispatching.
@@ -75,25 +75,63 @@ AZ_NODISCARD az_result az_hfsm_pipeline_init(
  * @note This function should not be used during pipeline processing. The function can be called
  * either from the application or from within a system-level (timer, MQTT stack, etc) callback.
  *
- * @param[in] h The #az_hfsm_pipeline to use for this call.
- * @param[in] event The event being sent.
+ * @param[in] pipeline The #az_hfsm_pipeline to use for this call.
+ * @param[in] event The event being enqueued.
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
 az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
 
+/**
+ * @brief Queues an outbound event to the pipeline.
+ *
+ * @note The lifetime of the `event` must be maintained until the event is consumed by the
+ *       HFSM. No threading guarantees exist for dispatching.
+ *
+ * @note This function should not be used during pipeline processing. The function can be called
+ * either from the application or from within a system-level (timer, MQTT stack, etc) callback.
+ *
+ * @param[in] pipeline The #az_hfsm_pipeline to use for this call.
+ * @param[in] event The event being enqueued.
+ * @return An #az_result value indicating the result of the operation.
+ */
 AZ_NODISCARD az_result
 az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
 
+/**
+ * @brief Sends an inbound event from the current policy.
+ *
+ * @note This function should be used during pipeline processing. The event is processed on the
+ * current thread (stack).
+ *
+ * @param policy The current policy trying to send the event.
+ * @param event The event being sent.
+ * @return An #az_result value indicating the result of the operation.
+ */
 AZ_NODISCARD az_result
 az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
 
+/**
+ * @brief Sends an outbound event from the current policy.
+ *
+ * @note This function should be used during pipeline processing. The event is processed on the
+ * current thread (stack).
+ *
+ * @param policy The current policy trying to send the event.
+ * @param event The event being sent.
+ * @return An #az_result value indicating the result of the operation.
+ */
 AZ_NODISCARD az_result
 az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
 
 #ifdef TRANSPORT_MQTT_SYNC
 enum az_hfsm_even_type_pipeline
 {
+  /**
+   * @brief The event type posted by #az_hfsm_pipeline_syncrhonous_process_loop to allow syncrhonous
+   * pipeline event processing.
+   *
+   */
   AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
 };
 
