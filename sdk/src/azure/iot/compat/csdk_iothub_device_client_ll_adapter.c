@@ -667,7 +667,8 @@ IOTHUB_CLIENT_RESULT IoTHubDeviceClient_LL_SendEventAsync(
 
 void IoTHubDeviceClient_LL_DoWork(IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle)
 {
-  az_result ret = az_hfsm_pipeline_syncrhonous_process_loop(&iotHubClientHandle->hub_pipeline);
+  // TODO: rename
+  az_result ret = az_hfsm_pipeline_sync_process_loop(&iotHubClientHandle->hub_pipeline);
   if (az_result_failed(ret))
   {
     _connection_status_callback(

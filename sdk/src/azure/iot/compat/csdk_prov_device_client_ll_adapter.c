@@ -451,7 +451,7 @@ void Prov_Device_LL_DoWork(PROV_DEVICE_LL_HANDLE handle)
 {
   _az_PRECONDITION(handle->register_request_data.initialized);
 
-  az_result ret = az_hfsm_pipeline_syncrhonous_process_loop(&handle->prov_pipeline);
+  az_result ret = az_hfsm_pipeline_sync_process_loop(&handle->prov_pipeline);
   if (az_result_failed(ret))
   {
     // HFSM_TODO: Call connection_callback

@@ -120,7 +120,7 @@ az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer
 }
 
 #ifdef TRANSPORT_MQTT_SYNC
-AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline)
+AZ_NODISCARD az_result az_hfsm_pipeline_sync_process_loop(az_hfsm_pipeline* pipeline)
 {
   // Process outbound events if any have been cached by the upper layers (e.g. API). This call is
   // blocking.

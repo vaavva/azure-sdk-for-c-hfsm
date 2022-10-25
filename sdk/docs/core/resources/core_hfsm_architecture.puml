@@ -1,0 +1,49 @@
+@startuml
+
+class az_hfsm 
+{
+    -current_state: az_hfsm_state_handler
+    -get_parent_func: az_hfsm_get_parent
+    ---
+    #az_hfsm_state_handler(event)
+    #az_hfsm_get_parent(child_state_handler)
+    ---
+    +az_hfsm_init(root_state, get_parent_func)
+    +az_hfsm_transition_peer(source_state, destination_state)
+    +az_hfsm_transition_substate(source_state, destination_state)
+    +az_hfsm_transition_superstate(source_state, destination_state)
+    +az_hfsm_send_event(az_hfsm_event)
+}
+
+enum az_hfsm_event_type
+{
+    AZ_HFSM_EVENT_ENTRY
+    AZ_HFSM_EVENT_EXIT
+    AZ_HFSM_EVENT_ERROR
+    AZ_HFSM_EVENT_TIMEOUT
+    [...]
+}
+
+class az_hfsm_event
+{
+    +type: az_hfsm_event_type
+    +data: void*
+}
+
+abstract class az_hfsm_event_data
+
+class az_hfsm_event_data_error
+{
+    +error_type: az_result
+    +sender_hfsm: az_hfsm*
+    +sender_event: az_hfsm_event
+}
+
+
+az_hfsm_event *-- az_hfsm_event_type
+az_hfsm_event *-- az_hfsm_event_data
+
+az_hfsm_event_data <|-- az_hfsm_event_data_error
+
+
+@enduml

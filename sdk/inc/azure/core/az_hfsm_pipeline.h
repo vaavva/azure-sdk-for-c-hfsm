@@ -128,7 +128,7 @@ az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const
 enum az_hfsm_even_type_pipeline
 {
   /**
-   * @brief The event type posted by #az_hfsm_pipeline_syncrhonous_process_loop to allow syncrhonous
+   * @brief The event type posted by #az_hfsm_pipeline_sync_process_loop to allow syncrhonous
    * pipeline event processing.
    *
    */
@@ -144,7 +144,7 @@ enum az_hfsm_even_type_pipeline
  * @param pipeline The #az_hfsm_pipeline.
  * @return The #az_result error code.
  */
-AZ_NODISCARD az_result az_hfsm_pipeline_syncrhonous_process_loop(az_hfsm_pipeline* pipeline);
+AZ_NODISCARD az_result az_hfsm_pipeline_sync_process_loop(az_hfsm_pipeline* pipeline);
 #endif // TRANSPORT_MQTT_SYNC
 
 /**
