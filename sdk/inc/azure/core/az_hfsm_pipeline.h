@@ -109,7 +109,7 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event c
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
+az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
 
 /**
  * @brief Sends an outbound event from the current policy.

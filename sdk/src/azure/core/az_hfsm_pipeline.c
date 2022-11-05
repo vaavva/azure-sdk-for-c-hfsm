@@ -58,7 +58,7 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
 }
 
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_indbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
+az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
 {
   az_result ret = az_hfsm_send_event((az_hfsm*)policy->inbound, event);
   if (az_result_failed(ret))
