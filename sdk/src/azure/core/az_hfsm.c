@@ -44,8 +44,6 @@ static AZ_NODISCARD az_result _az_hfsm_recursive_exit(az_hfsm* h, az_hfsm_state_
   _az_PRECONDITION_NOT_NULL(h);
   _az_PRECONDITION_NOT_NULL(source_state);
 
-  az_result ret;
-
   // Super-state handler making a transition must exit all substates:
   while (source_state != h->_internal.current_state)
   {
@@ -81,6 +79,8 @@ AZ_NODISCARD az_result az_hfsm_transition_peer(
   // Enter the destination state:
   _az_RETURN_IF_FAILED(destination_state(h, az_hfsm_event_entry));
   h->_internal.current_state = destination_state;
+
+  return AZ_OK;
 }
 
 AZ_NODISCARD az_result az_hfsm_transition_substate(
@@ -99,6 +99,8 @@ AZ_NODISCARD az_result az_hfsm_transition_substate(
   // Transitions to sub-states will not exit the super-state:
   _az_RETURN_IF_FAILED(destination_state(h, az_hfsm_event_entry));
   h->_internal.current_state = destination_state;
+
+  return AZ_OK;
 }
 
 AZ_NODISCARD az_result az_hfsm_transition_superstate(
@@ -110,8 +112,6 @@ AZ_NODISCARD az_result az_hfsm_transition_superstate(
   _az_PRECONDITION_NOT_NULL(source_state);
   _az_PRECONDITION_NOT_NULL(destination_state);
 
-  az_result ret;
-
   // Super-state handler making a transition must exit all inner states:
   _az_RETURN_IF_FAILED(_az_hfsm_recursive_exit(h, source_state));
   _az_PRECONDITION(h->_internal.current_state == source_state);
@@ -119,6 +119,8 @@ AZ_NODISCARD az_result az_hfsm_transition_superstate(
   // Transitions to super states will exit the substate but not enter the superstate again:
   _az_RETURN_IF_FAILED(h->_internal.current_state(h, az_hfsm_event_exit));
   h->_internal.current_state = destination_state;
+
+  return AZ_OK;
 }
 
 AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event)

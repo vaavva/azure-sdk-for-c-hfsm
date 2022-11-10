@@ -125,7 +125,7 @@ AZ_NODISCARD az_result
 az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
 
 #ifdef TRANSPORT_MQTT_SYNC
-enum az_hfsm_even_type_pipeline
+enum az_hfsm_event_type_pipeline
 {
   /**
    * @brief The event type posted by #az_hfsm_pipeline_sync_process_loop to allow syncrhonous

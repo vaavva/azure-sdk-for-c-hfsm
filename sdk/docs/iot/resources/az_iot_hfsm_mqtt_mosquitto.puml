@@ -10,7 +10,7 @@ state MosquittoMQTTClient {
 
     state Running
     Running : <b>entry/</b> : mosquitto_loop_start();
-    Running : <b>exit/</b> : stop timeoutTimer;
+    Running : <b>exit/</b> : _az_mosquitto_deinit();
     Running : <b>AZ_HFSM_MQTT_EVENT_PUB_REQ/</b> : _az_mosquitto_pub();
     Running : <b>AZ_HFSM_MQTT_EVENT_SUB_REQ/</b> : _az_mosquitto_sub();
     Running : <b>AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ/</b> : _az_mosquitto_disconnect();
