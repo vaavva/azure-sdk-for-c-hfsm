@@ -6,6 +6,9 @@ class az_hfsm_policy
     +az_hfsm_policy* inbound;
     +az_hfsm_policy* outbound;
     +az_hfsm_policy* pipeline;
+    ---
+    +az_hfsm_pipeline_send_inbound_event(event)
+    +az_hfsm_pipeline_send_outbound_event(event)
 }
 
 class az_hfsm_pipeline
@@ -17,8 +20,6 @@ class az_hfsm_pipeline
     +az_hfsm_pipeline_init(outbound_policy, inbound_policy)
     +az_hfsm_pipeline_post_inbound_event(event)
     +az_hfsm_pipeline_post_outbound_event(event)
-    -az_hfsm_pipeline_send_inbound_event(event)
-    -az_hfsm_pipeline_send_outbound_event(event)
     ---
     -az_hfsm_pipeline_sync_process_loop()   // Sync mode only
     ---
