@@ -447,7 +447,7 @@ int main(int argc, char* argv[])
 
   for (int i = 15; i > 0; i--)
   {
-    _az_RETURN_IF_FAaILED(az_platform_sleep_msec(1000));
+    _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
