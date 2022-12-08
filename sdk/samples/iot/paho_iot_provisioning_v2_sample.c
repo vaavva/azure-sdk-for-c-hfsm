@@ -29,7 +29,7 @@
 #define MQTT_TIMEOUT_DISCONNECT_MS (10 * 1000)
 
 static iot_sample_environment_variables env_vars;
-static az_iot_provisioning_client provisioning_client;
+static az_iot_provisioning_v2_client provisioning_client;
 static MQTTClient mqtt_client;
 static char mqtt_client_username_buffer[128];
 
@@ -45,15 +45,15 @@ static void parse_device_registration_status_message(
     char* topic,
     int topic_len,
     MQTTClient_message const* message,
-    az_iot_provisioning_client_register_response* out_register_response);
+    az_iot_provisioning_v2_client_register_response* out_register_response);
 static void handle_device_registration_status_message(
-    az_iot_provisioning_client_register_response const* register_response,
+    az_iot_provisioning_v2_client_register_response const* register_response,
     bool* ref_is_operation_complete);
 static void send_operation_query_message(
-    az_iot_provisioning_client_register_response const* response);
+    az_iot_provisioning_v2_client_register_response const* response);
 
 /*
- * This sample registers a device with the Azure IoT Device Provisioning Service. It will wait to
+ * This sample registers a device with the Azure IoT Device Provisioning v2 Service. It will wait to
  * receive the registration status before disconnecting. X509 self-certification is used.
  */
 int main(void)
@@ -62,19 +62,19 @@ int main(void)
   IOT_SAMPLE_LOG_SUCCESS("Client created and configured.");
 
   connect_mqtt_client_to_provisioning_service();
-  IOT_SAMPLE_LOG_SUCCESS("Client connected to provisioning service.");
+  IOT_SAMPLE_LOG_SUCCESS("Client connected to provisioning v2 service.");
 
   subscribe_mqtt_client_to_provisioning_service_topics();
-  IOT_SAMPLE_LOG_SUCCESS("Client subscribed to provisioning service topics.");
+  IOT_SAMPLE_LOG_SUCCESS("Client subscribed to provisioning v2 service topics.");
 
   register_device_with_provisioning_service();
-  IOT_SAMPLE_LOG_SUCCESS("Client registering with provisioning service.");
+  IOT_SAMPLE_LOG_SUCCESS("Client registering with provisioning v2 service.");
 
   receive_device_registration_status_message();
   IOT_SAMPLE_LOG_SUCCESS("Client received registration status message.");
 
   disconnect_mqtt_client_from_provisioning_service();
-  IOT_SAMPLE_LOG_SUCCESS("Client disconnected from provisioning service.");
+  IOT_SAMPLE_LOG_SUCCESS("Client disconnected from provisioning v2 service.");
 
   return 0;
 }
@@ -91,9 +91,9 @@ static void create_and_configure_mqtt_client(void)
   iot_sample_create_mqtt_endpoint(
       SAMPLE_TYPE, &env_vars, mqtt_endpoint_buffer, sizeof(mqtt_endpoint_buffer));
 
-  // Initialize the provisioning client with the provisioning global endpoint and the default
+  // Initialize the provisioning v2 client with the provisioning global endpoint and the default
   // connection options.
-  rc = az_iot_provisioning_client_init(
+  rc = az_iot_provisioning_v2_client_init(
       &provisioning_client,
       az_span_create_from_str(mqtt_endpoint_buffer),
       env_vars.provisioning_id_scope,
@@ -102,13 +102,13 @@ static void create_and_configure_mqtt_client(void)
   if (az_result_failed(rc))
   {
     IOT_SAMPLE_LOG_ERROR(
-        "Failed to initialize provisioning client: az_result return code 0x%08x.", rc);
+        "Failed to initialize provisioning v2 client: az_result return code 0x%08x.", rc);
     exit(rc);
   }
 
   // Get the MQTT client id used for the MQTT connection.
   char mqtt_client_id_buffer[128];
-  rc = az_iot_provisioning_client_get_client_id(
+  rc = az_iot_provisioning_v2_client_get_client_id(
       &provisioning_client, mqtt_client_id_buffer, sizeof(mqtt_client_id_buffer), NULL);
   if (az_result_failed(rc))
   {
@@ -129,7 +129,7 @@ static void create_and_configure_mqtt_client(void)
 static void connect_mqtt_client_to_provisioning_service(void)
 {
   // Get the MQTT client username.
-  int rc = az_iot_provisioning_client_get_user_name(
+  int rc = az_iot_provisioning_v2_client_get_user_name(
       &provisioning_client, mqtt_client_username_buffer, sizeof(mqtt_client_username_buffer), NULL);
   if (az_result_failed(rc))
   {
@@ -156,7 +156,7 @@ static void connect_mqtt_client_to_provisioning_service(void)
   }
   mqtt_connect_options.ssl = &mqtt_ssl_options;
 
-  // Connect MQTT client to the Azure IoT Device Provisioning Service.
+  // Connect MQTT client to the Azure IoT Device Provisioning v2 Service.
   rc = MQTTClient_connect(mqtt_client, &mqtt_connect_options);
   if (rc != MQTTCLIENT_SUCCESS)
   {
@@ -188,7 +188,7 @@ static void register_device_with_provisioning_service(void)
 
   // Get the Register topic to publish the register request.
   char register_topic_buffer[128];
-  rc = az_iot_provisioning_client_register_get_publish_topic(
+  rc = az_iot_provisioning_v2_client_register_get_publish_topic(
       &provisioning_client, register_topic_buffer, sizeof(register_topic_buffer), NULL);
   if (az_result_failed(rc))
   {
@@ -219,7 +219,7 @@ static void receive_device_registration_status_message(void)
   MQTTClient_message* message = NULL;
   bool is_operation_complete = false;
 
-  // Continue to parse incoming responses from the provisioning service until the device has been
+  // Continue to parse incoming responses from the provisioning v2 service until the device has been
   // successfully provisioned or an error occurs.
   do
   {
@@ -248,7 +248,7 @@ static void receive_device_registration_status_message(void)
     IOT_SAMPLE_LOG_SUCCESS("Client received a message from the provisioning service.");
 
     // Parse registration status message.
-    az_iot_provisioning_client_register_response register_response;
+    az_iot_provisioning_v2_client_register_response register_response;
     parse_device_registration_status_message(topic, topic_len, message, &register_response);
     IOT_SAMPLE_LOG_SUCCESS("Client parsed registration status message.");
 
@@ -276,14 +276,14 @@ static void parse_device_registration_status_message(
     char* topic,
     int topic_len,
     MQTTClient_message const* message,
-    az_iot_provisioning_client_register_response* out_register_response)
+    az_iot_provisioning_v2_client_register_response* out_register_response)
 {
   az_result rc;
   az_span const topic_span = az_span_create((uint8_t*)topic, topic_len);
   az_span const message_span = az_span_create((uint8_t*)message->payload, message->payloadlen);
 
   // Parse message and retrieve register_response info.
-  rc = az_iot_provisioning_client_parse_received_topic_and_payload(
+  rc = az_iot_provisioning_v2_client_parse_received_topic_and_payload(
       &provisioning_client, topic_span, message_span, out_register_response);
   if (az_result_failed(rc))
   {
@@ -298,11 +298,11 @@ static void parse_device_registration_status_message(
 }
 
 static void handle_device_registration_status_message(
-    az_iot_provisioning_client_register_response const* register_response,
+    az_iot_provisioning_v2_client_register_response const* register_response,
     bool* ref_is_operation_complete)
 {
   *ref_is_operation_complete
-      = az_iot_provisioning_client_operation_complete(register_response->operation_status);
+      = az_iot_provisioning_v2_client_operation_complete(register_response->operation_status);
 
   // If operation is not complete, send query. On return, will loop to receive new operation
   // message.
@@ -316,7 +316,7 @@ static void handle_device_registration_status_message(
   else // Operation is complete.
   {
     if (register_response->operation_status
-        == AZ_IOT_PROVISIONING_STATUS_ASSIGNED) // Successful assignment
+        == AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNED) // Successful assignment
     {
       IOT_SAMPLE_LOG_SUCCESS("Device provisioned:");
       IOT_SAMPLE_LOG_AZ_SPAN(
@@ -342,13 +342,13 @@ static void handle_device_registration_status_message(
 }
 
 static void send_operation_query_message(
-    az_iot_provisioning_client_register_response const* register_response)
+    az_iot_provisioning_v2_client_register_response const* register_response)
 {
   int rc;
 
   // Get the Query Status topic to publish the query status request.
   char query_topic_buffer[256];
-  rc = az_iot_provisioning_client_query_status_get_publish_topic(
+  rc = az_iot_provisioning_v2_client_query_status_get_publish_topic(
       &provisioning_client,
       register_response->operation_id,
       query_topic_buffer,
