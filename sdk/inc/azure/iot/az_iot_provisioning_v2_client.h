@@ -29,7 +29,7 @@
 /**
  * @brief The client is fixed to a specific version of the Azure IoT Provisioning service.
  */
-#define AZ_IOT_PROVISIONING_V2_SERVICE_VERSION "2019-03-31"
+#define AZ_IOT_PROVISIONING_V2_SERVICE_VERSION "2023-02-01-preview"
 
 /**
  * @brief Azure IoT Provisioning v2 Client options.
@@ -227,7 +227,7 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_sas_get_password(
  * @brief The MQTT topic filter to subscribe to register responses.
  * @remark Register MQTT Publish messages will have QoS At most once (0).
  */
-#define AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC "$dps/registrations/res/#"
+#define AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC "$dps/v2/registrations/res/#"
 
 /**
  * @brief The registration operation state.
