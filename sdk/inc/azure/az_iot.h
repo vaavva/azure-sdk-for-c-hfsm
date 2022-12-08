@@ -20,5 +20,6 @@
 #include <azure/iot/az_iot_hub_client.h>
 #include <azure/iot/az_iot_hub_client_properties.h>
 #include <azure/iot/az_iot_provisioning_client.h>
+#include <azure/iot/az_iot_provisioning_v2_client.h>
 
 #endif // _az_IOT_CORE_H

@@ -29,6 +29,7 @@ target_link_libraries(az_iot_sample_common
   PUBLIC
     az::iot::hub
     az::iot::provisioning
+    az::iot::provisioning_v2
 )
 
 # External deps
@@ -174,5 +175,17 @@ target_link_libraries(paho_iot_provisioning_sas_sample
 )
 
 create_map_file(paho_iot_provisioning_sas_sample paho_iot_provisioning_sas_sample.map)
+
+# Provisioning v2 Sample
+add_executable (paho_iot_provisioning_v2_sample
+  ${CMAKE_CURRENT_LIST_DIR}/paho_iot_provisioning_v2_sample.c
+)
+
+target_link_libraries(paho_iot_provisioning_v2_sample
+  PRIVATE
+    az::iot::sample::common
+)
+
+create_map_file(paho_iot_provisioning_v2_sample paho_iot_provisioning_v2_sample.map)
 
 endif() # TRANSPORT_PAHO
