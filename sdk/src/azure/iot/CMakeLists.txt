@@ -82,6 +82,24 @@ target_include_directories (az_iot_adu
 
 add_library (az::iot::adu ALIAS az_iot_adu)
 
+# Azure IoT Provisioningv2 Service Library
+add_library (az_iot_provisioning_v2
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_provisioning_v2_client.c
+)
+
+target_include_directories (az_iot_provisioning_v2
+  PUBLIC
+    ${az_SOURCE_DIR}/sdk/inc
+)
+
+target_link_libraries(az_iot_provisioning_v2
+  PUBLIC
+    az::core
+    az::iot::common
+)
+
+add_library (az::iot::provisioning_v2 ALIAS az_iot_provisioning_v2)
+
 # set coverage excluding for az_core. Don't show coverage outside iot
 set(COV_EXCLUDE
   ${az_SOURCE_DIR}/sdk/inc/azure/core/*
