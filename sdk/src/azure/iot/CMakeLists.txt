@@ -82,7 +82,7 @@ target_include_directories (az_iot_adu
 
 add_library (az::iot::adu ALIAS az_iot_adu)
 
-# Azure IoT Provisioningv2 Service Library
+# Azure client library for version 2 APIs of the IoT Provisioning Service 
 add_library (az_iot_provisioning_v2
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_provisioning_v2_client.c
 )
