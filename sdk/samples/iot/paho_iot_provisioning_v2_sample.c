@@ -87,9 +87,7 @@ static void create_and_configure_mqtt_client(void)
   iot_sample_read_environment_variables(SAMPLE_TYPE, SAMPLE_NAME, &env_vars);
 
   // Build an MQTT endpoint c-string.
-  char mqtt_endpoint_buffer[256];
-  iot_sample_create_mqtt_endpoint(
-      SAMPLE_TYPE, &env_vars, mqtt_endpoint_buffer, sizeof(mqtt_endpoint_buffer));
+  char* mqtt_endpoint_buffer = "ssl://dpspp8.azure-devices-provisioning-int.net:8883";
 
   // Initialize the provisioning v2 client with the provisioning global endpoint and the default
   // connection options.
@@ -171,9 +169,12 @@ static void connect_mqtt_client_to_provisioning_service(void)
 
 static void subscribe_mqtt_client_to_provisioning_service_topics(void)
 {
+
+  IOT_SAMPLE_LOG("MQTT SUB TOPIC=" AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC " ; QoS = 1.");
+
   // Messages received on the Register topic will be registration responses from the server.
   int rc
-      = MQTTClient_subscribe(mqtt_client, AZ_IOT_PROVISIONING_CLIENT_REGISTER_SUBSCRIBE_TOPIC, 1);
+      = MQTTClient_subscribe(mqtt_client, AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC, 1);
   if (rc != MQTTCLIENT_SUCCESS)
   {
     IOT_SAMPLE_LOG_ERROR(
@@ -202,6 +203,8 @@ static void register_device_with_provisioning_service(void)
   pubmsg.payloadlen = 0;
   pubmsg.qos = 1;
   pubmsg.retained = 0;
+
+  IOT_SAMPLE_LOG("MQTT PUB TOPIC=%s ; PAYLOAD = NULL ; QoS = 1.", register_topic_buffer);
 
   // Publish the register request.
   rc = MQTTClient_publishMessage(mqtt_client, register_topic_buffer, &pubmsg, NULL);
@@ -319,8 +322,19 @@ static void handle_device_registration_status_message(
         == AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNED) // Successful assignment
     {
       IOT_SAMPLE_LOG_SUCCESS("Device provisioned:");
-      IOT_SAMPLE_LOG_AZ_SPAN(
-          "Hub Hostname:", register_response->registration_state.assigned_hub_hostname);
+
+      if (register_response->registration_state.assigned_endpoint_type
+          != AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB)
+      {
+        IOT_SAMPLE_LOG_AZ_SPAN(
+            "Endpoint Hostname:", register_response->registration_state.assigned_endpoint_hostname);
+      }
+      else
+      {
+        IOT_SAMPLE_LOG_AZ_SPAN(
+            "Hub Hostname:", register_response->registration_state.assigned_endpoint_hostname);
+      }
+
       IOT_SAMPLE_LOG_AZ_SPAN("Device Id:", register_response->registration_state.device_id);
       IOT_SAMPLE_LOG(" "); // Formatting
     }
