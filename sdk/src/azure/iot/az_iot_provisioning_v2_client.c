@@ -23,27 +23,28 @@ static const az_span str_get_iotdps_get_operationstatus
 static const az_span prov_registration_id_label = AZ_SPAN_LITERAL_FROM_STR("registrationId");
 static const az_span prov_payload_label = AZ_SPAN_LITERAL_FROM_STR("payload");
 
-// $dps/registrations/res/
-AZ_INLINE az_span _az_iot_provisioning_v2_get_dps_registrations_res()
+// $dps/v2/registrations/res/
+AZ_INLINE az_span _az_iot_provisioning_v2_get_dps_v2_registrations_res()
 {
-  az_span sub_topic = AZ_SPAN_LITERAL_FROM_STR(AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC);
+  az_span sub_topic
+      = AZ_SPAN_LITERAL_FROM_STR(AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC);
 
   // NOLINTNEXTLINE(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
-  return az_span_slice(sub_topic, 0, 23);
+  return az_span_slice(sub_topic, 0, 26);
 }
 
 // /registrations/
 AZ_INLINE az_span _az_iot_provisioning_v2_get_str_registrations()
 {
   // NOLINTNEXTLINE(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
-  return az_span_slice(_az_iot_provisioning_v2_get_dps_registrations_res(), 4, 19);
+  return az_span_slice(_az_iot_provisioning_v2_get_dps_v2_registrations_res(), 7, 22);
 }
 
-// $dps/registrations/
+// $dps/v2/registrations/
 AZ_INLINE az_span _az_iot_provisioning_v2_get_str_dps_registrations()
 {
   // NOLINTNEXTLINE(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
-  return az_span_slice(_az_iot_provisioning_v2_get_dps_registrations_res(), 0, 19);
+  return az_span_slice(_az_iot_provisioning_v2_get_dps_v2_registrations_res(), 0, 22);
 }
 
 AZ_NODISCARD az_iot_provisioning_v2_client_options az_iot_provisioning_v2_client_options_default()
@@ -156,7 +157,7 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_get_client_id(
   return AZ_OK;
 }
 
-// $dps/registrations/PUT/iotdps-register/?$rid=%s
+// $dps/v2/registrations/PUT/iotdps-register/?$rid=%s
 AZ_NODISCARD az_result az_iot_provisioning_v2_client_register_get_publish_topic(
     az_iot_provisioning_v2_client const* client,
     char* mqtt_topic,
@@ -190,7 +191,7 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_register_get_publish_topic(
   return AZ_OK;
 }
 
-// Topic: $dps/registrations/GET/iotdps-get-operationstatus/?$rid=%s&operationId=%s
+// Topic: $dps/v2/registrations/GET/iotdps-get-operationstatus/?$rid=%s&operationId=%s
 AZ_NODISCARD az_result az_iot_provisioning_v2_client_query_status_get_publish_topic(
     az_iot_provisioning_v2_client const* client,
     az_span operation_id,
@@ -231,13 +232,16 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_query_status_get_publish_to
 AZ_INLINE az_iot_provisioning_v2_client_registration_state
 _az_iot_provisioning_v2_registration_state_default()
 {
-  return (az_iot_provisioning_v2_client_registration_state){ .assigned_hub_hostname = AZ_SPAN_EMPTY,
-                                                          .device_id = AZ_SPAN_EMPTY,
-                                                          .error_code = AZ_IOT_STATUS_UNKNOWN,
-                                                          .extended_error_code = 0,
-                                                          .error_message = AZ_SPAN_EMPTY,
-                                                          .error_tracking_id = AZ_SPAN_EMPTY,
-                                                          .error_timestamp = AZ_SPAN_EMPTY };
+  return (az_iot_provisioning_v2_client_registration_state){
+    .assigned_endpoint_hostname = AZ_SPAN_EMPTY,
+    .assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN,
+    .device_id = AZ_SPAN_EMPTY,
+    .error_code = AZ_IOT_STATUS_UNKNOWN,
+    .extended_error_code = 0,
+    .error_message = AZ_SPAN_EMPTY,
+    .error_tracking_id = AZ_SPAN_EMPTY,
+    .error_timestamp = AZ_SPAN_EMPTY
+  };
 }
 
 AZ_INLINE az_iot_status _az_iot_status_from_extended_status(uint32_t extended_status)
@@ -285,22 +289,23 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_payload_registration_state_pa
     return AZ_ERROR_UNEXPECTED_CHAR;
   }
 
-  bool found_assigned_hub = false;
+  bool found_assigned_endpoint = false;
   bool found_device_id = false;
 
-  while ((!(found_device_id && found_assigned_hub))
+  while ((!(found_device_id && found_assigned_endpoint))
          && az_result_succeeded(az_json_reader_next_token(jr))
          && jr->token.kind != AZ_JSON_TOKEN_END_OBJECT)
   {
-    if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("assignedHub")))
+    if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("assignedEndpoint")))
     {
+     // TODO: 
       _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
       if (jr->token.kind != AZ_JSON_TOKEN_STRING)
       {
         return AZ_ERROR_ITEM_NOT_FOUND;
       }
-      out_state->assigned_hub_hostname = jr->token.slice;
-      found_assigned_hub = true;
+      out_state->assigned_endpoint_hostname = jr->token.slice;
+      found_assigned_endpoint = true;
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("deviceId")))
     {
@@ -342,7 +347,7 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_payload_registration_state_pa
     }
   }
 
-  if (found_assigned_hub != found_device_id)
+  if (found_assigned_endpoint != found_device_id)
   {
     return AZ_ERROR_ITEM_NOT_FOUND;
   }
@@ -493,7 +498,7 @@ AZ_INLINE az_result az_iot_provisioning_v2_client_parse_payload(
 Example flow:
 
 Stage 1:
- topic: $dps/registrations/res/202/?$rid=1&retry-after=3
+ topic: $dps/v2/registrations/res/202/?$rid=1&retry-after=3
  payload:
   {"operationId":"4.d0a671905ea5b2c8.e7173b7b-0e54-4aa0-9d20-aeb1b89e6c7d","status":"assigning"}
 
@@ -502,13 +507,13 @@ Stage 2:
   "registrationState":{"registrationId":"paho-sample-device1","status":"assigning"}}
 
 Stage 3:
- topic: $dps/registrations/res/200/?$rid=1
+ topic: $dps/v2/registrations/res/200/?$rid=1
  payload:
   {"operationId":"4.d0a671905ea5b2c8.e7173b7b-0e54-4aa0-9d20-aeb1b89e6c7d","status":"assigned",
   "registrationState":{ ... }}
 
  Error:
- topic: $dps/registrations/res/401/?$rid=1
+ topic: $dps/v2/registrations/res/401/?$rid=1
  payload:
  {"errorCode":401002,"trackingId":"8ad0463c-6427-4479-9dfa-3e8bb7003e9b","message":"Invalid
   certificate.","timestampUtc":"2020-04-10T05:24:22.4718526Z"}
@@ -527,7 +532,7 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_parse_received_topic_and_pa
   _az_PRECONDITION_VALID_SPAN(received_payload, 1, false);
   _az_PRECONDITION_NOT_NULL(out_response);
 
-  az_span str_dps_registrations_res = _az_iot_provisioning_v2_get_dps_registrations_res();
+  az_span str_dps_registrations_res = _az_iot_provisioning_v2_get_dps_v2_registrations_res();
   int32_t idx = az_span_find(received_topic, str_dps_registrations_res);
   if (idx != 0)
   {

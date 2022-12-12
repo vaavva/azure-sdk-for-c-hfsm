@@ -29,7 +29,7 @@
 /**
  * @brief The client is fixed to a specific version of the Azure IoT Provisioning service.
  */
-#define AZ_IOT_PROVISIONING_V2_SERVICE_VERSION "2019-03-31"
+#define AZ_IOT_PROVISIONING_V2_SERVICE_VERSION "2023-02-01-preview"
 
 /**
  * @brief Azure IoT Provisioning v2 Client options.
@@ -227,7 +227,30 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_sas_get_password(
  * @brief The MQTT topic filter to subscribe to register responses.
  * @remark Register MQTT Publish messages will have QoS At most once (0).
  */
-#define AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC "$dps/registrations/res/#"
+#define AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC "$dps/v2/registrations/res/#"
+
+/**
+ * @brief Azure IoT Provisioning v2 endpoint type.
+ *
+ */
+typedef enum
+{
+ /**
+   * Unknown endpoint type.
+   */
+  AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN,
+
+  /**
+   * IoT Hub endpoint type.
+   */
+  AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB,
+
+  /**
+   * MQTT broker endpoint type.
+   */
+  AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER,
+
+} az_iot_provisioning_v2_endpoint_type;
 
 /**
  * @brief The registration operation state.
@@ -237,10 +260,16 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_sas_get_password(
 typedef struct
 {
   /**
-   * Assigned Azure IoT Hub hostname.
+   * Assigned endpoint hostname.
    * @remark This is only available if `error_code` is success.
    */
-  az_span assigned_hub_hostname;
+  az_span assigned_endpoint_hostname;
+
+  /**
+   * Assigned endpoint type.
+   * @remark This is only available if `error_code` is success.
+   */
+  az_iot_provisioning_v2_endpoint_type assigned_endpoint_type;
 
   /**
    * Assigned device ID.
