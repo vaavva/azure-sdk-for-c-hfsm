@@ -292,6 +292,8 @@ static void parse_device_registration_status_message(
   {
     IOT_SAMPLE_LOG_ERROR("Message from unknown topic: az_result return code 0x%08x.", rc);
     IOT_SAMPLE_LOG_AZ_SPAN("Topic:", topic_span);
+    IOT_SAMPLE_LOG_AZ_SPAN("Payload:", message_span);
+
     exit(rc);
   }
   IOT_SAMPLE_LOG_SUCCESS("Client received a valid topic response:");
