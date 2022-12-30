@@ -280,6 +280,44 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_payload_error_code(
   return AZ_ERROR_ITEM_NOT_FOUND;
 }
 
+/*{"hostName":"myendpoint.azure.com","type":1}*/
+AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_assigned_endpoint(
+    az_json_reader* jr,
+    az_iot_provisioning_v2_client_registration_state* out_state)
+{
+  while (az_result_succeeded(az_json_reader_next_token(jr))
+         && jr->token.kind != AZ_JSON_TOKEN_END_OBJECT)
+  {
+    if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("hostName")))
+    {
+     _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
+      out_state->assigned_endpoint_hostname = jr->token.slice;
+    }
+    else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("type")))
+    {
+     _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
+     int32_t type;
+     _az_RETURN_IF_FAILED(az_json_token_get_int32(&jr->token, &type));
+     
+     switch(type)
+     {
+      case 0:
+        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB;
+        break;
+
+      case 1:
+        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER;
+        break;
+
+      default:
+        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN;
+     }
+    }
+  }
+
+  return AZ_OK;
+}
+
 AZ_INLINE az_result _az_iot_provisioning_v2_client_payload_registration_state_parse(
     az_json_reader* jr,
     az_iot_provisioning_v2_client_registration_state* out_state)
@@ -298,13 +336,7 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_payload_registration_state_pa
   {
     if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("assignedEndpoint")))
     {
-     // TODO: 
-      _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
-      if (jr->token.kind != AZ_JSON_TOKEN_STRING)
-      {
-        return AZ_ERROR_ITEM_NOT_FOUND;
-      }
-      out_state->assigned_endpoint_hostname = jr->token.slice;
+      _az_RETURN_IF_FAILED(_az_iot_provisioning_v2_client_parse_assigned_endpoint(jr, out_state));
       found_assigned_endpoint = true;
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("deviceId")))
