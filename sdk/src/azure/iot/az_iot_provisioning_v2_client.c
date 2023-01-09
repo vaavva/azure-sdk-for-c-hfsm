@@ -280,7 +280,22 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_payload_error_code(
   return AZ_ERROR_ITEM_NOT_FOUND;
 }
 
-/*{"hostName":"myendpoint.azure.com","type":1}*/
+AZ_INLINE void _az_iot_provisioning_v2_client_parse_endpoint_type(
+    az_json_reader* jr,
+    az_iot_provisioning_v2_endpoint_type* out_type)
+{
+  *out_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN;
+  if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("iotHub")))
+  {
+    *out_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB;
+  }
+  else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("mqttBroker")))
+  {
+    *out_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER;
+  }
+}
+
+/*{"hostName":"myendpoint.azure.com","type":"mqttBroker"}*/
 AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_assigned_endpoint(
     az_json_reader* jr,
     az_iot_provisioning_v2_client_registration_state* out_state)
@@ -290,28 +305,13 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_assigned_endpoint(
   {
     if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("hostName")))
     {
-     _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
+      _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
       out_state->assigned_endpoint_hostname = jr->token.slice;
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("type")))
     {
-     _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
-     int32_t type;
-     _az_RETURN_IF_FAILED(az_json_token_get_int32(&jr->token, &type));
-     
-     switch(type)
-     {
-      case 0:
-        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB;
-        break;
-
-      case 1:
-        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER;
-        break;
-
-      default:
-        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN;
-     }
+      _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
+      _az_iot_provisioning_v2_client_parse_endpoint_type(jr, &out_state->assigned_endpoint_type);
     }
   }
 
