@@ -645,7 +645,7 @@ static void test_az_iot_provisioning_client_no_logging_succeed()
 #pragma warning(disable : 4113)
 #endif
 
-int test_az_iot_provisioning_client_parser()
+int test_az_iot_provisioning_v2_client_parser()
 {
   const struct CMUnitTest tests[] = {
     cmocka_unit_test(

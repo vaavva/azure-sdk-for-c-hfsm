@@ -356,7 +356,7 @@ static void test_az_iot_provisioning_client_sas_no_logging_succeed()
 #pragma warning(disable : 4113)
 #endif
 
-int test_az_iot_provisioning_client_sas_token()
+int test_az_iot_provisioning_v2_client_sas_token()
 {
 #ifndef AZ_NO_PRECONDITION_CHECKING
   SETUP_PRECONDITION_CHECK_TESTS();

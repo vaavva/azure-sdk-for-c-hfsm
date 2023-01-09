@@ -286,7 +286,7 @@ test_az_iot_provisioning_client_get_operation_status_publish_topic_insufficient_
 #pragma warning(disable : 4113)
 #endif
 
-int test_az_iot_provisioning_client()
+int test_az_iot_provisioning_v2_client()
 {
   const struct CMUnitTest tests[] = {
     cmocka_unit_test(test_az_iot_provisioning_client_options_default_succeed),

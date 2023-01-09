@@ -15,10 +15,10 @@ int main()
 {
   int result = 0;
 
-  result += test_az_iot_provisioning_client();
-  result += test_az_iot_provisioning_client_sas_token();
-  result += test_az_iot_provisioning_client_parser();
-  result += test_az_iot_provisioning_client_payload();
+  result += test_az_iot_provisioning_v2_client();
+  result += test_az_iot_provisioning_v2_client_sas_token();
+  result += test_az_iot_provisioning_v2_client_parser();
+  result += test_az_iot_provisioning_v2_client_payload();
 
   return result;
 }

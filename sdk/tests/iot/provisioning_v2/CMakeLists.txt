@@ -3,7 +3,7 @@
 
 cmake_minimum_required (VERSION 3.10)
 
-project (az_iot_provisioning_test LANGUAGES C)
+project (az_iot_provisioning_v2_test LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 

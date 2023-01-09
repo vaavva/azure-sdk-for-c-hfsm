@@ -181,7 +181,7 @@ static void test_az_iot_provisioning_client_get_request_payload_custom_payload()
   assert_int_equal((uint8_t)0xCC, payload[expected_payload_len]);
 }
 
-int test_az_iot_provisioning_client_payload()
+int test_az_iot_provisioning_v2_client_payload()
 {
 #ifndef AZ_NO_PRECONDITION_CHECKING
   SETUP_PRECONDITION_CHECK_TESTS();
