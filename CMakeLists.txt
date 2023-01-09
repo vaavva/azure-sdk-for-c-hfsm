@@ -109,6 +109,7 @@ if (UNIT_TESTING)
   add_subdirectory(sdk/tests/iot/common)
   add_subdirectory(sdk/tests/iot/hub)
   add_subdirectory(sdk/tests/iot/provisioning)
+  add_subdirectory(sdk/tests/iot/provisioning_v2)
 
 endif()
 
