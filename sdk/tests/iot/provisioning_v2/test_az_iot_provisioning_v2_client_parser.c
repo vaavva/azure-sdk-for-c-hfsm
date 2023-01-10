@@ -48,7 +48,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigning_st
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/202/?$rid=1&retry-after=3");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/202/?$rid=1&retry-after=3");
   az_span received_payload = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                                               "\",\"status\":\"" TEST_STATUS_ASSIGNING "\"}");
 
@@ -75,7 +75,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_topic_not_ma
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/unknown");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/unknown");
   az_span received_payload = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                                               "\",\"status\":\"" TEST_STATUS_ASSIGNING "\"}");
 
@@ -103,7 +103,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_parse_assign
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/202/?retry-after=120&$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/202/?retry-after=120&$rid=1");
   az_span received_payload = AZ_SPAN_FROM_STR(
       "{\"operationId\":\"" TEST_OPERATION_ID "\",\"status\":\"" TEST_STATUS_ASSIGNING
       "\",\"registrationState\":{\"registrationId\":\"" TEST_REGISTRATION_ID
@@ -132,7 +132,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_sta
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          "\",\"status\":\"" TEST_STATUS_ASSIGNED "\",\"registrationState\":{"
@@ -180,7 +180,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_invalid_cert
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/401/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/401/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"errorCode\":401002,\"trackingId\":\"" TEST_ERROR_TRACKING_ID "\","
                          "\"message\":\"" TEST_ERROR_MESSAGE_INVALID_CERT
@@ -226,7 +226,7 @@ static void test_az_iot_provisioning_v2_client_parse_received_topic_payload_disa
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"\",\"status\":\"" TEST_STATUS_DISABLED
                          "\",\"registrationState\":{\"registrationId\":\"" TEST_REGISTRATION_ID
@@ -254,7 +254,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_allocation_e
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          "\",\"status\":\"" TEST_STATUS_FAILED "\",\"registrationState\":{"
@@ -306,7 +306,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_invalid_json
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload = AZ_SPAN_FROM_STR("123");
 
   az_iot_provisioning_v2_client_register_response response;
@@ -323,7 +323,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_operationid_
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR(/*\"operationId\":\"" TEST_OPERATION_ID*/
                          "{\"status\":\"" TEST_STATUS_FAILED "\",\"registrationState\":{"
@@ -349,7 +349,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_operation_st
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          /*"\",\"status\":\"" TEST_STATUS_FAILED */ "\",\"registrationState\":{"
@@ -375,7 +375,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_error_code_n
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload = AZ_SPAN_FROM_STR(
       "{" /*\"errorCode\":401002,*/ "\"trackingId\":\"" TEST_ERROR_TRACKING_ID "\","
       "\"message\":\"" TEST_ERROR_MESSAGE_INVALID_CERT "\",\"timestampUtc\":\"" TEST_ERROR_TIMESTAMP
@@ -395,7 +395,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_invalid_oper
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          "\",\"status\":\"" TEST_STATUS_FAILED "\",\"registrationState\":123}");
@@ -414,7 +414,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_invalid_resu
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          /*"\",\"status\":\"" TEST_STATUS_FAILED */ "\",\"registrationState\":{"
@@ -433,7 +433,7 @@ static void test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          "\",\"status\":\"" TEST_STATUS_ASSIGNED "\",\"registrationState\":{"
@@ -461,7 +461,7 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_device_not_f
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/200/?$rid=1");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
   az_span received_payload
       = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
                          "\",\"status\":\"" TEST_STATUS_ASSIGNED "\",\"registrationState\":{"
@@ -490,7 +490,7 @@ static void test_az_iot_provisioning_v2_client_parse_operation_status_translate_
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/registrations/res/202/?$rid=1&retry-after=3");
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/202/?$rid=1&retry-after=3");
 
   // TEST_STATUS_UNKNOWN
   az_span received_payload = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
@@ -550,7 +550,7 @@ static void test_az_iot_provisioning_v2_client_operation_complete_translate_succ
   assert_true(az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_DISABLED));
 }
 
-static const az_span _log_received_topic = AZ_SPAN_LITERAL_FROM_STR("$dps/registrations/res/202");
+static const az_span _log_received_topic = AZ_SPAN_LITERAL_FROM_STR("$dps/v2/registrations/res/202");
 static const az_span _log_received_payload = AZ_SPAN_LITERAL_FROM_STR("LOG_PAYLOAD");
 
 static int _log_invoked_topic = 0;

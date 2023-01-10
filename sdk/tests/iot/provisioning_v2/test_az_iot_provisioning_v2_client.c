@@ -161,7 +161,7 @@ static void test_az_iot_provisioning_v2_client_get_register_publish_topic_succee
       NULL);
   assert_int_equal(AZ_OK, ret);
 
-  char expected_topic[] = "$dps/registrations/PUT/iotdps-register/?$rid=1";
+  char expected_topic[] = "$dps/v2/registrations/PUT/iotdps-register/?$rid=1";
 
   char topic[sizeof(expected_topic) + 1];
   memset(topic, 0xCC, sizeof(topic));
@@ -222,7 +222,7 @@ static void test_az_iot_provisioning_v2_client_get_operation_status_publish_topi
   assert_int_equal(AZ_OK, ret);
 
   char expected_topic[]
-      = "$dps/registrations/GET/iotdps-get-operationstatus/?$rid=1&operationId=" TEST_OPERATION_ID;
+      = "$dps/v2/registrations/GET/iotdps-get-operationstatus/?$rid=1&operationId=" TEST_OPERATION_ID;
 
   char topic[sizeof(expected_topic) + 1];
   memset(topic, 0xCC, sizeof(topic));
