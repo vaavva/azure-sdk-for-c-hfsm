@@ -104,7 +104,8 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_parse_assign
       &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
   assert_int_equal(AZ_OK, ret);
 
-  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/202/?retry-after=120&$rid=1");
+  az_span received_topic
+      = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/202/?retry-after=120&$rid=1");
   az_span received_payload = AZ_SPAN_FROM_STR(
       "{\"operationId\":\"" TEST_OPERATION_ID "\",\"status\":\"" TEST_STATUS_ASSIGNING
       "\",\"registrationState\":{\"registrationId\":\"" TEST_REGISTRATION_ID
@@ -126,7 +127,7 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_parse_assign
 }
 
 static void
-test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_succeed()
+test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_type_hub_succeed()
 {
   az_iot_provisioning_v2_client client = { 0 };
   az_result ret = az_iot_provisioning_v2_client_init(
@@ -166,6 +167,114 @@ test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_sta
       az_span_ptr(response.registration_state.assigned_endpoint_hostname),
       TEST_HUB_HOSTNAME,
       strlen(TEST_HUB_HOSTNAME));
+  assert_int_equal(
+      response.registration_state.assigned_endpoint_type,
+      AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB);
+  assert_memory_equal(
+      az_span_ptr(response.registration_state.device_id), TEST_DEVICE_ID, strlen(TEST_DEVICE_ID));
+
+  assert_int_equal(0, response.registration_state.error_code);
+  assert_int_equal(0, response.registration_state.extended_error_code);
+  assert_int_equal(0, az_span_size(response.registration_state.error_message));
+}
+
+static void
+test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_type_broker_succeed()
+{
+  az_iot_provisioning_v2_client client = { 0 };
+  az_result ret = az_iot_provisioning_v2_client_init(
+      &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
+  assert_int_equal(AZ_OK, ret);
+
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
+  az_span received_payload
+      = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
+                         "\",\"status\":\"" TEST_STATUS_ASSIGNED "\",\"registrationState\":{"
+                         "\"x509\":{},"
+                         "\"registrationId\":\"" TEST_REGISTRATION_ID "\","
+                         "\"createdDateTimeUtc\":\"2020-04-10T03:11:13.0276997Z\","
+                         "\"assignedEndpoint\":{\"hostName\":\"" TEST_MQTT_BROKER_HOSTNAME "\","
+                         "\"type\":\"mqttBroker\"},"
+                         "\"deviceId\":\"" TEST_DEVICE_ID "\","
+                         "\"status\":\"" TEST_STATUS_ASSIGNED "\","
+                         "\"substatus\":\"initialAssignment\","
+                         "\"lastUpdatedDateTimeUtc\":\"2020-04-10T03:11:13.2096201Z\","
+                         "\"etag\":\"IjYxMDA4ZDQ2LTAwMDAtMDEwMC0wMDAwLTVlOGZlM2QxMDAwMCI=\","
+                         "\"payload\":{\"hello\":\"world\",\"arr\":[1,2,3,4,5,6],\"num\":123}}}");
+
+  az_iot_provisioning_v2_client_register_response response;
+  ret = az_iot_provisioning_v2_client_parse_received_topic_and_payload(
+      &client, received_topic, received_payload, &response);
+  assert_int_equal(AZ_OK, ret);
+
+  // From topic
+  assert_int_equal(AZ_IOT_STATUS_OK, response.status); // 200
+  assert_int_equal(0, response.retry_after_seconds);
+
+  // From payload
+  assert_memory_equal(
+      az_span_ptr(response.operation_id), TEST_OPERATION_ID, strlen(TEST_OPERATION_ID));
+  assert_int_equal(AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNED, response.operation_status);
+  assert_memory_equal(
+      az_span_ptr(response.registration_state.assigned_endpoint_hostname),
+      TEST_MQTT_BROKER_HOSTNAME,
+      strlen(TEST_MQTT_BROKER_HOSTNAME));
+  assert_int_equal(
+      response.registration_state.assigned_endpoint_type,
+      AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER);
+  assert_memory_equal(
+      az_span_ptr(response.registration_state.device_id), TEST_DEVICE_ID, strlen(TEST_DEVICE_ID));
+
+  assert_int_equal(0, response.registration_state.error_code);
+  assert_int_equal(0, response.registration_state.extended_error_code);
+  assert_int_equal(0, az_span_size(response.registration_state.error_message));
+}
+
+
+static void
+test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_type_unknown_succeed()
+{
+  az_iot_provisioning_v2_client client = { 0 };
+  az_result ret = az_iot_provisioning_v2_client_init(
+      &client, test_global_device_hostname, test_id_scope, test_registration_id, NULL);
+  assert_int_equal(AZ_OK, ret);
+
+  az_span received_topic = AZ_SPAN_FROM_STR("$dps/v2/registrations/res/200/?$rid=1");
+  az_span received_payload
+      = AZ_SPAN_FROM_STR("{\"operationId\":\"" TEST_OPERATION_ID
+                         "\",\"status\":\"" TEST_STATUS_ASSIGNED "\",\"registrationState\":{"
+                         "\"x509\":{},"
+                         "\"registrationId\":\"" TEST_REGISTRATION_ID "\","
+                         "\"createdDateTimeUtc\":\"2020-04-10T03:11:13.0276997Z\","
+                         "\"assignedEndpoint\":{\"hostName\":\"" TEST_MQTT_BROKER_HOSTNAME "\","
+                         "\"type\":\"unknown type\"},"
+                         "\"deviceId\":\"" TEST_DEVICE_ID "\","
+                         "\"status\":\"" TEST_STATUS_ASSIGNED "\","
+                         "\"substatus\":\"initialAssignment\","
+                         "\"lastUpdatedDateTimeUtc\":\"2020-04-10T03:11:13.2096201Z\","
+                         "\"etag\":\"IjYxMDA4ZDQ2LTAwMDAtMDEwMC0wMDAwLTVlOGZlM2QxMDAwMCI=\","
+                         "\"payload\":{\"hello\":\"world\",\"arr\":[1,2,3,4,5,6],\"num\":123}}}");
+
+  az_iot_provisioning_v2_client_register_response response;
+  ret = az_iot_provisioning_v2_client_parse_received_topic_and_payload(
+      &client, received_topic, received_payload, &response);
+  assert_int_equal(AZ_OK, ret);
+
+  // From topic
+  assert_int_equal(AZ_IOT_STATUS_OK, response.status); // 200
+  assert_int_equal(0, response.retry_after_seconds);
+
+  // From payload
+  assert_memory_equal(
+      az_span_ptr(response.operation_id), TEST_OPERATION_ID, strlen(TEST_OPERATION_ID));
+  assert_int_equal(AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNED, response.operation_status);
+  assert_memory_equal(
+      az_span_ptr(response.registration_state.assigned_endpoint_hostname),
+      TEST_MQTT_BROKER_HOSTNAME,
+      strlen(TEST_MQTT_BROKER_HOSTNAME));
+  assert_int_equal(
+      response.registration_state.assigned_endpoint_type,
+      AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN);
   assert_memory_equal(
       az_span_ptr(response.registration_state.device_id), TEST_DEVICE_ID, strlen(TEST_DEVICE_ID));
 
@@ -428,7 +537,8 @@ test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_invalid_resu
   assert_int_equal(AZ_ERROR_ITEM_NOT_FOUND, ret);
 }
 
-static void test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_hub_not_found_fails()
+static void
+test_az_iot_provisioning_v2_client_received_topic_and_payload_parse_hub_not_found_fails()
 {
   az_iot_provisioning_v2_client client = { 0 };
   az_result ret = az_iot_provisioning_v2_client_init(
@@ -547,13 +657,18 @@ static void test_az_iot_provisioning_v2_client_operation_complete_translate_succ
 {
   assert_false(
       az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_UNASSIGNED));
-  assert_false(az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNING));
-  assert_true(az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNED));
-  assert_true(az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_FAILED));
-  assert_true(az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_DISABLED));
+  assert_false(
+      az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNING));
+  assert_true(
+      az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_ASSIGNED));
+  assert_true(
+      az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_FAILED));
+  assert_true(
+      az_iot_provisioning_v2_client_operation_complete(AZ_IOT_PROVISIONING_V2_STATUS_DISABLED));
 }
 
-static const az_span _log_received_topic = AZ_SPAN_LITERAL_FROM_STR("$dps/v2/registrations/res/202");
+static const az_span _log_received_topic
+    = AZ_SPAN_LITERAL_FROM_STR("$dps/v2/registrations/res/202");
 static const az_span _log_received_payload = AZ_SPAN_LITERAL_FROM_STR("LOG_PAYLOAD");
 
 static int _log_invoked_topic = 0;
@@ -658,7 +773,11 @@ int test_az_iot_provisioning_v2_client_parser()
     cmocka_unit_test(
         test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_parse_assigning2_state_succeed),
     cmocka_unit_test(
-        test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_succeed),
+        test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_type_hub_succeed),
+    cmocka_unit_test(
+        test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_type_broker_succeed),
+    cmocka_unit_test(
+        test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_assigned_state_type_unknown_succeed),
     cmocka_unit_test(
         test_az_iot_provisioning_v2_client_parse_received_topic_and_payload_invalid_certificate_error_succeed),
     cmocka_unit_test(
