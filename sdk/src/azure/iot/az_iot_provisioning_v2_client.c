@@ -24,7 +24,7 @@ static const az_span prov_registration_id_label = AZ_SPAN_LITERAL_FROM_STR("regi
 static const az_span prov_payload_label = AZ_SPAN_LITERAL_FROM_STR("payload");
 
 // $dps/v2/registrations/res/
-AZ_INLINE az_span _az_iot_provisioning_v2_get_dps_v2_registrations_res()
+AZ_INLINE az_span _az_iot_provisioning_v2_get_dps_registrations_res()
 {
   az_span sub_topic
       = AZ_SPAN_LITERAL_FROM_STR(AZ_IOT_PROVISIONING_V2_CLIENT_REGISTER_SUBSCRIBE_TOPIC);
@@ -37,14 +37,14 @@ AZ_INLINE az_span _az_iot_provisioning_v2_get_dps_v2_registrations_res()
 AZ_INLINE az_span _az_iot_provisioning_v2_get_str_registrations()
 {
   // NOLINTNEXTLINE(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
-  return az_span_slice(_az_iot_provisioning_v2_get_dps_v2_registrations_res(), 7, 22);
+  return az_span_slice(_az_iot_provisioning_v2_get_dps_registrations_res(), 7, 22);
 }
 
 // $dps/v2/registrations/
 AZ_INLINE az_span _az_iot_provisioning_v2_get_str_dps_registrations()
 {
   // NOLINTNEXTLINE(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
-  return az_span_slice(_az_iot_provisioning_v2_get_dps_v2_registrations_res(), 0, 22);
+  return az_span_slice(_az_iot_provisioning_v2_get_dps_registrations_res(), 0, 22);
 }
 
 AZ_NODISCARD az_iot_provisioning_v2_client_options az_iot_provisioning_v2_client_options_default()
@@ -280,7 +280,22 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_payload_error_code(
   return AZ_ERROR_ITEM_NOT_FOUND;
 }
 
-/*{"hostName":"myendpoint.azure.com","type":1}*/
+AZ_INLINE void _az_iot_provisioning_v2_client_parse_endpoint_type(
+    az_json_reader* jr,
+    az_iot_provisioning_v2_endpoint_type* out_type)
+{
+  *out_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN;
+  if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("iotHub")))
+  {
+    *out_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB;
+  }
+  else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("mqttBroker")))
+  {
+    *out_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER;
+  }
+}
+
+/*{"hostName":"myendpoint.azure.com","type":"mqttBroker"}*/
 AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_assigned_endpoint(
     az_json_reader* jr,
     az_iot_provisioning_v2_client_registration_state* out_state)
@@ -290,28 +305,13 @@ AZ_INLINE az_result _az_iot_provisioning_v2_client_parse_assigned_endpoint(
   {
     if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("hostName")))
     {
-     _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
+      _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
       out_state->assigned_endpoint_hostname = jr->token.slice;
     }
     else if (az_json_token_is_text_equal(&jr->token, AZ_SPAN_FROM_STR("type")))
     {
-     _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
-     int32_t type;
-     _az_RETURN_IF_FAILED(az_json_token_get_int32(&jr->token, &type));
-     
-     switch(type)
-     {
-      case 0:
-        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_IOT_HUB;
-        break;
-
-      case 1:
-        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_MQTT_BROKER;
-        break;
-
-      default:
-        out_state->assigned_endpoint_type = AZ_IOT_PROVISIONING_V2_ENDPOINT_TYPE_UNKNOWN;
-     }
+      _az_RETURN_IF_FAILED(az_json_reader_next_token(jr));
+      _az_iot_provisioning_v2_client_parse_endpoint_type(jr, &out_state->assigned_endpoint_type);
     }
   }
 
@@ -564,7 +564,7 @@ AZ_NODISCARD az_result az_iot_provisioning_v2_client_parse_received_topic_and_pa
   _az_PRECONDITION_VALID_SPAN(received_payload, 1, false);
   _az_PRECONDITION_NOT_NULL(out_response);
 
-  az_span str_dps_registrations_res = _az_iot_provisioning_v2_get_dps_v2_registrations_res();
+  az_span str_dps_registrations_res = _az_iot_provisioning_v2_get_dps_registrations_res();
   int32_t idx = az_span_find(received_topic, str_dps_registrations_res);
   if (idx != 0)
   {
