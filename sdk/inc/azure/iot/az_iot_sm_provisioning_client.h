@@ -17,6 +17,7 @@
 #ifndef _az_IOT_SM_PROVISIONING_CLIENT_H
 #define _az_IOT_SM_PROVISIONING_CLIENT_H
 
+#include <azure/core/az_mqtt.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
@@ -41,8 +42,13 @@ typedef struct
 
 AZ_NODISCARD az_iot_sm_provisioning_client_options az_iot_sm_provisioning_client_options_default();
 
-AZ_NODISCARD az_result
-az_iot_sm_provisioning_client_initialize(az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_initialize(
+    az_iot_sm_provisioning_client* client,
+    az_iot_provisioning_client* codec_client,
+    az_hfsm_iot_auth_type auth_type,
+    az_hfsm_iot_auth auth);
+
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_destroy(az_iot_sm_provisioning_client* client);
 
 typedef az_result (*az_iot_sm_provisioning_client_register_status_callback)(
     az_iot_sm_provisioning_client* client);
@@ -55,18 +61,18 @@ AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
     az_iot_sm_provisioning_client_register_status_callback* status_callback,
     az_iot_sm_provisioning_client_register_result_callback* result_callback);
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_cancel(
-    az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result
+az_iot_sm_provisioning_client_register_abort(az_iot_sm_provisioning_client* client);
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_status(
-    az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result
+az_iot_sm_provisioning_client_register_get_status(az_iot_sm_provisioning_client* client);
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_result(
-    az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result
+az_iot_sm_provisioning_client_register_get_result(az_iot_sm_provisioning_client* client);
 
 #ifdef TRANSPORT_MQTT_SYNC
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_sync_process_loop(
-    az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result
+az_iot_sm_provisioning_client_sync_process_loop(az_iot_sm_provisioning_client* client);
 #endif // TRANSPORT_MQTT_SYNC
 
 #include <azure/core/_az_cfg_suffix.h>
