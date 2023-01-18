@@ -457,6 +457,8 @@ int main(int argc, char* argv[])
       &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_DISCONNECT_REQ, NULL }));
 
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
+  _az_RETURN_IF_FAILED(az_platform_mutex_release(&disconnect_mutex));
+
   printf(LOG_APP "Done.\n");
 
   _az_RETURN_IF_FAILED(az_mqtt_deinit());
