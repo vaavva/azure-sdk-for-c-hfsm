@@ -235,3 +235,4 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
 
   return ret;
 }
+

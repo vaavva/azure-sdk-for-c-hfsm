@@ -36,7 +36,25 @@ typedef struct
 {
   struct
   {
-    az_hfsm_iot_provisioning_policy policy;
+    // Pipeline and policies
+    az_hfsm_pipeline prov_pipeline;
+    az_hfsm_policy api_policy;
+    az_hfsm_iot_provisioning_policy prov_policy;
+    az_iot_provisioning_client prov_client;
+    az_hfsm_mqtt_policy mqtt_policy;
+
+    // Register operation
+    az_hfsm_iot_provisioning_register_data register_data;
+
+    // Generated values
+    char topic_buffer[AZ_IOT_MAX_TOPIC_SIZE];
+    char payload_buffer[AZ_IOT_MAX_PAYLOAD_SIZE];
+    char username_buffer[AZ_IOT_MAX_USERNAME_SIZE];
+    char password_buffer[AZ_IOT_MAX_PASSWORD_SIZE];
+    char client_id_buffer[AZ_IOT_MAX_CLIENT_ID_SIZE];
+
+    char hub_name_buffer[AZ_IOT_MAX_HUB_NAME_SIZE];
+    char device_id_name_buffer[AZ_IOT_MAX_CLIENT_ID_SIZE];
   } _internal;
 } az_iot_sm_provisioning_client;
 
