@@ -14,6 +14,7 @@
 #include <azure/core/internal/az_result_internal.h>
 
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
+#include <azure/iot/az_iot_sm_provisioning_client.h>
 
 #include <azure/core/_az_cfg.h>
 
@@ -46,7 +47,7 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {
   az_result ret = AZ_OK;
-  PROV_INSTANCE_INFO* client = (PROV_INSTANCE_INFO*)me;
+  az_iot_sm_provisioning_client* client = (az_iot_sm_provisioning_client*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -63,12 +64,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
     case AZ_HFSM_EVENT_ERROR:
     {
       az_hfsm_event_data_error* err_data = (az_hfsm_event_data_error*)event.data;
-      printf(
-          LOG_COMPAT "\x1B[31mERROR\x1B[0m: Prov Client %p az_result=%s (%x) hfsm=%p\n",
-          me,
-          az_result_string(err_data->error_type),
-          err_data->error_type,
-          err_data->sender_hfsm);
+      // TODO: handle error.
 
       break;
     }
@@ -81,7 +77,7 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
       break;
 
     default:
-      printf(LOG_COMPAT "UNKNOWN event! %x\n", event.type);
+      // TODO: handle error
       az_platform_critical_error();
       break;
   }
@@ -89,10 +85,8 @@ static az_result root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
+AZ_INLINE az_result _register(az_iot_sm_provisioning_client* client)
 {
-  _az_PRECONDITION(client->register_request_data.initialized);
-
   if (client->register_request_data.reg_status_cb != NULL)
   {
     client->register_request_data.reg_status_cb(
@@ -109,7 +103,7 @@ AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
 static az_result idle(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
-  PROV_INSTANCE_INFO* client = (PROV_INSTANCE_INFO*)me;
+  az_iot_sm_provisioning_client* client = (az_iot_sm_provisioning_client*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -137,7 +131,7 @@ static az_result idle(az_hfsm* me, az_hfsm_event event)
 }
 
 AZ_INLINE az_result _handle_register_result(
-    PROV_INSTANCE_INFO* client,
+    az_iot_sm_provisioning_client* client,
     az_hfsm_iot_provisioning_register_response_data* data)
 {
   PROV_DEVICE_REG_STATUS reg_status;
@@ -202,7 +196,7 @@ AZ_INLINE az_result _handle_register_result(
 static az_result running(az_hfsm* me, az_hfsm_event event)
 {
   az_result ret = AZ_OK;
-  PROV_INSTANCE_INFO* client = (PROV_INSTANCE_INFO*)me;
+  az_iot_sm_provisioning_client* client = (az_iot_sm_provisioning_client*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
@@ -213,10 +207,6 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
-      // No-op.
-      break;
-
-    case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
       // No-op.
       break;
 
@@ -235,4 +225,3 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
 
   return ret;
 }
-

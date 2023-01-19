@@ -27,6 +27,15 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
+
+typedef struct az_iot_sm_provisioning_client az_iot_sm_provisioning_client;
+
+typedef az_result (*az_iot_sm_provisioning_client_register_status_callback)(
+    az_iot_sm_provisioning_client* client);
+
+typedef az_result (*az_iot_sm_provisioning_client_register_result_callback)(
+    az_iot_sm_provisioning_client* client);
+
 typedef struct
 {
   bool _unused;
@@ -46,7 +55,10 @@ typedef struct
     // Register operation
     az_hfsm_iot_provisioning_register_data register_data;
 
-    // Generated values
+    az_iot_sm_provisioning_client_register_status_callback* status_callback;
+    az_iot_sm_provisioning_client_register_result_callback* result_callback;
+
+    // Memory for generated fields
     char topic_buffer[AZ_IOT_MAX_TOPIC_SIZE];
     char payload_buffer[AZ_IOT_MAX_PAYLOAD_SIZE];
     char username_buffer[AZ_IOT_MAX_USERNAME_SIZE];
@@ -67,12 +79,6 @@ AZ_NODISCARD az_result az_iot_sm_provisioning_client_initialize(
     az_hfsm_iot_auth auth);
 
 AZ_NODISCARD az_result az_iot_sm_provisioning_client_destroy(az_iot_sm_provisioning_client* client);
-
-typedef az_result (*az_iot_sm_provisioning_client_register_status_callback)(
-    az_iot_sm_provisioning_client* client);
-
-typedef az_result (*az_iot_sm_provisioning_client_register_result_callback)(
-    az_iot_sm_provisioning_client* client);
 
 AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
     az_iot_sm_provisioning_client* client,
