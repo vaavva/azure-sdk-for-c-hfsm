@@ -92,6 +92,27 @@ target_link_libraries(az_iot_hfsm
 
 add_library (az::iot::hfsm ALIAS az_iot_hfsm)
 
+# Azure IoT State Machine Provisioning Library
+add_library (az_iot_sm_provisioning
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_sm_provisioning_client.c
+)
+
+target_include_directories (az_iot_sm_provisioning
+  PUBLIC
+    ${az_SOURCE_DIR}/sdk/inc
+)
+
+target_link_libraries(az_iot_sm_provisioning
+  PUBLIC
+    az::core
+    az::iot::common
+    az::iot::hub
+    az::iot::provisioning
+    az::iot::hfsm
+)
+
+add_library (az::iot::sm::provisioning ALIAS az_iot_sm_provisioning)
+
 # set coverage excluding for az_core. Don't show coverage outside iot
 set(COV_EXCLUDE
   ${az_SOURCE_DIR}/sdk/inc/azure/core/*

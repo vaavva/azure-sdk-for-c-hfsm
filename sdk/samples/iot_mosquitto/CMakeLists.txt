@@ -134,4 +134,40 @@ endif()
 
 create_map_file(mosquitto_iot_sample mosquitto_iot_sample.map)
 
+# Azure IoT State Machine DPS Sample
+add_executable (az_iot_sm_provisioning_sample
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_sm_provisioning_sample.c
+)
+add_compile_definitions(az_iot_sm_provisioning_sample
+  LIBMOSQUITTO_STATIC
+)
+
+target_include_directories(az_iot_sm_provisioning_sample
+  PRIVATE
+    ${MOSQUITTO_INCLUDE_DIR}
+)
+
+target_link_libraries(az_iot_sm_provisioning_sample
+  PRIVATE
+    ${MOSQUITTO_LIBRARIES}
+    ${PTHREAD_LIBRARIES}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
+    az::mosquitto
+    az::iot::hub
+    az::iot::provisioning
+    az::iot::hfsm
+    rt  #HFSM_TODO: Test only: -lrt (Posix) should be included to az_platform, not here.
+)
+
+if(WIN32)
+target_link_libraries(az_iot_sm_provisioning_sample
+  PRIVATE
+  crypt32
+  Ws2_32
+)
+endif()
+
+create_map_file(az_iot_sm_provisioning_sample az_iot_sm_provisioning_sample.map)
+
 endif() # TRANSPORT_MOSQUITTO
