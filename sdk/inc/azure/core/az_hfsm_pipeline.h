@@ -12,6 +12,8 @@
  * @note The blocking I/O model (when TRANSPORT_MQTT_SYNC is defined) is not thread-safe.
  */
 
+// HFSM_TODO: Move to Core/Internal
+
 #ifndef _az_HFSM_PIPELINE_H
 #define _az_HFSM_PIPELINE_H
 

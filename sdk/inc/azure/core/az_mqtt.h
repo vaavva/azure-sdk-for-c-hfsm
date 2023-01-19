@@ -16,6 +16,8 @@
  * and they are subject to change in future versions of the SDK which would break your code.
  */
 
+// HFSM_TODO: Remove HFSM references, provide wrapper implementation and new public API.
+
 #ifndef _az_MQTT_H
 #define _az_MQTT_H
 

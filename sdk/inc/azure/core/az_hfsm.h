@@ -17,6 +17,8 @@
  * and they are subject to change in future versions of the SDK which would break your code.
  */
 
+// HFSM_TODO: Move to Core/Internal
+
 #ifndef _az_HFSM_H
 #define _az_HFSM_H
 
@@ -25,6 +27,8 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
+
+// HFSM_TODO: Events will be public for logging purposes.
 #define _az_HFSM_MAKE_EVENT(hfsm_id, code) \
   ((az_hfsm_event_type)(((uint32_t)(hfsm_id) << 16U) | (uint32_t)(code)))
 
