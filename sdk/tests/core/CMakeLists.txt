@@ -26,10 +26,12 @@ add_cmocka_test(az_core_test SOURCES
                 test_az_base64.c
                 test_az_context.c
                 test_az_hfsm.c
+                test_az_hfsm_pipeline.c
                 test_az_http.c
                 test_az_json.c
                 test_az_logging.c
                 test_az_pipeline.c
+                test_az_platform_mock.c
                 test_az_policy.c
                 test_az_span.c
                 test_az_url_encode.c

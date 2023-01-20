@@ -34,11 +34,6 @@
  */
 typedef void (*az_platform_timer_callback)(void* sdk_data);
 
-
-//HFSM_DESIGN: ARM CMSIS-like typedefs:
-//  The typedefs could change based on the selected platform to the actual types.
-//  e.g. #ifdef PLATFORM_POSIX
-//          #include <az_platform_t_posix.h>
 #if AZ_PLATFORM_IMPL == POSIX
 typedef struct 
 {
@@ -143,7 +138,7 @@ AZ_NODISCARD az_result az_platform_timer_start(az_platform_timer* timer, int32_t
  * 
  * @param[in] timer_handle The timer handle.
  */
-AZ_NODISCARD az_result  az_platform_timer_destroy(az_platform_timer* timer);
+AZ_NODISCARD az_result az_platform_timer_destroy(az_platform_timer* timer);
 
 /**
  * @brief Creates a mutex.

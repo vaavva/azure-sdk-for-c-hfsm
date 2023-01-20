@@ -131,5 +131,7 @@ AZ_NODISCARD az_result az_hfsm_pipeline_sync_process_loop(az_hfsm_pipeline* pipe
   // wait at most AZ_MQTT_SYNC_MAX_POLLING_MILLISECONDS.
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_inbound_event(
       pipeline, (az_hfsm_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
+
+  return AZ_OK;
 }
 #endif

@@ -22,6 +22,7 @@ int main()
   result += test_az_base64();
   result += test_az_context();
   result += test_az_hfsm();
+  result += test_az_hfsm_pipeline();
   result += test_az_http();
   result += test_az_json();
   result += test_az_logging();
