@@ -2,7 +2,7 @@
 /* SPDX-License-Identifier: MIT */
 
 /**
- * @file az_hfsm.c
+ * @file
  * @brief Hierarchical Finite State Machine (HFSM) implementation.
  *
  * @details This implementation is _not_ providing complete HFSM functionality. The following
@@ -20,11 +20,15 @@
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 
+#include <azure/core/_az_cfg.h>
+
 const az_hfsm_event az_hfsm_event_entry = { AZ_HFSM_EVENT_ENTRY, NULL };
 const az_hfsm_event az_hfsm_event_exit = { AZ_HFSM_EVENT_EXIT, NULL };
 
-AZ_NODISCARD az_result
-az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent get_parent_func)
+AZ_NODISCARD az_result az_hfsm_init(
+    az_hfsm* h,
+    az_hfsm_state_handler root_state,
+    az_hfsm_get_parent get_parent_func)
 {
   _az_PRECONDITION_NOT_NULL(h);
   _az_PRECONDITION_NOT_NULL(root_state);
@@ -39,7 +43,9 @@ az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent ge
   return ret;
 }
 
-static AZ_NODISCARD az_result _az_hfsm_recursive_exit(az_hfsm* h, az_hfsm_state_handler source_state)
+static AZ_NODISCARD az_result _az_hfsm_recursive_exit(
+    az_hfsm* h,
+    az_hfsm_state_handler source_state)
 {
   _az_PRECONDITION_NOT_NULL(h);
   _az_PRECONDITION_NOT_NULL(source_state);

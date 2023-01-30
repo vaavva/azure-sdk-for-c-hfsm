@@ -14,43 +14,13 @@
 static az_hfsm az_hfsm_test;
 
 // State handlers
-static int SRoot(az_hfsm* me, az_hfsm_event event);
-static int S01(az_hfsm* me, az_hfsm_event event);
-static int S02(az_hfsm* me, az_hfsm_event event);
-static int S11(az_hfsm* me, az_hfsm_event event);
-static int S12(az_hfsm* me, az_hfsm_event event);
-static int S21(az_hfsm* me, az_hfsm_event event);
-static int S22(az_hfsm* me, az_hfsm_event event);
-
-// Test HFSM hierarchy structure
-static az_hfsm_state_handler az_hfsm_get_parent_test(az_hfsm_state_handler child_state)
-{
-  az_hfsm_state_handler parent_state;
-
-  if ((child_state == SRoot))
-  {
-    parent_state = NULL;
-  }
-  else if ((child_state == S01) || (child_state == S02))
-  {
-    parent_state = SRoot;
-  }
-  else if ((child_state == S11) || (child_state == S12))
-  {
-    parent_state = S01;
-  }
-  else if ((child_state == S21) || (child_state == S22))
-  {
-    parent_state = S11;
-  }
-  else
-  {
-    // Unknown state.
-    parent_state = NULL;
-  }
-
-  return parent_state;
-}
+static int s_root(az_hfsm* me, az_hfsm_event event);
+static int s_01(az_hfsm* me, az_hfsm_event event);
+static int s_02(az_hfsm* me, az_hfsm_event event);
+static int s_11(az_hfsm* me, az_hfsm_event event);
+static int s_12(az_hfsm* me, az_hfsm_event event);
+static int s_21(az_hfsm* me, az_hfsm_event event);
+static int s_22(az_hfsm* me, az_hfsm_event event);
 
 // Test HFSM specific events
 typedef enum
@@ -68,69 +38,114 @@ typedef enum
   T_PEER_2 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 15)
 } test_az_hfsm_event_type;
 
-static int refroot = 0;
-static int ref01 = 0;
-static int ref02 = 0;
-static int ref11 = 0;
-static int ref12 = 0;
-static int ref21 = 0;
-static int ref22 = 0;
-static int tinternal0 = 0;
-static int tinternal1 = 0;
-static int tinternal2 = 0;
-static int ueventroot = 0;
+static az_hfsm_event t_internal_0_evt = { T_INTERNAL_0, NULL };
+static az_hfsm_event t_internal_1_evt = { T_INTERNAL_1, NULL };
+static az_hfsm_event t_internal_2_evt = { T_INTERNAL_2, NULL };
 
-//TestHFSM/SRoot Root State
-static int SRoot(az_hfsm* me, az_hfsm_event event)
+static az_hfsm_event t_sub_r_evt = { T_SUB_R, NULL };
+static az_hfsm_event t_sub_0_evt = { T_SUB_0, NULL };
+static az_hfsm_event t_sub_1_evt = { T_SUB_1, NULL };
+
+static az_hfsm_event t_peer_0_evt = { T_PEER_0, NULL };
+static az_hfsm_event t_peer_1_evt = { T_PEER_1, NULL };
+static az_hfsm_event t_peer_2_evt = { T_PEER_2, NULL };
+
+static az_hfsm_event t_super_1_evt = { T_SUPER_1, NULL };
+static az_hfsm_event t_super_2_evt = { T_SUPER_2, NULL };
+
+static int ref_root = 0;
+static int ref_01 = 0;
+static int ref_02 = 0;
+static int ref_11 = 0;
+static int ref_12 = 0;
+static int ref_21 = 0;
+static int ref_22 = 0;
+static int t_internal_0 = 0;
+static int t_internal_1 = 0;
+static int t_internal_2 = 0;
+static int u_event_root = 0;
+
+// Test HFSM hierarchy structure
+static az_hfsm_state_handler az_hfsm_test_get_parent(az_hfsm_state_handler child_handler)
+{
+  az_hfsm_state_handler parent_handler;
+
+  if ((child_handler == s_root))
+  {
+    parent_handler = NULL;
+  }
+  else if ((child_handler == s_01) || (child_handler == s_02))
+  {
+    parent_handler = s_root;
+  }
+  else if ((child_handler == s_11) || (child_handler == s_12))
+  {
+    parent_handler = s_01;
+  }
+  else if ((child_handler == s_21) || (child_handler == s_22))
+  {
+    parent_handler = s_11;
+  }
+  else
+  {
+    // Unknown state.
+    parent_handler = NULL;
+  }
+
+  return parent_handler;
+}
+
+//TestHFSM/s_root Root Handler
+static int s_root(az_hfsm* me, az_hfsm_event event)
 {
   int ret = AZ_OK;
 
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      refroot++;
+      ref_root++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      refroot--;
+      ref_root--;
       break;
 
     case T_SUB_R:
-      ret = az_hfsm_transition_substate(me, SRoot, S01);
+      ret = az_hfsm_transition_substate(me, s_root, s_01);
       break;
 
     default:
-      ueventroot++;
+      u_event_root++;
   }
 
   return ret;
 }
 
-// TestHFSM/S01
-static int S01(az_hfsm* me, az_hfsm_event event)
+// TestHFSM/s_01
+static int s_01(az_hfsm* me, az_hfsm_event event)
 {
   int ret = AZ_OK;
 
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ref01++;
+      ref_01++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      ref01--;
+      ref_01--;
       break;
 
     case T_SUB_0:
-      ret = az_hfsm_transition_substate(me, S01, S11);
+      ret = az_hfsm_transition_substate(me, s_01, s_11);
       break;
 
     case T_PEER_0:
-      ret = az_hfsm_transition_peer(me, S01, S02);
+      ret = az_hfsm_transition_peer(me, s_01, s_02);
       break;
 
     case T_INTERNAL_0:
-      tinternal0++;
+      t_internal_0++;
       break;
 
     default:
@@ -140,8 +155,8 @@ static int S01(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-// TestHFSM/S02
-static int S02(az_hfsm* me, az_hfsm_event event)
+// TestHFSM/s_02
+static int s_02(az_hfsm* me, az_hfsm_event event)
 {
   (void)me;
 
@@ -150,11 +165,11 @@ static int S02(az_hfsm* me, az_hfsm_event event)
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ref02++;
+      ref_02++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      ref02--;
+      ref_02--;
       break;
 
     default:
@@ -164,31 +179,31 @@ static int S02(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-// TestHFSM/S01/S11
-static int S11(az_hfsm* me, az_hfsm_event event)
+// TestHFSM/s_01/s_11
+static int s_11(az_hfsm* me, az_hfsm_event event)
 {
   int ret = AZ_OK;
 
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ref11++;
+      ref_11++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      ref11--;
+      ref_11--;
       break;
 
     case T_SUB_1:
-      ret = az_hfsm_transition_substate(me, S11, S21);
+      ret = az_hfsm_transition_substate(me, s_11, s_21);
       break;
 
     case T_PEER_1:
-      ret = az_hfsm_transition_peer(me, S11, S12);
+      ret = az_hfsm_transition_peer(me, s_11, s_12);
       break;
 
     case T_INTERNAL_1:
-      tinternal1++;
+      t_internal_1++;
       break;
 
     default:
@@ -198,23 +213,23 @@ static int S11(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-// TestHFSM/S01/S12
-static int S12(az_hfsm* me, az_hfsm_event event)
+// TestHFSM/s_01/s_12
+static int s_12(az_hfsm* me, az_hfsm_event event)
 {
   int ret = AZ_OK;
 
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ref12++;
+      ref_12++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      ref12--;
+      ref_12--;
       break;
 
     case T_SUPER_1:
-      ret = az_hfsm_transition_superstate(me, S12, S01);
+      ret = az_hfsm_transition_superstate(me, s_12, s_01);
       break;
 
     default:
@@ -224,27 +239,27 @@ static int S12(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-// TestHFSM/S01/S11/S21
-static int S21(az_hfsm* me, az_hfsm_event event)
+// TestHFSM/s_01/s_11/s_21
+static int s_21(az_hfsm* me, az_hfsm_event event)
 {
   int ret = AZ_OK;
 
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ref21++;
+      ref_21++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      ref21--;
+      ref_21--;
       break;
 
     case T_PEER_2:
-      ret = az_hfsm_transition_peer(me, S21, S22);
+      ret = az_hfsm_transition_peer(me, s_21, s_22);
       break;
 
     case T_INTERNAL_2:
-      tinternal2++;
+      t_internal_2++;
       break;
 
     default:
@@ -254,23 +269,23 @@ static int S21(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-// TestHFSM/S01/S11/S22
-static int S22(az_hfsm* me, az_hfsm_event event)
+// TestHFSM/s_01/s_11/s_22
+static int s_22(az_hfsm* me, az_hfsm_event event)
 {
   int ret = AZ_OK;
 
   switch ((int)event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      ref22++;
+      ref_22++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      ref22--;
+      ref_22--;
       break;
 
     case T_SUPER_2:
-      ret = az_hfsm_transition_superstate(me, S22, S11);
+      ret = az_hfsm_transition_superstate(me, s_22, s_11);
       break;
 
     default:
@@ -279,121 +294,106 @@ static int S22(az_hfsm* me, az_hfsm_event event)
 
   return ret;
 }
-
-static az_hfsm_event tinternal0_evt = { T_INTERNAL_0, NULL };
-static az_hfsm_event tinternal1_evt = { T_INTERNAL_1, NULL };
-static az_hfsm_event tinternal2_evt = { T_INTERNAL_2, NULL };
-
-static az_hfsm_event tsubr_evt = { T_SUB_R, NULL };
-static az_hfsm_event tsub0_evt = { T_SUB_0, NULL };
-static az_hfsm_event tsub1_evt = { T_SUB_1, NULL };
-
-static az_hfsm_event tpeer0_evt = { T_PEER_0, NULL };
-static az_hfsm_event tpeer1_evt = { T_PEER_1, NULL };
-static az_hfsm_event tpeer2_evt = { T_PEER_2, NULL };
-
-static az_hfsm_event tsuper1_evt = { T_SUPER_1, NULL };
-static az_hfsm_event tsuper2_evt = { T_SUPER_2, NULL };
 
 static void test_az_hfsm_stack_internal_transitions(void** state)
 {
   (void)state;
 
-  // Init SRoot
-  assert_int_equal(az_hfsm_init(&az_hfsm_test, SRoot, az_hfsm_get_parent_test), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == SRoot);
-  assert_true(refroot == 1);
+  // Init s_root
+  assert_int_equal(az_hfsm_init(&az_hfsm_test, s_root, az_hfsm_test_get_parent), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_root);
+  assert_true(ref_root == 1);
 
-  // TSubR S01 -> SRoot
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tsubr_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S01);
-  assert_true(refroot == 1 && ref01 == 1);
+  // TSubR s_01 -> s_root
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_sub_r_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_01);
+  assert_true(ref_root == 1 && ref_01 == 1);
 
-  // TSub0 S01 -> S11
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tsub0_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S11);
-  assert_true(refroot == 1 && ref01 == 1 && ref11 == 1);
+  // TSub0 s_01 -> s_11
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_sub_0_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_11);
+  assert_true(ref_root == 1 && ref_01 == 1 && ref_11 == 1);
 
-  // TSub1 S21
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tsub1_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S21);
-  assert_true(refroot == 1 && ref01 == 1 && ref11 == 1 && ref21 == 1);
+  // TSub1 s_21
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_sub_1_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_21);
+  assert_true(ref_root == 1 && ref_01 == 1 && ref_11 == 1 && ref_21 == 1);
 
-  //TInternal2 S21
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal2_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S21);
-  assert_true(tinternal2 == 1 && ref11 == 1 && ref21 == 1);
+  //TInternal2 s_21
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_2_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_21);
+  assert_true(t_internal_2 == 1 && ref_11 == 1 && ref_21 == 1);
 
-  // TInternal1 S21
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal1_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S21);
-  assert_true(tinternal1 == 1 && ref21 == 1);
+  // TInternal1 s_21
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_1_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_21);
+  assert_true(t_internal_1 == 1 && ref_21 == 1);
 
-  // TInternal0 S21
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal0_evt), AZ_OK);
-  assert_true(tinternal0 == 1);
+  // TInternal0 s_21
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_0_evt), AZ_OK);
+  assert_true(t_internal_0 == 1);
 
-  // TPeer2 S21 -> s22
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tpeer2_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S22);
-  assert_true(refroot == 1 && ref01 == 1 && ref11 == 1 && ref22 == 1);
-  assert_true(ref21 == 0);
+  // TPeer2 s_21 -> s22
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_peer_2_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_22);
+  assert_true(ref_root == 1 && ref_01 == 1 && ref_11 == 1 && ref_22 == 1);
+  assert_true(ref_21 == 0);
 
-  // TInternal1 S22
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal1_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S22);
-  assert_true(tinternal1 == 2 && ref22 == 1);
+  // TInternal1 s_22
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_1_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_22);
+  assert_true(t_internal_1 == 2 && ref_22 == 1);
 
-  // TInternal0 S22
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal0_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S22);
-  assert_true(tinternal0 == 2 && ref22 == 1);
+  // TInternal0 s_22
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_0_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_22);
+  assert_true(t_internal_0 == 2 && ref_22 == 1);
 
-  // TSuper2 S22 -> S11
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tsuper2_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S11);
-  assert_true(refroot == 1 && ref01 == 1 && ref11 == 1);
-  assert_true(ref21 == 0 && ref22 == 0);
+  // TSuper2 s_22 -> s_11
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_super_2_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_11);
+  assert_true(ref_root == 1 && ref_01 == 1 && ref_11 == 1);
+  assert_true(ref_21 == 0 && ref_22 == 0);
 
-  // TInternal1 S11
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal1_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S11);
-  assert_true(tinternal1 == 3);
+  // TInternal1 s_11
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_1_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_11);
+  assert_true(t_internal_1 == 3);
 
-  // TInternal0 S11
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal0_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S11);
-  assert_true(tinternal0 == 3 && ref11 == 1);
+  // TInternal0 s_11
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_0_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_11);
+  assert_true(t_internal_0 == 3 && ref_11 == 1);
 
-  // TPeer1 S11 -> S12
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tpeer1_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S12);
-  assert_true(refroot == 1 && ref01 == 1 && ref12 == 1);
-  assert_true(ref21 == 0 && ref22 == 0 && ref11 == 0);
+  // TPeer1 s_11 -> s_12
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_peer_1_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_12);
+  assert_true(ref_root == 1 && ref_01 == 1 && ref_12 == 1);
+  assert_true(ref_21 == 0 && ref_22 == 0 && ref_11 == 0);
 
-  // TInternal0 S12
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal0_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S12);
-  assert_true(tinternal0 == 4 && ref12 == 1);
+  // TInternal0 s_12
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_0_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_12);
+  assert_true(t_internal_0 == 4 && ref_12 == 1);
 
-  // TSuper1 S12 -> S01
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tsuper1_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S01);
-  assert_true(refroot == 1 && ref01 == 1);
-  assert_true(ref21 == 0 && ref22 == 0 && ref11 == 0 && ref12 == 0);
+  // TSuper1 s_12 -> s_01
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_super_1_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_01);
+  assert_true(ref_root == 1 && ref_01 == 1);
+  assert_true(ref_21 == 0 && ref_22 == 0 && ref_11 == 0 && ref_12 == 0);
 
-  // TInternal0 S01
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tinternal0_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S01);
-  assert_true(tinternal0 == 5 && ref01 == 1);
+  // TInternal0 s_01
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_internal_0_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_01);
+  assert_true(t_internal_0 == 5 && ref_01 == 1);
 
-  //TPeer0 S01 -> S02
-  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, tpeer0_evt), AZ_OK);
-  assert_true(az_hfsm_test._internal.current_state == S02);
-  assert_true(refroot == 1 && ref02 == 1);
-  assert_true(ref21 == 0 && ref22 == 0 && ref11 == 0 && ref12 == 0 && ref01 == 0 && ref02 == 1);
+  //TPeer0 s_01 -> s_02
+  assert_int_equal(az_hfsm_send_event(&az_hfsm_test, t_peer_0_evt), AZ_OK);
+  assert_true(az_hfsm_test._internal.current_state == s_02);
+  assert_true(ref_root == 1 && ref_02 == 1);
+  assert_true(ref_21 == 0 && ref_22 == 0 && ref_11 == 0 && ref_12 == 0 && ref_01 == 0 && ref_02 == 1);
 
-  assert_true(ueventroot == 0);
+  assert_true(u_event_root == 0);
 
 }
 

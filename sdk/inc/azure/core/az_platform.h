@@ -19,8 +19,48 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#if AZ_PLATFORM_IMPL == POSIX
+    #include <time.h>
+    #include <signal.h>
+    #include <pthread.h>
+#endif
 
 #include <azure/core/_az_cfg_prefix.h>
+
+/**
+ * @brief Timer callback.
+ *
+ * @param[in] sdk_data Data passed by the SDK during the #az_platform_timer_create call.
+ */
+typedef void (*az_platform_timer_callback)(void* sdk_data);
+
+#if AZ_PLATFORM_IMPL == POSIX
+/**
+ * @brief Platform timer definition specific to POSIX.
+ */
+typedef struct
+{
+    struct 
+    {
+        az_platform_timer_callback callback;
+        void* sdk_data;
+
+        // POSIX specific
+        timer_t timerid;
+        struct sigevent sev;
+        struct itimerspec trigger;
+    } _internal;
+} az_platform_timer;
+
+/**
+ * @brief Platform mutex definition specific to POSIX.
+ */
+typedef pthread_mutex_t az_platform_mutex;
+
+#else //other AZ_PLATFORM_IMPL
+typedef void* az_platform_timer;
+typedef void* az_platform_mutex;
+#endif
 
 /**
  * @brief Gets the platform clock in milliseconds.
@@ -52,6 +92,122 @@ AZ_NODISCARD az_result az_platform_clock_msec(int64_t* out_clock_msec);
  * function.
  */
 AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds);
+
+/**
+ * @brief Called on critical error. This function should not return.
+ *
+ * @details In general, this function should cause the device to reboot or the main process to
+ *          crash or exit.
+ */
+void az_platform_critical_error();
+
+/**
+ * @brief Gets a positive pseudo-random integer.
+ * 
+ * @param[out] out_random A pseudo-random number greater than 0.
+ * 
+ * @retval #AZ_OK Success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ * 
+ * @note This is NOT cryptographically secure.
+ */
+AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random);
+
+
+/**
+ * @brief Create a timer object.
+ *
+ * @param[in, out] timer_handle The timer handle.
+ * @param[in] callback SDK callback to call when timer elapses.
+ * @param[in] sdk_data SDK data associated with the timer.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK Success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_timer_create(
+    az_platform_timer* timer_handle,
+    az_platform_timer_callback callback,
+    void* sdk_data);
+
+/**
+ * @brief Starts the timer. This function can be called multiple times. The timer should call the
+ *        callback at most once.
+ *
+ * @param[in] timer_handle The timer handle.
+ * @param[in] milliseconds Time in milliseconds after which the platform must call the associated
+ *                     #az_platform_timer_callback.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK Success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_timer_start(
+    az_platform_timer* timer_handle, 
+    int32_t milliseconds);
+
+/**
+ * @brief Destroys a timer.
+ * 
+ * @param[in] timer_handle The timer handle.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK Success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_timer_destroy(az_platform_timer* timer_handle);
+
+/**
+ * @brief Initializes a mutex.
+ * 
+ * @param[in] mutex_handle The mutex handle.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK Success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_mutex_init(az_platform_mutex* mutex_handle);
+
+/**
+ * @brief Acquires a mutex. 
+ * 
+ * @param[in] mutex_handle The mutex handle.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_mutex_acquire(az_platform_mutex* mutex_handle);
+
+/**
+ * @brief Releases a mutex. 
+ * 
+ * @param[in] mutex_handle The mutex handle.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_mutex_release(az_platform_mutex* mutex_handle);
+
+/**
+ * @brief Destroys a mutex. 
+ * 
+ * @param[in] mutex_handle The mutex handle.
+ * 
+ * @return An #az_result value indicating the result of the operation.
+ * @retval #AZ_OK success.
+ * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
+ * function.
+ */
+AZ_NODISCARD az_result az_platform_mutex_destroy(az_platform_mutex* mutex_handle);
 
 #include <azure/core/_az_cfg_suffix.h>
 
