@@ -12,9 +12,14 @@
 AZ_NODISCARD az_result
 az_hfsm_pipeline_init(az_hfsm_pipeline* pipeline, az_hfsm_policy* outbound, az_hfsm_policy* inbound)
 {
+  _az_PRECONDITION_NOT_NULL(pipeline);
+  _az_PRECONDITION_NOT_NULL(outbound);
+  _az_PRECONDITION_NOT_NULL(inbound);
+
   pipeline->_internal.outbound_handler = outbound;
   pipeline->_internal.inbound_handler = inbound;
-#ifndef TRANSPORT_MQTT_SYNC
+
+#ifndef PIPELINE_SYNC
   return az_platform_mutex_init(&pipeline->_internal.mutex);
 #else
   return AZ_OK;
@@ -24,15 +29,17 @@ az_hfsm_pipeline_init(az_hfsm_pipeline* pipeline, az_hfsm_policy* outbound, az_h
 AZ_NODISCARD az_result
 az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event event)
 {
+  _az_PRECONDITION_NOT_NULL(pipeline);
+
   az_result ret;
 
-#ifndef TRANSPORT_MQTT_SYNC
+#ifndef PIPELINE_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
 #endif
 
   ret = az_hfsm_send_event((az_hfsm*)pipeline->_internal.outbound_handler, event);
 
-#ifndef TRANSPORT_MQTT_SYNC
+#ifndef PIPELINE_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));
 #endif
 
@@ -42,15 +49,17 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event e
 AZ_NODISCARD az_result
 az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event event)
 {
+  _az_PRECONDITION_NOT_NULL(pipeline);
+
   az_result ret;
 
-#ifndef TRANSPORT_MQTT_SYNC
+#ifndef PIPELINE_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
 #endif
 
   ret = az_hfsm_send_event((az_hfsm*)pipeline->_internal.inbound_handler, event);
 
-#ifndef TRANSPORT_MQTT_SYNC
+#ifndef PIPELINE_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));
 #endif
 
@@ -60,6 +69,8 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
 AZ_NODISCARD az_result
 az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
 {
+  _az_PRECONDITION_NOT_NULL(policy);
+
   az_result ret = az_hfsm_send_event((az_hfsm*)policy->inbound, event);
   if (az_result_failed(ret))
   {
@@ -80,12 +91,16 @@ az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const 
 AZ_NODISCARD az_result
 az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
 {
+  _az_PRECONDITION_NOT_NULL(policy);
+
   // The error is flowed back to the application.
   return az_hfsm_send_event((az_hfsm*)policy->outbound, event);
 }
 
 static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
 {
+  _az_PRECONDITION_NOT_NULL(sdk_data);
+
   az_hfsm_pipeline_timer* timer = (az_hfsm_pipeline_timer*)sdk_data;
   az_hfsm_event timer_event = (az_hfsm_event){ .type = AZ_HFSM_EVENT_TIMEOUT, .data = timer };
 
@@ -113,15 +128,19 @@ static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
 AZ_NODISCARD az_result
 az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer* out_timer)
 {
+  _az_PRECONDITION_NOT_NULL(pipeline);
+
   out_timer->_internal.pipeline = pipeline;
 
   return az_platform_timer_create(
       &out_timer->platform_timer, _az_hfsm_pipeline_timer_callback, out_timer);
 }
 
-#ifdef TRANSPORT_MQTT_SYNC
+#ifdef PIPELINE_SYNC
 AZ_NODISCARD az_result az_hfsm_pipeline_sync_process_loop(az_hfsm_pipeline* pipeline)
 {
+  _az_PRECONDITION_NOT_NULL(pipeline);
+
   // Process outbound events if any have been cached by the upper layers (e.g. API). This call is
   // blocking.
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(

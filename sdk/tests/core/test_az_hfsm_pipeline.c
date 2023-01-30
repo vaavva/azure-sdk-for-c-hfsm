@@ -15,50 +15,51 @@
 
 static az_hfsm_pipeline az_hfsm_pipeline_test;
 
-static az_hfsm_policy P01; // Outbound
-static az_hfsm_policy P02;
-static az_hfsm_policy P03; // Inbound
+//test_policy_outbound <--> test_policy_middle <--> test_policy_inbound.
+static az_hfsm_policy test_policy_outbound;
+static az_hfsm_policy test_policy_middle;
+static az_hfsm_policy test_policy_inbound;
 
 typedef enum
 {
-  P_OUTBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 5),
-  P_INBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 6),
-  S_INBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 7),
-  S_INBOUND_1 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 8),
-  S_INBOUND_2 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 9),
-  S_INBOUND_3 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 10),
-  S_OUTBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 11),
-  S_OUTBOUND_1 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 12)
+  POST_OUTBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 5),
+  POST_INBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 6),
+  SEND_INBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 7),
+  SEND_INBOUND_1 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 8),
+  SEND_INBOUND_2 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 9),
+  SEND_INBOUND_3 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 10),
+  SEND_OUTBOUND_0 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 11),
+  SEND_OUTBOUND_1 = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 12)
 } test_az_hfsm_pipeline_event_type;
 
-static az_hfsm_event poutbound0_evt = { P_OUTBOUND_0, NULL };
-static az_hfsm_event pinbound0_evt = { P_INBOUND_0, NULL };
-static az_hfsm_event sinbound0_evt = { S_INBOUND_0, NULL };
-static az_hfsm_event sinbound1_evt = { S_INBOUND_1, NULL };
-static az_hfsm_event sinbound2_evt = { S_INBOUND_2, NULL };
-static az_hfsm_event sinbound3_evt = { S_INBOUND_3, NULL };
-static az_hfsm_event soutbound0_evt = { S_OUTBOUND_0, NULL };
-static az_hfsm_event soutbound1_evt = { S_OUTBOUND_1, NULL };
+static az_hfsm_event post_outbound_0_evt = { POST_OUTBOUND_0, NULL };
+static az_hfsm_event post_inbound_0_evt = { POST_INBOUND_0, NULL };
+static az_hfsm_event send_inbound_0_evt = { SEND_INBOUND_0, NULL };
+static az_hfsm_event send_inbound_1_evt = { SEND_INBOUND_1, NULL };
+static az_hfsm_event send_inbound_2_evt = { SEND_INBOUND_2, NULL };
+static az_hfsm_event send_inbound_3_evt = { SEND_INBOUND_3, NULL };
+static az_hfsm_event send_outbound_0_evt = { SEND_OUTBOUND_0, NULL };
+static az_hfsm_event send_outbound_1_evt = { SEND_OUTBOUND_1, NULL };
 
-static int refp01root = 0;
-static int refp02root = 0;
-static int refp03root = 0;
-static int timeout0 = 0;
-static int timeout1 = 0;
-#ifdef TRANSPORT_MQTT_SYNC
-static int loopout0 = 0;
-static int loopin0 = 0;
+static int ref_policy_01_root = 0;
+static int ref_policy_02_root = 0;
+static int ref_policy_03_root = 0;
+static int timeout_0 = 0;
+static int timeout_1 = 0;
+#ifdef PIPELINE_SYNC
+static int loopout_0 = 0;
+static int loopin_0 = 0;
 #endif
-static int poutbound0 = 0;
-static int pinbound0 = 0;
-static int sinbound0 = 0;
-static int sinbound1 = 0;
-static int sinbound2 = 0;
-static int sinbound3 = 0;
-static int soutbound0 = 0;
-static int soutbound1 = 0;
+static int post_outbound_0 = 0;
+static int post_inbound_0 = 0;
+static int send_inbound_0 = 0;
+static int send_inbound_1 = 0;
+static int send_inbound_2 = 0;
+static int send_inbound_3 = 0;
+static int send_outbound_0 = 0;
+static int send_outbound_1 = 0;
 
-static az_result P01Root(az_hfsm* me, az_hfsm_event event)
+static az_result policy_01_root(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
   (void)me;
@@ -66,40 +67,40 @@ static az_result P01Root(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      refp01root++;
+      ref_policy_01_root++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      refp01root--;
+      ref_policy_01_root--;
       break;
 
     case AZ_HFSM_EVENT_TIMEOUT:
-      timeout0++;
-      if (timeout0 > 1)
+      timeout_0++;
+      if (timeout_0 > 1)
       {
         // To test timeout failure.
         ret = AZ_ERROR_ARG;
       }
       break;
 
-    #ifdef TRANSPORT_MQTT_SYNC
+    #ifdef PIPELINE_SYNC
     case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
-      loopout0++;
+      loopout_0++;
       break;
     #endif
 
-    case P_OUTBOUND_0:
-      poutbound0++;
+    case POST_OUTBOUND_0:
+      post_outbound_0++;
       break;
 
-    case S_INBOUND_0:
-      sinbound0++;
-      ret = az_hfsm_pipeline_send_inbound_event((az_hfsm_policy*)me, sinbound1_evt);
+    case SEND_INBOUND_0:
+      send_inbound_0++;
+      ret = az_hfsm_pipeline_send_inbound_event((az_hfsm_policy*)me, send_inbound_1_evt);
       break;
 
-    case S_INBOUND_2:
-      sinbound2++;
-      ret = az_hfsm_pipeline_send_inbound_event((az_hfsm_policy*)me, sinbound3_evt);
+    case SEND_INBOUND_2:
+      send_inbound_2++;
+      ret = az_hfsm_pipeline_send_inbound_event((az_hfsm_policy*)me, send_inbound_3_evt);
       break;
 
     default:
@@ -110,7 +111,7 @@ static az_result P01Root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_result P02Root(az_hfsm* me, az_hfsm_event event)
+static az_result policy_02_root(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
   (void)me;
@@ -118,28 +119,28 @@ static az_result P02Root(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      refp02root++;
+      ref_policy_02_root++;
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      refp02root--;
+      ref_policy_02_root--;
       break;
 
     case AZ_HFSM_EVENT_ERROR:
-      sinbound3++;
+      send_inbound_3++;
       break;
 
-    case S_INBOUND_1:
-      sinbound1++;
+    case SEND_INBOUND_1:
+      send_inbound_1++;
       break;
 
-    case S_INBOUND_3:
-      sinbound3++;
+    case SEND_INBOUND_3:
+      send_inbound_3++;
       ret = AZ_ERROR_ARG;
       break;
 
-    case S_OUTBOUND_1:
-      soutbound1++;
+    case SEND_OUTBOUND_1:
+      send_outbound_1++;
       break;
 
     default:
@@ -150,7 +151,7 @@ static az_result P02Root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_result P03Root(az_hfsm* me, az_hfsm_event event)
+static az_result policy_03_root(az_hfsm* me, az_hfsm_event event)
 {
   int32_t ret = AZ_OK;
   (void)me;
@@ -158,16 +159,16 @@ static az_result P03Root(az_hfsm* me, az_hfsm_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      refp03root++; 
+      ref_policy_03_root++; 
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      refp03root--;
+      ref_policy_03_root--;
       break;
 
-    #ifdef TRANSPORT_MQTT_SYNC
+    #ifdef PIPELINE_SYNC
     case AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP:
-      loopin0++;
+      loopin_0++;
       break;
     #endif
 
@@ -176,20 +177,20 @@ static az_result P03Root(az_hfsm* me, az_hfsm_event event)
       az_hfsm_event_data_error* test_error = (az_hfsm_event_data_error*) event.data;
       if (test_error->error_type == AZ_ERROR_ARG)
       {
-        timeout1++;
+        timeout_1++;
       } else
       {
         ret = AZ_ERROR_NOT_IMPLEMENTED;
       }
       break;
 
-    case P_INBOUND_0:
-      pinbound0++;
+    case POST_INBOUND_0:
+      post_inbound_0++;
       break;
 
-    case S_OUTBOUND_0:
-      soutbound0++;
-      ret = az_hfsm_pipeline_send_outbound_event((az_hfsm_policy*)me, soutbound1_evt);
+    case SEND_OUTBOUND_0:
+      send_outbound_0++;
+      ret = az_hfsm_pipeline_send_outbound_event((az_hfsm_policy*)me, send_outbound_1_evt);
       break;
 
     default:
@@ -200,160 +201,152 @@ static az_result P03Root(az_hfsm* me, az_hfsm_event event)
   return ret;
 }
 
-static az_hfsm_state_handler p01_get_parent_test(az_hfsm_state_handler child_state)
+static az_hfsm_state_handler policy_01_get_parent(az_hfsm_state_handler child_state)
 {
-  az_hfsm_state_handler parent_state;
+  (void)child_state;
 
-  if ((child_state == P01Root))
-  {
-    parent_state = NULL;
-  } else 
-  {
-    parent_state = NULL;
-  }
-
-  return parent_state;
+  return NULL;
 }
 
-static az_hfsm_state_handler p02_get_parent_test(az_hfsm_state_handler child_state)
+static az_hfsm_state_handler policy_02_get_parent(az_hfsm_state_handler child_state)
 {
-  az_hfsm_state_handler parent_state;
+  (void)child_state;
 
-  if ((child_state == P02Root))
-  {
-    parent_state = NULL;
-  } else 
-  {
-    parent_state = NULL;
-  }
-
-  return parent_state;
+  return NULL;
 }
 
-static az_hfsm_state_handler p03_get_parent_test(az_hfsm_state_handler child_state)
+static az_hfsm_state_handler policy_03_get_parent(az_hfsm_state_handler child_state)
 {
-  az_hfsm_state_handler parent_state;
-
-  if ((child_state == P03Root))
-  {
-    parent_state = NULL;
-  } else 
-  {
-    parent_state = NULL;
-  }
-
-  return parent_state;
+  (void)child_state;
+  
+  return NULL;
 }
 
 static void test_az_hfsm_pipeline_init(void** state)
 {
   (void)state;
 
-  // Init P01 policy
-  assert_int_equal(az_hfsm_init((az_hfsm*) &P01, P01Root, p01_get_parent_test), AZ_OK);
-  assert_true(P01.hfsm._internal.current_state == P01Root);
-  assert_true(refp01root == 1);
+  // Init test_policy_outbound policy
+  assert_int_equal(
+    az_hfsm_init((az_hfsm*) &test_policy_outbound, policy_01_root, policy_01_get_parent), AZ_OK);
+  assert_true(test_policy_outbound.hfsm._internal.current_state == policy_01_root);
+  assert_true(ref_policy_01_root == 1);
 
-  // Init P02 policy
-  assert_int_equal(az_hfsm_init((az_hfsm*) &P02, P02Root, p02_get_parent_test), AZ_OK);
-  assert_true(P02.hfsm._internal.current_state == P02Root);
-  assert_true(refp02root == 1);
+  // Init test_policy_middle policy
+  assert_int_equal(
+    az_hfsm_init((az_hfsm*) &test_policy_middle, policy_02_root, policy_02_get_parent), AZ_OK);
+  assert_true(test_policy_middle.hfsm._internal.current_state == policy_02_root);
+  assert_true(ref_policy_02_root == 1);
 
-  // Init P03 policy
-  assert_int_equal(az_hfsm_init((az_hfsm*) &P03, P03Root, p03_get_parent_test), AZ_OK);
-  assert_true(P03.hfsm._internal.current_state == P03Root);
-  assert_true(refp03root == 1);
+  // Init test_policy_inbound policy
+  assert_int_equal(
+    az_hfsm_init((az_hfsm*) &test_policy_inbound, policy_03_root, policy_03_get_parent), AZ_OK);
+  assert_true(test_policy_inbound.hfsm._internal.current_state == policy_03_root);
+  assert_true(ref_policy_03_root == 1);
 
-  P01.inbound = &P02;
-  P02.outbound = &P01;
-  P02.inbound = &P03;
-  P03.outbound = &P02;
+  test_policy_outbound.inbound = &test_policy_middle;
+  test_policy_middle.outbound = &test_policy_outbound;
+  test_policy_middle.inbound = &test_policy_inbound;
+  test_policy_inbound.outbound = &test_policy_middle;
 
-  assert_int_equal(az_hfsm_pipeline_init(&az_hfsm_pipeline_test, &P01, &P03), AZ_OK);
+  assert_int_equal(
+    az_hfsm_pipeline_init(&az_hfsm_pipeline_test, &test_policy_outbound, &test_policy_inbound),
+    AZ_OK);
 }
 
 static void test_az_hfsm_pipeline_post_outbound(void** state)
 {
   (void)state;
+  post_outbound_0 = 0;
 
-  assert_int_equal(az_hfsm_pipeline_post_outbound_event(&az_hfsm_pipeline_test, poutbound0_evt),
-   AZ_OK);
-  assert_true(poutbound0 == 1);
+  assert_int_equal(
+    az_hfsm_pipeline_post_outbound_event(&az_hfsm_pipeline_test, post_outbound_0_evt), AZ_OK);
+  assert_true(post_outbound_0 == 1);
 }
 
 static void test_az_hfsm_pipeline_post_inbound(void** state)
 {
   (void)state;
+  post_inbound_0 = 0;
 
-  assert_int_equal(az_hfsm_pipeline_post_inbound_event(&az_hfsm_pipeline_test, pinbound0_evt),
+  assert_int_equal(az_hfsm_pipeline_post_inbound_event(&az_hfsm_pipeline_test, post_inbound_0_evt),
    AZ_OK);
-  assert_true(pinbound0 == 1);
+  assert_true(post_inbound_0 == 1);
 }
 
 static void test_az_hfsm_pipeline_send_inbound(void** state)
 {
   (void)state;
+  send_inbound_0 = 0;
+  send_inbound_1 = 0;
   
-  assert_int_equal(az_hfsm_pipeline_post_outbound_event(&az_hfsm_pipeline_test, sinbound0_evt),
+  assert_int_equal(az_hfsm_pipeline_post_outbound_event(&az_hfsm_pipeline_test, send_inbound_0_evt),
    AZ_OK);
-  assert_true(sinbound0 == 1);
-  assert_true(sinbound1 == 1);
+  assert_true(send_inbound_0 == 1);
+  assert_true(send_inbound_1 == 1);
 }
 
 static void test_az_hfsm_pipeline_send_inbound_failure(void** state)
 {
   (void)state;
+  send_inbound_2 = 0;
+  send_inbound_3 = 0;
 
-  assert_int_equal(az_hfsm_pipeline_post_outbound_event(&az_hfsm_pipeline_test, sinbound2_evt),
+  assert_int_equal(az_hfsm_pipeline_post_outbound_event(&az_hfsm_pipeline_test, send_inbound_2_evt),
    AZ_OK);
-  assert_true(sinbound2 == 1);
-  assert_true(sinbound3 == 2);
+  assert_true(send_inbound_2 == 1);
+  assert_true(send_inbound_3 == 2);
 }
 
 static void test_az_hsfm_pipeline_send_outbound(void** state)
 {
   (void)state;
+  send_outbound_0 = 0;
+  send_outbound_1 = 0;
 
-  assert_int_equal(az_hfsm_pipeline_post_inbound_event(&az_hfsm_pipeline_test, soutbound0_evt),
+  assert_int_equal(az_hfsm_pipeline_post_inbound_event(&az_hfsm_pipeline_test, send_outbound_0_evt),
    AZ_OK);
-  assert_true(soutbound0 == 1);
-  assert_true(soutbound1 == 1);
+  assert_true(send_outbound_0 == 1);
+  assert_true(send_outbound_1 == 1);
 }
 
 static void test_az_hfsm_pipeline_timer_create_cb_success(void** state)
 {
   (void)state;
   az_hfsm_pipeline_timer test_timer;
-  timeout0 = 0; // Reset timeout counter
+  timeout_0 = 0; // Reset timeout counter
   
   assert_int_equal(az_hfsm_pipeline_timer_create(&az_hfsm_pipeline_test, &test_timer), AZ_OK);
   assert_int_equal(az_platform_timer_start(&(test_timer.platform_timer), 0), AZ_OK);
   test_timer.platform_timer._internal.callback(test_timer.platform_timer._internal.sdk_data);
-  assert_true(timeout0 == 1);
+  assert_true(timeout_0 == 1);
 }
 
 static void test_az_hfsm_pipeline_timer_create_cb_failure(void** state)
 {
   (void)state;
   az_hfsm_pipeline_timer test_timer;
-  timeout0 = 1; // Will cause failure on timeout
+  timeout_0 = 1; // Will cause failure on timeout
+  timeout_1 = 0;
 
   assert_int_equal(az_hfsm_pipeline_timer_create(&az_hfsm_pipeline_test, &test_timer), AZ_OK);
   assert_int_equal(az_platform_timer_start(&(test_timer.platform_timer), 0), AZ_OK);
   test_timer.platform_timer._internal.callback(test_timer.platform_timer._internal.sdk_data);
-  assert_true(timeout0 == 2);
-  assert_true(timeout1 == 1);
+  assert_true(timeout_0 == 2);
+  assert_true(timeout_1 == 1);
 
 }
 
-#ifdef TRANSPORT_MQTT_SYNC
+#ifdef PIPELINE_SYNC
 static void test_az_hfsm_pipeline_sync_process_loop(void** state)
 {
   (void)state;
+  loopout_0 = 0;
+  loopin_0 = 0;
 
   assert_int_equal(az_hfsm_pipeline_sync_process_loop(&az_hfsm_pipeline_test), AZ_OK);
-  assert_true(loopout0 == 1);
-  assert_true(loopin0 == 1);
+  assert_true(loopout_0 == 1);
+  assert_true(loopin_0 == 1);
 }
 #endif
 
@@ -368,7 +361,7 @@ int test_az_hfsm_pipeline()
     cmocka_unit_test(test_az_hsfm_pipeline_send_outbound),
     cmocka_unit_test(test_az_hfsm_pipeline_timer_create_cb_success),
     cmocka_unit_test(test_az_hfsm_pipeline_timer_create_cb_failure),
-    #ifdef TRANSPORT_MQTT_SYNC
+    #ifdef PIPELINE_SYNC
     cmocka_unit_test(test_az_hfsm_pipeline_sync_process_loop),
     #endif
   };
