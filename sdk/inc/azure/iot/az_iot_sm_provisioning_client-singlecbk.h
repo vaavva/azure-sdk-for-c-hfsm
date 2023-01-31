@@ -69,7 +69,7 @@ typedef struct
 
 AZ_NODISCARD az_iot_sm_provisioning_client_options az_iot_sm_provisioning_client_options_default();
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_initialize(
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_init(
     az_iot_sm_provisioning_client* client,
     az_iot_provisioning_client* codec_client,
     az_hfsm_iot_auth_type auth_type,
@@ -86,7 +86,7 @@ az_iot_sm_provisioning_client_register_abort(az_iot_sm_provisioning_client* clie
 
 AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_result(
     az_iot_sm_provisioning_client* client,
-    az_iot_provisioning_client_register_response* out_response);
+    az_iot_provisioning_client_register_response** out_response);
 
 #ifdef TRANSPORT_MQTT_SYNC
 AZ_NODISCARD az_result

@@ -27,7 +27,6 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
-
 typedef struct az_iot_sm_provisioning_client az_iot_sm_provisioning_client;
 
 typedef az_result (*az_iot_sm_provisioning_client_register_status_callback)(
@@ -72,7 +71,7 @@ typedef struct
 
 AZ_NODISCARD az_iot_sm_provisioning_client_options az_iot_sm_provisioning_client_options_default();
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_initialize(
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_init(
     az_iot_sm_provisioning_client* client,
     az_iot_provisioning_client* codec_client,
     az_hfsm_iot_auth_type auth_type,
@@ -88,11 +87,13 @@ AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
 AZ_NODISCARD az_result
 az_iot_sm_provisioning_client_register_abort(az_iot_sm_provisioning_client* client);
 
-AZ_NODISCARD az_result
-az_iot_sm_provisioning_client_register_get_status(az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_status(
+    az_iot_sm_provisioning_client* client,
+    az_iot_provisioning_client_register_response* out_response);
 
-AZ_NODISCARD az_result
-az_iot_sm_provisioning_client_register_get_result(az_iot_sm_provisioning_client* client);
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_result(
+    az_iot_sm_provisioning_client* client,
+    az_iot_provisioning_client_register_response* out_response);
 
 #ifdef TRANSPORT_MQTT_SYNC
 AZ_NODISCARD az_result

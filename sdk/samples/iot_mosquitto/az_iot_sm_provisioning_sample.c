@@ -24,6 +24,8 @@
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 #include <azure/iot/internal/az_iot_retry_hfsm.h>
 
+#include <azure/iot/az_iot_sm_provisioning_client.h>
+
 #include "mosquitto.h"
 
 static const az_span dps_endpoint
@@ -163,6 +165,29 @@ void az_platform_critical_error()
     ;
 }
 
+static az_platform_mutex disconnect_mutex;
+static az_iot_provisioning_client prov_codec;
+static az_iot_sm_provisioning_client prov_client;
+
+
+az_result prov_registration_status_callback(az_iot_sm_provisioning_client* client)
+{
+  az_iot_provisioning_client_register_response* response;
+  az_iot_sm_provisioning_client_register_get_status(client, &response);
+
+  // guaranteed that response here is an intermediate result
+}
+
+az_result prov_registraiton_result_callback(az_iot_sm_provisioning_client* client)
+{
+  az_iot_provisioning_client_register_response* response;
+  az_iot_sm_provisioning_client_register_get_result(client, &response);
+
+  // guaranteed that response here is the final result
+
+  az_platform_mutex_release(&disconnect_mutex);
+}
+
 int main(int argc, char* argv[])
 {
   (void)argc;
@@ -175,8 +200,6 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  _az_RETURN_IF_FAILED(initialize());
-
   az_hfsm_iot_x509_auth auth = (az_hfsm_iot_x509_auth){
     .cert = cert_path1,
     .key = key_path1,
@@ -185,18 +208,11 @@ int main(int argc, char* argv[])
   _az_RETURN_IF_FAILED(az_platform_mutex_init(&disconnect_mutex));
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
 
-  // HFSM_DESIGN: declarative API
-  az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
-    .auth = auth,
-    .auth_type = AZ_HFSM_IOT_AUTH_X509, // HFSM_DESIGN: dynamic typing
-    .client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer),
-    .username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer),
-    .password_buffer = AZ_SPAN_FROM_BUFFER(password_buffer),
-    .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
-    .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
-  };
-  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
-      &prov_pipeline, (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ, &register_data }));
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(&prov_codec, ...));
+  _az_RETURN_IF_FAILED(
+      az_iot_sm_provisioning_client_init(&prov_client, &prov_codec, AZ_HFSM_IOT_AUTH_X509, auth));
+
+  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, ))
 
   for (int i = 15; i > 0; i--)
   {
