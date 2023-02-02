@@ -9,6 +9,17 @@
  *
  * @details For more details on Azure IoT MQTT requirements please see
  * https://docs.microsoft.com/azure/iot-hub/iot-hub-mqtt-support.
+ * - Outbound APIs will be called by the SDK to send data over the network.
+ * - Inbound API calls must be called by the MQTT implementation to send data towards the SDK.
+ *
+ * @note Object lifetime: all APIs have run-to-completion semantics. Data passed into the APIs
+ *       is owned by the API for the duration of the call.
+ *
+ * @note API I/O model: It is generally expected that all operations are asynchronous. An outbound
+ *       call should not block, and may occur on the same call-stack, as a result of an inbound
+ *       call.
+ *
+ * @note The SDK expects that the network stack is stalled for the duration of the API calls.
  *
  * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
@@ -16,14 +27,10 @@
  * and they are subject to change in future versions of the SDK which would break your code.
  */
 
-// HFSM_TODO: Remove HFSM references, provide wrapper implementation and new public API.
-
 #ifndef _az_MQTT_H
 #define _az_MQTT_H
 
 #include <azure/core/az_config.h>
-#include <azure/core/az_hfsm.h>
-#include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
@@ -37,14 +44,45 @@
 
 // MQTT library handle (type defined by implementation)
 typedef void* az_mqtt_impl;
+typedef void* az_mqtt_impl_options;
+
+typedef struct
+{
+  /**
+   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
+   */
+  az_span certificate_authority_trusted_roots;
+  // HFSM_DESIGN: Extension point to add MQTT stack specific options here.
+  az_mqtt_impl_options implementation_specific_options;
+} az_mqtt_options;
+
+typedef struct
+{
+  // Derived from az_policy which is a kind of az_hfsm.
+  struct
+  {
+    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional
+    //              memory reserved for the implementation:
+    az_mqtt_impl mqtt;
+    az_mqtt_options options;
+  } _internal;
+} az_mqtt;
+
+AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
+
+AZ_NODISCARD az_result az_mqtt_init(az_mqtt* out_mqtt, az_mqtt_options const* options);
 
 typedef struct
 {
   az_span topic;
   az_span payload;
   int8_t qos;
+
+  // The MQTT stack should set this ID upon returning.
   int32_t out_id;
-} az_hfsm_mqtt_pub_data;
+} az_mqtt_pub_data;
+
+AZ_NODISCARD az_result az_mqtt_outbound_pub(az_mqtt* mqtt, az_mqtt_pub_data pub_data);
 
 typedef struct
 {
@@ -52,24 +90,32 @@ typedef struct
   az_span payload;
   int8_t qos;
   int32_t id;
-} az_hfsm_mqtt_recv_data;
+} az_mqtt_recv_data;
+
+AZ_NODISCARD az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
 
 typedef struct
 {
   int32_t id;
-} az_hfsm_mqtt_puback_data;
+} az_mqtt_puback_data;
+
+AZ_NODISCARD az_result az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
 
 typedef struct
 {
   az_span topic_filter;
   int8_t qos;
   int32_t out_id;
-} az_hfsm_mqtt_sub_data;
+} az_mqtt_sub_data;
+
+AZ_NODISCARD az_result az_mqtt_outbound_sub(az_mqtt* mqtt, az_mqtt_sub_data sub_data);
 
 typedef struct
 {
   int32_t id;
-} az_hfsm_mqtt_suback_data;
+} az_mqtt_suback_data;
+
+AZ_NODISCARD az_result az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data suback_data);
 
 typedef struct
 {
@@ -81,109 +127,25 @@ typedef struct
 
   az_span client_certificate;
   az_span client_private_key;
+} az_mqtt_connect_data;
 
-} az_hfsm_mqtt_connect_data;
+AZ_NODISCARD az_result az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data);
 
 typedef struct
 {
   int32_t connack_reason;
-} az_hfsm_mqtt_connack_data;
+} az_mqtt_connack_data;
+
+AZ_NODISCARD az_result az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data);
 
 typedef struct
 {
   int32_t disconnect_reason;
   bool disconnect_requested;
-} az_hfsm_mqtt_disconnect_data;
+} az_mqtt_disconnect_data;
 
-typedef struct
-{
-  /**
-   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
-   */
-  az_span certificate_authority_trusted_roots;
-} az_hfsm_mqtt_policy_options;
-
-/**
- * @brief Azure MQTT HFSM.
- * @details Derives from az_hfsm.
- *
- */
-typedef struct
-{
-  // Derived from az_policy which is a kind of az_hfsm.
-  struct
-  {
-    az_hfsm_policy policy;
-
-    // Extension point for the implementation.
-    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional
-    //              memory reserved for the implementation:
-    az_mqtt_impl mqtt;
-    az_hfsm_mqtt_policy_options options;
-  } _internal;
-} az_hfsm_mqtt_policy;
-
-/**
- * @brief Azure MQTT HFSM event types.
- *
- */
-// HFSM_TODO: az_log_classification_iot uses _az_FACILITY_IOT_MQTT up to ID 2.
-enum az_hfsm_event_type_mqtt
-{
-  /// MQTT Connect Request event.
-  AZ_HFSM_MQTT_EVENT_CONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 10),
-
-  /// MQTT Connect Response event.
-  AZ_HFSM_MQTT_EVENT_CONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 11),
-
-  AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 12),
-
-  AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 13),
-
-  AZ_HFSM_MQTT_EVENT_PUB_RECV_IND = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 14),
-
-  AZ_HFSM_MQTT_EVENT_PUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 15),
-
-  AZ_HFSM_MQTT_EVENT_PUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 16),
-
-  AZ_HFSM_MQTT_EVENT_SUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
-
-  AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 18),
-};
-
-AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default();
-
-/**
- * @brief Initializes the MQTT Platform Layer.
- *
- * @param mqtt_hfsm The #az_hfsm MQTT state machine instance.
- * @param parent The IoT client state machine dispatcher that will receive events from this
- *                   machine.
- * @param client_id
- * @param options
- * @return #az_result
- */
-AZ_NODISCARD az_result az_mqtt_initialize(
-    az_hfsm_mqtt_policy* mqtt_hfsm,
-    az_hfsm_pipeline* pipeline,
-    az_hfsm_policy* inbound_policy,
-    az_hfsm_mqtt_policy_options const* options);
-
-/**
- * @brief Initialization of the MQTT Stack.
- * @details Must be called at most once by the application before the MQTT stack is used.
- *
- * @return #az_result
- */
-AZ_NODISCARD az_result az_mqtt_init();
-
-/**
- * @brief Deinitialization of the MQTT Stack.
- * @details Must be called at most once by the application to release MQTT stack resources.
- *
- * @return #az_result
- */
-AZ_NODISCARD az_result az_mqtt_deinit();
+AZ_NODISCARD az_result
+az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data disconnect_data);
 
 #include <azure/core/_az_cfg_suffix.h>
 
