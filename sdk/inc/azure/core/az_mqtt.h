@@ -21,6 +21,9 @@
  *
  * @note The SDK expects that the network stack is stalled for the duration of the API calls.
  *
+ * @note All API implementations must return az_result.
+ * We recommend using `_az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, mqtt_stack_ret);` if compatible.
+ *
  * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
  * are part of Azure SDK's internal implementation; we do not document these symbols
@@ -33,6 +36,8 @@
 #include <azure/core/az_config.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+
+#include <azure/core/internal/az_hfsm_mqtt.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -58,13 +63,13 @@ typedef struct
 
 typedef struct
 {
-  // Derived from az_policy which is a kind of az_hfsm.
+  az_mqtt_impl mqtt;
+  az_mqtt_options options;
+
   struct
   {
-    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional
-    //              memory reserved for the implementation:
-    az_mqtt_impl mqtt;
-    az_mqtt_options options;
+    // Internal usage by SDK.
+    az_mqtt_hfsm _mqtt_hfsm;
   } _internal;
 } az_mqtt;
 
@@ -134,13 +139,14 @@ AZ_NODISCARD az_result az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_d
 typedef struct
 {
   int32_t connack_reason;
+  bool tls_authentication_error;
 } az_mqtt_connack_data;
 
 AZ_NODISCARD az_result az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data);
 
 typedef struct
 {
-  int32_t disconnect_reason;
+  bool tls_authentication_error;
   bool disconnect_requested;
 } az_mqtt_disconnect_data;
 
