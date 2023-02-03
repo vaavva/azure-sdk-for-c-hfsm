@@ -30,7 +30,7 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event e
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
 #endif
 
-  ret = az_hfsm_send_event((az_hfsm*)pipeline->_internal.outbound_handler, event);
+  ret = az_hfsm_pipeline_send_outbound_event(pipeline->_internal.outbound_handler, event);
 
 #ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));
@@ -48,7 +48,7 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
 #endif
 
-  ret = az_hfsm_send_event((az_hfsm*)pipeline->_internal.inbound_handler, event);
+  ret = az_hfsm_pipeline_send_inbound_event(pipeline->_internal.inbound_handler, event);
 
 #ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));

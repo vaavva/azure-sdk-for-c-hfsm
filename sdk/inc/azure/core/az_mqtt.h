@@ -37,7 +37,7 @@
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
-#include <azure/core/internal/az_hfsm_mqtt.h>
+#include <azure/core/az_hfsm_pipeline.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,8 +48,14 @@
 //            simplify logging.
 
 // MQTT library handle (type defined by implementation)
+typedef struct az_mqtt az_mqtt;
 typedef void* az_mqtt_impl;
 typedef void* az_mqtt_impl_options;
+
+typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
+typedef void (*az_mqtt_puback_handler)(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
+typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_hfsm_event event);
+typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_hfsm_event event);
 
 typedef struct
 {
@@ -60,18 +66,6 @@ typedef struct
   // HFSM_DESIGN: Extension point to add MQTT stack specific options here.
   az_mqtt_impl_options implementation_specific_options;
 } az_mqtt_options;
-
-typedef struct
-{
-  az_mqtt_impl mqtt;
-  az_mqtt_options options;
-
-  struct
-  {
-    // Internal usage by SDK.
-    az_mqtt_hfsm _mqtt_hfsm;
-  } _internal;
-} az_mqtt;
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
@@ -97,14 +91,25 @@ typedef struct
   int32_t id;
 } az_mqtt_recv_data;
 
-AZ_NODISCARD az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
+typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data event);
+AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data) {
+  if (mqtt->_internal->recv_handler)
+  {
+    return mqtt->_internal->recv_handler(mqtt, recv_data);
+  }
+
+  return AZ_ERROR_NOT_IMPLEMENTED;
+}
 
 typedef struct
 {
   int32_t id;
 } az_mqtt_puback_data;
 
-AZ_NODISCARD az_result az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data puback_data)
+{
+}
 
 typedef struct
 {
@@ -120,7 +125,10 @@ typedef struct
   int32_t id;
 } az_mqtt_suback_data;
 
-AZ_NODISCARD az_result az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data suback_data);
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data suback_data)
+{
+}
 
 typedef struct
 {
@@ -142,7 +150,10 @@ typedef struct
   bool tls_authentication_error;
 } az_mqtt_connack_data;
 
-AZ_NODISCARD az_result az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data);
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data)
+{
+}
 
 typedef struct
 {
@@ -150,8 +161,20 @@ typedef struct
   bool disconnect_requested;
 } az_mqtt_disconnect_data;
 
-AZ_NODISCARD az_result
-az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data disconnect_data);
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data disconnect_data)
+{
+}
+
+struct az_mqtt
+{
+  struct {
+    az_mqtt_recv_handler* recv_handler;
+  } _internal;
+
+  az_mqtt_impl mqtt;
+  az_mqtt_options options;
+};
 
 #include <azure/core/_az_cfg_suffix.h>
 
