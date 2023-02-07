@@ -34,6 +34,7 @@
 #define _az_MQTT_H
 
 #include <azure/core/az_config.h>
+#include <azure/core/az_context.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
@@ -51,11 +52,6 @@
 typedef struct az_mqtt az_mqtt;
 typedef void* az_mqtt_impl;
 typedef void* az_mqtt_impl_options;
-
-typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
-typedef void (*az_mqtt_puback_handler)(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
-typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_hfsm_event event);
-typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_hfsm_event event);
 
 typedef struct
 {
@@ -81,7 +77,8 @@ typedef struct
   int32_t out_id;
 } az_mqtt_pub_data;
 
-AZ_NODISCARD az_result az_mqtt_outbound_pub(az_mqtt* mqtt, az_mqtt_pub_data pub_data);
+AZ_NODISCARD az_result
+az_mqtt_outbound_pub(az_mqtt* mqtt, az_mqtt_pub_data pub_data, az_context context);
 
 typedef struct
 {
@@ -91,25 +88,10 @@ typedef struct
   int32_t id;
 } az_mqtt_recv_data;
 
-typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data event);
-AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data) {
-  if (mqtt->_internal->recv_handler)
-  {
-    return mqtt->_internal->recv_handler(mqtt, recv_data);
-  }
-
-  return AZ_ERROR_NOT_IMPLEMENTED;
-}
-
 typedef struct
 {
   int32_t id;
 } az_mqtt_puback_data;
-
-AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data puback_data)
-{
-}
 
 typedef struct
 {
@@ -118,17 +100,13 @@ typedef struct
   int32_t out_id;
 } az_mqtt_sub_data;
 
-AZ_NODISCARD az_result az_mqtt_outbound_sub(az_mqtt* mqtt, az_mqtt_sub_data sub_data);
+AZ_NODISCARD az_result
+az_mqtt_outbound_sub(az_mqtt* mqtt, az_mqtt_sub_data sub_data, az_context context);
 
 typedef struct
 {
   int32_t id;
 } az_mqtt_suback_data;
-
-AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data suback_data)
-{
-}
 
 typedef struct
 {
@@ -142,7 +120,8 @@ typedef struct
   az_span client_private_key;
 } az_mqtt_connect_data;
 
-AZ_NODISCARD az_result az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data);
+AZ_NODISCARD az_result
+az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data, az_context context);
 
 typedef struct
 {
@@ -150,31 +129,96 @@ typedef struct
   bool tls_authentication_error;
 } az_mqtt_connack_data;
 
-AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data)
-{
-}
-
 typedef struct
 {
   bool tls_authentication_error;
   bool disconnect_requested;
 } az_mqtt_disconnect_data;
 
-AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data disconnect_data)
-{
-}
+typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_mqtt_connack_data data);
+typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
+typedef void (*az_mqtt_puback_handler)(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
+typedef void (*az_mqtt_suback_handler)(az_mqtt* mqtt, az_mqtt_suback_data puback_data);
+typedef void (*az_mqtt_disconnect_handler)(az_mqtt* mqtt, az_mqtt_disconnect_data data);
 
 struct az_mqtt
 {
-  struct {
-    az_mqtt_recv_handler* recv_handler;
+  struct
+  {
+    az_mqtt_connack_handler* _connack_handler;
+    az_mqtt_recv_handler* _recv_handler;
+    az_mqtt_puback_handler* _puback_handler;
+    az_mqtt_suback_handler* _suback_handler;
+    az_mqtt_disconnect_handler* _disconnect_handler;
   } _internal;
 
   az_mqtt_impl mqtt;
   az_mqtt_options options;
 };
+
+AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data)
+{
+  if (mqtt->_internal._recv_handler)
+  {
+    return mqtt->_internal._recv_handler(mqtt, recv_data);
+  }
+  else
+  {
+    return AZ_ERROR_NOT_IMPLEMENTED;
+  }
+}
+
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data)
+{
+  if (mqtt->_internal._connack_handler)
+  {
+    return mqtt->_internal._connack_handler(mqtt, connack_data);
+  }
+  else
+  {
+    return AZ_ERROR_NOT_IMPLEMENTED;
+  }
+}
+
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data suback_data)
+{
+  if (mqtt->_internal._suback_handler)
+  {
+    return mqtt->_internal._suback_handler(mqtt, suback_data);
+  }
+  else
+  {
+    return AZ_ERROR_NOT_IMPLEMENTED;
+  }
+}
+
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data puback_data)
+{
+  if (mqtt->_internal._puback_handler)
+  {
+    return mqtt->_internal._puback_handler(mqtt, puback_data);
+  }
+  else
+  {
+    return AZ_ERROR_NOT_IMPLEMENTED;
+  }
+}
+
+AZ_NODISCARD AZ_INLINE az_result
+az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data disconnect_data)
+{
+  if (mqtt->_internal._disconnect_handler)
+  {
+    return mqtt->_internal._disconnect_handler(mqtt, disconnect_data);
+  }
+  else
+  {
+    return AZ_ERROR_NOT_IMPLEMENTED;
+  }
+}
 
 #include <azure/core/_az_cfg_suffix.h>
 
