@@ -12,10 +12,9 @@
  * and they are subject to change in future versions of the SDK which would break your code.
  */
 
-#ifndef _az_CREDENTIALS_H
-#define _az_CREDENTIALS_H
+#ifndef _az_CREDENTIALS_X509_H
+#define _az_CREDENTIALS_X509_H
 
-#include <azure/core/az_http_transport.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
@@ -27,13 +26,6 @@
  * @brief Equivalent to no credential (`NULL`).
  */
 #define AZ_CREDENTIAL_ANONYMOUS NULL
-
-/**
- * @brief Function callback definition as a contract to be implemented for a credential to set
- * authentication scopes when it is supported by the type of the credential.
- */
-typedef AZ_NODISCARD az_result (
-    *_az_credential_set_scopes_fn)(void* ref_credential, az_span scopes);
 
 /**
  * @brief Credential definition. It is used internally to authenticate an SDK client with Azure.
@@ -55,4 +47,4 @@ typedef struct
 
 #include <azure/core/_az_cfg_suffix.h>
 
-#endif // _az_CREDENTIALS_H
+#endif // _az_CREDENTIALS_X509_H
