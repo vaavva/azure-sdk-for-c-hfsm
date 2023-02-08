@@ -22,28 +22,20 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
-/**
- * @brief Equivalent to no credential (`NULL`).
- */
-#define AZ_CREDENTIAL_ANONYMOUS NULL
+#define AZ_CREDENTIAL_X509_ANONYMOUS NULL
 
-/**
- * @brief Credential definition. It is used internally to authenticate an SDK client with Azure.
- * All types of credentials must contain this structure as their first member.
- */
+typedef enum
+{
+  AZ_CREDENTIALS_X509_KEY_MEMORY = 0,
+  AZ_CREDENTIALS_X509_KEY_SECURITY_MODULE = 1,
+} az_credential_x509_key_type;
+
 typedef struct
 {
-  struct
-  {
-
-    // HFSM_TODO: az_credentials must be generic with x-protocol support (instead of just HTTP)
-    //            specific credentials objects should exist for HTTP(blob/sas) / MQTT(X.509 cert).
-    _az_http_policy_process_fn apply_credential_policy;
-
-    /// If the credential doesn't support scopes, this function pointer is `NULL`.
-    _az_credential_set_scopes_fn set_scopes;
-  } _internal;
-} _az_credential;
+  az_span cert;
+  az_span key;
+  az_credential_x509_key_type key_type;
+} az_credential_x509;
 
 #include <azure/core/_az_cfg_suffix.h>
 
