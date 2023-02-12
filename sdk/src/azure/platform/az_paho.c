@@ -141,8 +141,31 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 {
   // MQTT Packet ID is not supported by Paho.
   sub_data->out_id = 0;
-  return _az_result_from_paho(
-      MQTTClient_subscribe(mqtt->mqtt_handle, az_span_ptr(sub_data->topic_filter), sub_data->qos));
+  int rc
+      = MQTTClient_subscribe(mqtt->mqtt_handle, az_span_ptr(sub_data->topic_filter), sub_data->qos);
+
+  switch (rc)
+  {
+    case MQTTCLIENT_SUCCESS:
+      _az_RETURN_IF_FAILED(az_mqtt_inbound_suback(mqtt, &(az_mqtt_suback_data){ .id = 0 }));
+      break;
+
+    case MQTTCLIENT_DISCONNECTED:
+    {
+      // Paho is not specific regarding TLS auth error.
+      _az_RETURN_IF_FAILED(az_mqtt_inbound_disconnect(
+          mqtt,
+          &(az_mqtt_disconnect_data){ .disconnect_requested = false,
+                                      .tls_authentication_error = false }));
+      break;
+    }
+
+    default:
+      return AZ_ERROR_NOT_IMPLEMENTED;
+      break;
+  }
+
+  return _az_result_from_paho(rc);
 }
 
 AZ_NODISCARD az_result
@@ -156,17 +179,49 @@ az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_d
   pubmsg.retained = 0;
 
   // Publish the register request.
-  _az_RETURN_IF_FAILED(_az_result_from_paho(
-      MQTTClient_publishMessage(mqtt->mqtt_handle, az_span_ptr(pub_data->topic), &pubmsg, NULL)));
+  int rc
+      = MQTTClient_publishMessage(mqtt->mqtt_handle, az_span_ptr(pub_data->topic), &pubmsg, NULL);
 
-  // HFSM_TODO: verify if this is working as intended.
-  pub_data->out_id = pubmsg.msgid;
+  switch (rc)
+  {
+    case MQTTCLIENT_SUCCESS:
+      pub_data->out_id = pubmsg.msgid;
+      _az_RETURN_IF_FAILED(
+          az_mqtt_inbound_puback(mqtt, &(az_mqtt_puback_data){ .id = pub_data->out_id }));
+      break;
+
+    case MQTTCLIENT_DISCONNECTED:
+    {
+      // Paho is not specific regarding TLS auth error.
+      _az_RETURN_IF_FAILED(az_mqtt_inbound_disconnect(
+          mqtt,
+          &(az_mqtt_disconnect_data){ .disconnect_requested = false,
+                                      .tls_authentication_error = false }));
+      break;
+    }
+
+    default:
+      return AZ_ERROR_NOT_IMPLEMENTED;
+      break;
+  }
 }
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context)
 {
-  int rc = MQTTClient_receive(mqtt_client, &topic, &topic_len, &message, MQTT_TIMEOUT_RECEIVE_MS);
-  if ((rc != MQTTCLIENT_SUCCESS) && (rc != MQTTCLIENT_TOPICNAME_TRUNCATED))
+  int rc = MQTTClient_disconnect(mqtt->mqtt_handle, AZ_IOT_MQTT_DISCONNECT_MS);
+  switch (rc)
+  {
+    case MQTTCLIENT_SUCCESS:
+      _az_RETURN_IF_FAILED(az_mqtt_inbound_disconnect(
+          mqtt,
+          &(az_mqtt_disconnect_data){ .disconnect_requested = true,
+                                      .tls_authentication_error = false }));    
+      break;
+
+    default:
+      return AZ_ERROR_NOT_IMPLEMENTED;
+      break;
+  }
 }
 
 AZ_NODISCARD az_result az_mqtt_wait_for_event(az_mqtt* mqtt, int32_t timeout)

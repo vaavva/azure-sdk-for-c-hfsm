@@ -58,6 +58,8 @@ enum
 
   // C-SDK Compat Layer maximum number of queued messages.
   AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE = 10,
+
+  AZ_IOT_MQTT_DISCONNECT_MS = 100,
 };
 
 #include <azure/core/_az_cfg_suffix.h>
