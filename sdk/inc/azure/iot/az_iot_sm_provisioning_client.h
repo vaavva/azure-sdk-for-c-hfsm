@@ -20,6 +20,9 @@
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+#include <azure/core/az_context.h>
+#include <azure/core/az_credentials_x509.h>
+#include <azure/core/internal/az_hfsm_mqtt.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
 #include <stdbool.h>
@@ -35,7 +38,7 @@ typedef az_result (*az_iot_sm_provisioning_client_status_callback)(
 
 typedef struct
 {
-  bool _unused;
+  az_credential_x509 secondary_credential;
 } az_iot_sm_provisioning_client_options;
 
 struct az_iot_sm_provisioning_client
@@ -71,20 +74,18 @@ AZ_NODISCARD az_iot_sm_provisioning_client_options az_iot_sm_provisioning_client
 AZ_NODISCARD az_result az_iot_sm_provisioning_client_init(
     az_iot_sm_provisioning_client* client,
     az_iot_provisioning_client* codec_client,
-    az_hfsm_iot_auth_type auth_type,
-    az_hfsm_iot_auth auth,
-    az_iot_sm_provisioning_client_status_callback* optional_status_callback);
-
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_destroy(az_iot_sm_provisioning_client* client);
+    az_mqtt* mqtt_client,
+    az_credential_x509 primary_credential,
+    az_iot_sm_provisioning_client_status_callback* optional_status_callback,
+    az_iot_sm_provisioning_client_options* options);
 
 AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
-    az_iot_sm_provisioning_client* client);
-
-AZ_NODISCARD az_result
-az_iot_sm_provisioning_client_register_abort(az_iot_sm_provisioning_client* client);
-
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_result(
     az_iot_sm_provisioning_client* client,
+    az_context* context);
+
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_response(
+    az_iot_sm_provisioning_client* client,
+    az_context *context,
     az_iot_provisioning_client_register_response** out_response);
 
 #ifdef TRANSPORT_MQTT_SYNC

@@ -65,7 +65,7 @@ typedef struct
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
 
-AZ_NODISCARD az_result az_mqtt_init(az_mqtt* out_mqtt, az_mqtt_options const* options);
+AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options);
 
 typedef struct
 {
@@ -137,6 +137,10 @@ typedef struct
 } az_mqtt_disconnect_data;
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt);
+
+#ifdef TRANSPORT_MQTT_SYNC
+AZ_NODISCARD az_result az_mqtt_process_loop(az_mqtt* mqtt);
+#endif
 
 typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_mqtt_connack_data data);
 typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data recv_data);

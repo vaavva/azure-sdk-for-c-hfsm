@@ -141,41 +141,23 @@ void az_platform_critical_error()
     ;
 }
 
-static az_platform_mutex disconnect_mutex;
-static az_iot_provisioning_client prov_codec;
-static az_iot_sm_provisioning_client prov_client;
-
 az_result provisioning_status_callback(
     az_iot_sm_provisioning_client* client,
+    // TODO: this is the event (to avoid copying)
     az_hfsm_event_type event_type)
 {
   switch (event_type)
   {
     case AZ_IOT_PROVISIONING_REGISTER_RSP:
-    break;
+    // TODO:
+      break;
 
     default:
+    // TODO:
+      break;
   }
 
   return AZ_OK;
-}
-
-az_result prov_registration_status_callback(az_iot_sm_provisioning_client* client)
-{
-  az_iot_provisioning_client_register_response* response;
-  az_iot_sm_provisioning_client_register_get_status(client, &response);
-
-  // guaranteed that response here is an intermediate result
-}
-
-az_result prov_registraiton_result_callback(az_iot_sm_provisioning_client* client)
-{
-  az_iot_provisioning_client_register_response* response;
-  az_iot_sm_provisioning_client_register_get_result(client, &response);
-
-  // guaranteed that response here is the final result
-
-  az_platform_mutex_release(&disconnect_mutex);
 }
 
 int main(int argc, char* argv[])
@@ -186,49 +168,55 @@ int main(int argc, char* argv[])
   /* Required before calling other mosquitto functions */
   if (mosquitto_lib_init() != MOSQ_ERR_SUCCESS)
   {
-    printf("Failed to initialize MosquittoLib\n");
+    printf(LOG_APP "Failed to initialize MosquittoLib\n");
     return -1;
   }
 
-  _az_RETURN_IF_FAILED(az_mqtt_init());
-  printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
+  printf(LOG_APP "Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
 
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  az_hfsm_iot_x509_auth auth = (az_hfsm_iot_x509_auth){
+  az_mqtt mqtt;
+  az_mqtt_options mqtt_options = az_mqtt_options_default();
+  mqtt_options.certificate_authority_trusted_roots = ca_path;
+  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, NULL));
+
+  az_iot_provisioning_client prov_codec;
+  _az_RETURN_IF_FAILED(
+      az_iot_provisioning_client_init(&prov_codec, dps_endpoint, id_scope, device_id, NULL));
+
+  az_iot_sm_provisioning_client prov_client;
+  az_credential_x509 cred = (az_credential_x509){
     .cert = cert_path1,
     .key = key_path1,
+    .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
   };
 
-  _az_RETURN_IF_FAILED(az_platform_mutex_init(&disconnect_mutex));
-  _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
+  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_init(
+      &prov_client, &prov_codec, &mqtt, cred, provisioning_status_callback, NULL));
 
-  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(&prov_codec, ...));
-  _az_RETURN_IF_FAILED(
-      az_iot_sm_provisioning_client_init(&prov_client, &prov_codec, AZ_HFSM_IOT_AUTH_X509, auth));
+  az_context register_context
+      = az_context_create_with_expiration(&az_context_application, 30 * 1000);
 
-  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, ))
+  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, &register_context));
 
-      for (int i = 15; i > 0; i--)
+  az_iot_provisioning_client_register_response 
+
+  for (int i = 15; i > 0; i--)
   {
+
     _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
 
-  printf(LOG_APP "Main thread disconnecting...\n");
-  _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
-      &hub_pipeline, (az_hfsm_event){ AZ_IOT_HUB_DISCONNECT_REQ, NULL }));
-
-  _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
-  printf(LOG_APP "Done.\n");
-
   if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
   {
-    printf("Failed to cleanup MosquittoLib\n");
+    printf(LOG_APP "Failed to cleanup MosquittoLib\n");
     return -1;
   }
 
+  printf(LOG_APP "Done.\n");
   return 0;
 }

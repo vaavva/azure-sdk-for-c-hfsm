@@ -15,6 +15,7 @@
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
+#include <azure/core/internal/az_hfsm_mqtt.h>
 
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
