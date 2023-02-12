@@ -37,8 +37,7 @@
 #include <azure/core/az_context.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-
-#include <azure/core/az_hfsm_pipeline.h>
+#include <azure/core/az_credentials_x509.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -117,8 +116,7 @@ typedef struct
   az_span password;
   az_span client_id;
 
-  az_span client_certificate;
-  az_span client_private_key;
+  az_credential_x509 certificate;
 } az_mqtt_connect_data;
 
 AZ_NODISCARD az_result
