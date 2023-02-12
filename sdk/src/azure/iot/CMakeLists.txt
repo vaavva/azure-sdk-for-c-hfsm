@@ -72,7 +72,7 @@ add_library (az::iot::provisioning ALIAS az_iot_provisioning)
 
 # Azure IoT HFSM Library
 add_library (az_iot_hfsm
-  ${CMAKE_CURRENT_LIST_DIR}/az_iot_retry_hfsm.c
+# HFSM_TODO  ${CMAKE_CURRENT_LIST_DIR}/az_iot_retry_hfsm.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_provisioning_hfsm.c
 #  ${CMAKE_CURRENT_LIST_DIR}/az_iot_hub_hfsm.c
 )

@@ -2,11 +2,9 @@
 /* SPDX-License-Identifier: MIT */
 
 /**
- * @file az_iot_sm_provisioning_sample.c
- * @brief HFSM IoT Sample
+ * @file
+ * @brief Mosquitto async callback
  *
- * @details This application directly uses the two IoT pipelines. Messages received from the
- * pipelines are interpreted by a HFSM.
  */
 
 #include <stdint.h>
@@ -14,12 +12,16 @@
 #include <stdlib.h>
 
 #include <azure/core/az_log.h>
+
+#include <azure/platform/az_mqtt_mosquitto.h>
 #include <azure/core/az_mqtt.h>
+
+#include <azure/platform/az_platform_posix.h>>
 #include <azure/core/az_platform.h>
+
 #include <azure/core/internal/az_result_internal.h>
 
 #include <azure/az_iot.h>
-#include <azure/core/az_hfsm_pipeline.h>
 #include <azure/iot/az_iot_sm_provisioning_client.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 

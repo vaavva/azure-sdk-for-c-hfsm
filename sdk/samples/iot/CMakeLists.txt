@@ -175,4 +175,18 @@ target_link_libraries(paho_iot_provisioning_sas_sample
 
 create_map_file(paho_iot_provisioning_sas_sample paho_iot_provisioning_sas_sample.map)
 
+
+# Paho sync 
+add_executable (paho_sync_sample
+  ${CMAKE_CURRENT_LIST_DIR}/paho_sync_sample.c
+)
+
+target_link_libraries(paho_sync_sample
+  PRIVATE
+    az::iot::sample::common
+    az::paho
+)
+
+create_map_file(paho_sync_sample paho_sync_sample.map)
+
 endif() # TRANSPORT_PAHO

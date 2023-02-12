@@ -79,18 +79,15 @@ AZ_NODISCARD az_result az_iot_sm_provisioning_client_init(
     az_iot_sm_provisioning_client_status_callback* optional_status_callback,
     az_iot_sm_provisioning_client_options* options);
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(az_iot_sm_provisioning_client* client,
-                                                              az_context* context,
-                                                              az_span endpoint_buffer,
-                                                              az_span device_id_buffer);
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
+    az_iot_sm_provisioning_client* client,
+    az_context* context,
+    az_span endpoint_buffer,
+    az_span device_id_buffer);
 
-AZ_NODISCARD az_iot_provisioning_client_operation_status
-az_iot_sm_provisioning_client_register_get_status(az_iot_sm_provisioning_client* client);
-
-#ifdef TRANSPORT_MQTT_SYNC
-AZ_NODISCARD az_result
-az_iot_sm_provisioning_client_sync_process_loop(az_iot_sm_provisioning_client* client);
-#endif // TRANSPORT_MQTT_SYNC
+AZ_NODISCARD az_hfsm_event az_iot_sm_provisioning_client_wait_for_event(
+    az_iot_sm_provisioning_client* client,
+    int32_t timeout);
 
 #include <azure/core/_az_cfg_suffix.h>
 
