@@ -149,7 +149,6 @@ az_result provisioning_status_callback(
 {
   switch (event.type)
   {
-    case 
     case AZ_IOT_PROVISIONING_REGISTER_RSP:
     // TODO:
       break;

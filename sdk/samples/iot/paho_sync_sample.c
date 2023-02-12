@@ -28,14 +28,14 @@
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
 static const az_span dps_endpoint
-    = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
+    = AZ_SPAN_LITERAL_FROM_STR("ssl://global.azure-devices-provisioning.net:8883");
 static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
 static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
 static char hub_endpoint_buffer[120];
 static az_span hub_endpoint;
 static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/rsa_baltimore_ca.pem");
-static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem");
-static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
+static const az_span cert_path1 = AZ_SPAN_EMPTY;
+static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc-store.pem");
 
 // static const az_span cert_path2 =
 // AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"); static const az_span key_path2
@@ -143,38 +143,12 @@ void az_platform_critical_error()
     ;
 }
 
-az_result provisioning_status_callback(
-    az_iot_sm_provisioning_client* client,
-    az_hfsm_event event)
-{
-  switch (event.type)
-  {
-    case 
-    case AZ_IOT_PROVISIONING_REGISTER_RSP:
-    // TODO:
-      break;
-
-    default:
-    // TODO:
-      break;
-  }
-
-  return AZ_OK;
-}
-
 int main(int argc, char* argv[])
 {
   (void)argc;
   (void)argv;
 
-  /* Required before calling other mosquitto functions */
-  if (mosquitto_lib_init() != MOSQ_ERR_SUCCESS)
-  {
-    printf(LOG_APP "Failed to initialize MosquittoLib\n");
-    return -1;
-  }
-
-  printf(LOG_APP "Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
+  printf(LOG_APP "Using PahoMQTT\n");
 
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
@@ -182,7 +156,7 @@ int main(int argc, char* argv[])
   az_mqtt mqtt;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.certificate_authority_trusted_roots = ca_path;
-  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, NULL));
+  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, NULL, NULL));
 
   az_iot_provisioning_client prov_codec;
   _az_RETURN_IF_FAILED(
@@ -196,7 +170,7 @@ int main(int argc, char* argv[])
   };
 
   _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_init(
-      &prov_client, &prov_codec, &mqtt, cred, provisioning_status_callback, NULL));
+      &prov_client, &prov_codec, &mqtt, cred, NULL, NULL));
 
   az_context register_context
       = az_context_create_with_expiration(&az_context_application, 30 * 1000);

@@ -81,9 +81,7 @@ AZ_NODISCARD az_result az_iot_sm_provisioning_client_init(
 
 AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
     az_iot_sm_provisioning_client* client,
-    az_context* context,
-    az_span endpoint_buffer,
-    az_span device_id_buffer);
+    az_context* context);
 
 AZ_NODISCARD az_hfsm_event az_iot_sm_provisioning_client_wait_for_event(
     az_iot_sm_provisioning_client* client,
