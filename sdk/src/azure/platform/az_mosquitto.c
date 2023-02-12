@@ -52,16 +52,12 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
                             .implementation_specific_options = NULL };
 }
 
-AZ_NODISCARD az_result az_mqtt_init(az_mqtt* out_mqtt, az_mqtt_impl* mqtt_handler, az_mqtt_options const* options)
+AZ_NODISCARD az_result
+az_mqtt_init(az_mqtt* mqtt, az_mqtt_impl* mqtt_handle, az_mqtt_options const* options)
 {
-  out_mqtt->_internal.options = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
-  out_mqtt->mqtt = mqtt_handler;
-  
-  out_mqtt->_internal._connack_handler = NULL;
-  out_mqtt->_internal._disconnect_handler = NULL;
-  out_mqtt->_internal._puback_handler = NULL;
-  out_mqtt->_internal._recv_handler = NULL;
-  out_mqtt->_internal._suback_handler = NULL;
+  mqtt->_internal.options = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
+  mqtt->mqtt = mqtt_handler;
+  mqtt->_internal._inbound_handler = NULL;
 
   return AZ_OK;
 }
@@ -195,7 +191,6 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
   }
 }
 
-
 AZ_NODISCARD az_result
 az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data, az_context context)
 {
@@ -250,8 +245,6 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data, az_co
 
   return AZ_OK;
 }
-
-
 
 AZ_INLINE az_result _az_mosquitto_disconnect(az_hfsm_mqtt_policy* me)
 {
@@ -311,11 +304,6 @@ AZ_INLINE az_result _az_mosquitto_process_loop(az_hfsm_mqtt_policy* me)
       mosq, AZ_MQTT_SYNC_MAX_POLLING_MILLISECONDS, AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE));
 }
 #endif
-
-
-
-
-
 
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {

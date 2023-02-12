@@ -52,8 +52,10 @@
 
 // MQTT library handle (type defined by implementation)
 typedef struct az_mqtt az_mqtt;
-typedef void* az_mqtt_impl;
-typedef void* az_mqtt_impl_options;
+
+// The following must be defined prior to including this file.
+// typedef void* az_mqtt_impl;
+// typedef void* az_mqtt_impl_options;
 
 typedef struct
 {
@@ -123,8 +125,6 @@ typedef struct
   bool disconnect_requested;
 } az_mqtt_disconnect_data;
 
-
-
 /**
  * @brief Azure MQTT HFSM event types.
  *
@@ -160,13 +160,13 @@ struct az_mqtt
   struct
   {
     az_mqtt_inbound_handler _inbound_handler;
-
+    az_mqtt_impl_data _impl_data;
     /// @brief The MQTT options.
     az_mqtt_options options;
   } _internal;
 
   /// @brief The underlying MQTT implementation.
-  az_mqtt_impl mqtt;
+  az_mqtt_impl mqtt_handle;
 };
 
 // Porting 1. The following functions must be called by the implementation when data is recevied:
@@ -235,11 +235,12 @@ az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data* disconnect_da
   return AZ_OK;
 }
 
-// Porting 2. The following functions must be implemented and will be called by the SDK to 
+// Porting 2. The following functions must be implemented and will be called by the SDK to
 //            send data:
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
-AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options);
+AZ_NODISCARD az_result
+az_mqtt_init(az_mqtt* mqtt, az_mqtt_impl* mqtt_handle, az_mqtt_options const* options);
 AZ_NODISCARD az_result
 az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_data* connect_data);
 AZ_NODISCARD az_result

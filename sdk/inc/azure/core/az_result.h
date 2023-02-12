@@ -104,6 +104,9 @@ enum az_result_core
   /// Dynamic memory allocation request was not successful.
   AZ_ERROR_OUT_OF_MEMORY = _az_RESULT_MAKE_ERROR(_az_FACILITY_CORE_PLATFORM, 1),
 
+  /// Timeout ocurred (expected, not an error)
+  AZ_TIMEOUT = _az_RESULT_MAKE_SUCCESS(_az_FACILITY_CORE_PLATFORM, 2),
+
   // === JSON error codes ===
   /// The kind of the token being read is not compatible with the expected type of the value.
   AZ_ERROR_JSON_INVALID_STATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_CORE_JSON, 1),
@@ -148,6 +151,7 @@ enum az_result_core
 
   /// MQTT initialization error.
   AZ_ERROR_MQTT = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, 0),
+
 };
 
 /**
