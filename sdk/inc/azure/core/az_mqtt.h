@@ -35,9 +35,12 @@
 
 #include <azure/core/az_config.h>
 #include <azure/core/az_context.h>
+#include <azure/core/az_credentials_x509.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-#include <azure/core/az_credentials_x509.h>
+
+// HFSM_TODO: for event type only.
+#include <azure/core/az_hfsm.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -62,10 +65,6 @@ typedef struct
   az_mqtt_impl_options implementation_specific_options;
 } az_mqtt_options;
 
-AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
-
-AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options);
-
 typedef struct
 {
   az_span topic;
@@ -75,10 +74,6 @@ typedef struct
   // The MQTT stack should set this ID upon returning.
   int32_t out_id;
 } az_mqtt_pub_data;
-
-// HFSM_TODO: Should we add az_context to all function?
-AZ_NODISCARD az_result
-az_mqtt_outbound_pub(az_mqtt* mqtt, az_mqtt_pub_data pub_data, az_context context);
 
 typedef struct
 {
@@ -100,9 +95,6 @@ typedef struct
   int32_t out_id;
 } az_mqtt_sub_data;
 
-AZ_NODISCARD az_result
-az_mqtt_outbound_sub(az_mqtt* mqtt, az_mqtt_sub_data sub_data, az_context context);
-
 typedef struct
 {
   int32_t id;
@@ -119,9 +111,6 @@ typedef struct
   az_credential_x509 certificate;
 } az_mqtt_connect_data;
 
-AZ_NODISCARD az_result
-az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data, az_context context);
-
 typedef struct
 {
   int32_t connack_reason;
@@ -134,28 +123,44 @@ typedef struct
   bool disconnect_requested;
 } az_mqtt_disconnect_data;
 
-AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt);
 
-#ifdef TRANSPORT_MQTT_SYNC
-AZ_NODISCARD az_result az_mqtt_process_loop(az_mqtt* mqtt);
-#endif
 
-typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_mqtt_connack_data data);
-typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
-typedef void (*az_mqtt_puback_handler)(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
-typedef void (*az_mqtt_suback_handler)(az_mqtt* mqtt, az_mqtt_suback_data puback_data);
-typedef void (*az_mqtt_disconnect_handler)(az_mqtt* mqtt, az_mqtt_disconnect_data data);
+/**
+ * @brief Azure MQTT HFSM event types.
+ *
+ */
+// HFSM_TODO: az_log_classification_iot uses _az_FACILITY_IOT_MQTT up to ID 2.
+enum az_hfsm_event_type_mqtt
+{
+  /// MQTT Connect Request event.
+  AZ_HFSM_MQTT_EVENT_CONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 10),
+
+  /// MQTT Connect Response event.
+  AZ_HFSM_MQTT_EVENT_CONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 11),
+
+  AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 12),
+
+  AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 13),
+
+  AZ_HFSM_MQTT_EVENT_PUB_RECV_IND = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 14),
+
+  AZ_HFSM_MQTT_EVENT_PUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 15),
+
+  AZ_HFSM_MQTT_EVENT_PUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 16),
+
+  AZ_HFSM_MQTT_EVENT_SUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
+
+  AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 18),
+};
+
+typedef void (*az_mqtt_inbound_handler)(az_mqtt* mqtt, az_hfsm_event event);
 
 struct az_mqtt
 {
   struct
   {
-    az_mqtt_connack_handler _connack_handler;
-    az_mqtt_recv_handler _recv_handler;
-    az_mqtt_puback_handler _puback_handler;
-    az_mqtt_suback_handler _suback_handler;
-    az_mqtt_disconnect_handler _disconnect_handler;
-  
+    az_mqtt_inbound_handler _inbound_handler;
+
     /// @brief The MQTT options.
     az_mqtt_options options;
   } _internal;
@@ -164,64 +169,85 @@ struct az_mqtt
   az_mqtt_impl mqtt;
 };
 
-AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data)
+// Porting 1. The following functions must be called by the implementation when data is recevied:
+
+AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data* recv_data)
 {
-  if (!mqtt->_internal._recv_handler)
+  if (!mqtt->_internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._recv_handler(mqtt, recv_data);
+  mqtt->_internal._inbound_handler(
+      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_RECV_IND, .data = recv_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data connack_data)
+az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data* connack_data)
 {
-  if (mqtt->_internal._connack_handler)
+  if (!mqtt->_internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._connack_handler(mqtt, connack_data);
+  mqtt->_internal._inbound_handler(
+      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_RSP, .data = connack_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data suback_data)
+az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data* suback_data)
 {
-  if (mqtt->_internal._suback_handler)
+  if (!mqtt->_internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._suback_handler(mqtt, suback_data);
+  mqtt->_internal._inbound_handler(
+      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUBACK_RSP, .data = suback_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data puback_data)
+az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data* puback_data)
 {
-  if (mqtt->_internal._puback_handler)
+  if (!mqtt->_internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._puback_handler(mqtt, puback_data);
+  mqtt->_internal._inbound_handler(
+      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUBACK_RSP, .data = puback_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
-az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data disconnect_data)
+az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data* disconnect_data)
 {
-  if (mqtt->_internal._disconnect_handler)
+  if (!mqtt->_internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._disconnect_handler(mqtt, disconnect_data);
+  mqtt->_internal._inbound_handler(
+      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP, .data = disconnect_data });
   return AZ_OK;
 }
+
+// Porting 2. The following functions must be implemented and will be called by the SDK to 
+//            send data:
+
+AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
+AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options);
+AZ_NODISCARD az_result
+az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_data* connect_data);
+AZ_NODISCARD az_result
+az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_data);
+AZ_NODISCARD az_result
+az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_data);
+AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context);
+AZ_NODISCARD az_result az_mqtt_wait_for_event(az_mqtt* mqtt, int32_t timeout);
 
 #include <azure/core/_az_cfg_suffix.h>
 

@@ -17,11 +17,11 @@
 #ifndef _az_IOT_SM_PROVISIONING_CLIENT_H
 #define _az_IOT_SM_PROVISIONING_CLIENT_H
 
+#include <azure/core/az_context.h>
+#include <azure/core/az_credentials_x509.h>
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-#include <azure/core/az_context.h>
-#include <azure/core/az_credentials_x509.h>
 #include <azure/core/internal/az_hfsm_mqtt.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
@@ -34,7 +34,7 @@ typedef struct az_iot_sm_provisioning_client az_iot_sm_provisioning_client;
 
 typedef az_result (*az_iot_sm_provisioning_client_status_callback)(
     az_iot_sm_provisioning_client* client,
-    az_hfsm_event_type event_type);
+    az_hfsm_event event);
 
 typedef struct
 {
@@ -79,14 +79,13 @@ AZ_NODISCARD az_result az_iot_sm_provisioning_client_init(
     az_iot_sm_provisioning_client_status_callback* optional_status_callback,
     az_iot_sm_provisioning_client_options* options);
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(
-    az_iot_sm_provisioning_client* client,
-    az_context* context);
+AZ_NODISCARD az_result az_iot_sm_provisioning_client_register(az_iot_sm_provisioning_client* client,
+                                                              az_context* context,
+                                                              az_span endpoint_buffer,
+                                                              az_span device_id_buffer);
 
-AZ_NODISCARD az_result az_iot_sm_provisioning_client_register_get_response(
-    az_iot_sm_provisioning_client* client,
-    az_context *context,
-    az_iot_provisioning_client_register_response** out_response);
+AZ_NODISCARD az_iot_provisioning_client_operation_status
+az_iot_sm_provisioning_client_register_get_status(az_iot_sm_provisioning_client* client);
 
 #ifdef TRANSPORT_MQTT_SYNC
 AZ_NODISCARD az_result

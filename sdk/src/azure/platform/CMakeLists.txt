@@ -135,6 +135,40 @@ endif()
   )
   endif()
 
-  target_include_directories(az_mosquitto INTERFACE ${CURL_INCLUDE_DIR})
+  target_include_directories(az_mosquitto INTERFACE ${MOSQUITTO_INCLUDE_DIR})
+
+  # Paho Platform
+  if (TRANSPORT_PAHO)
+  find_package(eclipse-paho-mqtt-c CONFIG)
+  if(NOT eclipse-paho-mqtt-c_FOUND)
+    find_package(eclipse-paho-mqtt-c REQUIRED)
+  endif()
+
+  find_package(OpenSSL CONFIG)
+  if(NOT OpenSSL_FOUND)
+    find_package(OpenSSL REQUIRED)
+  endif()
+  
+  add_library (
+    az_paho
+      STATIC
+      ${CMAKE_CURRENT_LIST_DIR}/az_paho.c
+  )
+
+  target_link_libraries(az_paho PRIVATE az_core)
+
+  # make sure that users can consume the project as a library.
+  add_library (az::paho ALIAS az_paho)
+
+  target_link_libraries(az_paho
+  PUBLIC
+    eclipse-paho-mqtt-c::paho-mqtt3cs-static
+    OpenSSL::SSL
+    OpenSSL::Crypto
+  )
+
+  target_include_directories(az_paho INTERFACE ${PAHO_INCLUDE_DIR})
+
+  endif()
 
 endif()

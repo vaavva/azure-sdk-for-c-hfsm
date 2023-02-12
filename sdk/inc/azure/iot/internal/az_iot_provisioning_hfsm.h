@@ -63,7 +63,8 @@ typedef struct
 
 enum az_hfsm_event_type_iot_provisioning_hfsm
 {
-  // HFSM_DESIGN: DPS Connect (without the register operation is not useful at least at this time.)
+  // HFSM_TODO: missing DPS Connect (without the register operation is not useful at least at this
+  // time.)
 
   /// Device Disconnet Request
   AZ_IOT_PROVISIONING_DISCONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 1),

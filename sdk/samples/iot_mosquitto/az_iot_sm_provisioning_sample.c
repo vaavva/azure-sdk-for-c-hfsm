@@ -143,11 +143,11 @@ void az_platform_critical_error()
 
 az_result provisioning_status_callback(
     az_iot_sm_provisioning_client* client,
-    // TODO: this is the event (to avoid copying)
-    az_hfsm_event_type event_type)
+    az_hfsm_event event)
 {
-  switch (event_type)
+  switch (event.type)
   {
+    case 
     case AZ_IOT_PROVISIONING_REGISTER_RSP:
     // TODO:
       break;
