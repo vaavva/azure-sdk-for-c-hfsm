@@ -14,6 +14,7 @@
  * https://mosquitto.org/api/files/mosquitto-h.html
  */
 
+#include <azure/core/az_hfsm.h>
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
@@ -29,6 +30,32 @@
 #include <stdlib.h>
 
 #include <azure/core/_az_cfg.h>
+
+static az_result root(az_hfsm* me, az_hfsm_event event);
+static az_result idle(az_hfsm* me, az_hfsm_event event);
+static az_result running(az_hfsm* me, az_hfsm_event event);
+
+static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
+{
+  az_hfsm_state_handler parent_state;
+
+  if (child_state == root)
+  {
+    parent_state = NULL;
+  }
+  else if (child_state == idle || child_state == running)
+  {
+    parent_state = root;
+  }
+  else
+  {
+    // Unknown state.
+    az_platform_critical_error();
+    parent_state = NULL;
+  }
+
+  return parent_state;
+}
 
 AZ_INLINE az_result _az_result_from_mosq(int mosquitto_ret)
 {
@@ -46,25 +73,41 @@ AZ_INLINE az_result _az_result_from_mosq(int mosquitto_ret)
   return ret;
 }
 
-AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
+AZ_NODISCARD az_hfsm_mqtt_policy_options az_hfsm_mqtt_policy_options_default()
 {
-  return (az_mqtt_options){ .certificate_authority_trusted_roots = AZ_SPAN_EMPTY,
-                            .implementation_specific_options = NULL };
+  return (az_hfsm_mqtt_policy_options){ .certificate_authority_trusted_roots = AZ_SPAN_EMPTY };
 }
 
-AZ_NODISCARD az_result az_mqtt_init(az_mqtt* out_mqtt, az_mqtt_impl* mqtt_handler, az_mqtt_options const* options)
+AZ_NODISCARD az_result az_mqtt_initialize(
+    az_hfsm_mqtt_policy* mqtt_policy,
+    az_hfsm_pipeline* pipeline,
+    az_hfsm_policy* inbound_policy,
+    az_hfsm_mqtt_policy_options const* options)
 {
-  out_mqtt->_internal.options = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
-  out_mqtt->mqtt = mqtt_handler;
-  
-  out_mqtt->_internal._connack_handler = NULL;
-  out_mqtt->_internal._disconnect_handler = NULL;
-  out_mqtt->_internal._puback_handler = NULL;
-  out_mqtt->_internal._recv_handler = NULL;
-  out_mqtt->_internal._suback_handler = NULL;
+  // HFSM_TODO: Preconditions
+
+  mqtt_policy->_internal.options
+      = options == NULL ? az_hfsm_mqtt_policy_options_default() : *options;
+
+  mqtt_policy->_internal.policy.pipeline = pipeline;
+
+  _az_PRECONDITION_NOT_NULL(inbound_policy);
+  mqtt_policy->_internal.policy.inbound_policy = inbound_policy;
+  mqtt_policy->_internal.policy.outbound_policy = NULL;
+
+  // HFSM_DESIGN: A complex HFSM is recommended for MQTT stacks such as an external modems where the
+  //              CPU may need to synchronize state with another device.
+  //              For the Mosquitto implementation, a simplified 2 level, 3 state HFSM is used.
+
+  _az_RETURN_IF_FAILED(az_hfsm_init((az_hfsm*)mqtt_policy, root, _get_parent));
+  _az_RETURN_IF_FAILED(az_hfsm_transition_substate((az_hfsm*)mqtt_policy, root, idle));
 
   return AZ_OK;
 }
+
+AZ_NODISCARD az_result az_mqtt_init() { return _az_result_from_mosq(mosquitto_lib_init()); }
+
+AZ_NODISCARD az_result az_mqtt_deinit() { return _az_result_from_mosq(mosquitto_lib_cleanup()); }
 
 static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
@@ -195,9 +238,7 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
   }
 }
 
-
-AZ_NODISCARD az_result
-az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data, az_context context)
+AZ_INLINE az_result _az_mosquitto_connect(az_hfsm_mqtt_policy* me, az_hfsm_mqtt_connect_data* data)
 {
   az_result ret;
 
@@ -250,8 +291,6 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_mqtt_connect_data connect_data, az_co
 
   return AZ_OK;
 }
-
-
 
 AZ_INLINE az_result _az_mosquitto_disconnect(az_hfsm_mqtt_policy* me)
 {
@@ -311,11 +350,6 @@ AZ_INLINE az_result _az_mosquitto_process_loop(az_hfsm_mqtt_policy* me)
       mosq, AZ_MQTT_SYNC_MAX_POLLING_MILLISECONDS, AZ_IOT_COMPAT_CSDK_MAX_QUEUE_SIZE));
 }
 #endif
-
-
-
-
-
 
 static az_result root(az_hfsm* me, az_hfsm_event event)
 {

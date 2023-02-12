@@ -90,8 +90,8 @@ AZ_NODISCARD az_result az_mqtt_initialize(
   mqtt_policy->_internal.policy.pipeline = pipeline;
 
   _az_PRECONDITION_NOT_NULL(inbound_policy);
-  mqtt_policy->_internal.policy.inbound = inbound_policy;
-  mqtt_policy->_internal.policy.outbound = NULL;
+  mqtt_policy->_internal.policy.inbound_policy = inbound_policy;
+  mqtt_policy->_internal.policy.outbound_policy = NULL;
 
   // HFSM_DESIGN: A complex HFSM is recommended for MQTT stacks such as an external modems where the
   //              CPU may need to synchronize state with another device.

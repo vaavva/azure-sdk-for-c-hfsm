@@ -77,8 +77,8 @@ AZ_NODISCARD az_result az_hfsm_iot_hub_policy_initialize(
 {
   policy->_internal.options = options == NULL ? az_hfsm_iot_hub_policy_options_default() : *options;
 
-  policy->_internal.policy.outbound = outbound_policy;
-  policy->_internal.policy.inbound = inbound_policy;
+  policy->_internal.policy.outbound_policy = outbound_policy;
+  policy->_internal.policy.inbound_policy = inbound_policy;
 
   policy->_internal.policy.pipeline = pipeline;
 

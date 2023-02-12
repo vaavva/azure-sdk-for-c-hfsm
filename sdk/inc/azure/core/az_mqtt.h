@@ -136,6 +136,8 @@ typedef struct
   bool disconnect_requested;
 } az_mqtt_disconnect_data;
 
+AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt);
+
 typedef void (*az_mqtt_connack_handler)(az_mqtt* mqtt, az_mqtt_connack_data data);
 typedef void (*az_mqtt_recv_handler)(az_mqtt* mqtt, az_mqtt_recv_data recv_data);
 typedef void (*az_mqtt_puback_handler)(az_mqtt* mqtt, az_mqtt_puback_data puback_data);
@@ -151,13 +153,13 @@ struct az_mqtt
     az_mqtt_puback_handler _puback_handler;
     az_mqtt_suback_handler _suback_handler;
     az_mqtt_disconnect_handler _disconnect_handler;
+  
+    /// @brief The MQTT options.
+    az_mqtt_options options;
   } _internal;
 
   /// @brief The underlying MQTT implementation.
   az_mqtt_impl mqtt;
-
-  /// @brief The MQTT options.
-  az_mqtt_options options;
 };
 
 AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data recv_data)

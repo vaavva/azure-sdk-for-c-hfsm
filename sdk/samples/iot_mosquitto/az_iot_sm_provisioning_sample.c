@@ -20,11 +20,8 @@
 
 #include <azure/az_iot.h>
 #include <azure/core/az_hfsm_pipeline.h>
-#include <azure/iot/internal/az_iot_hub_hfsm.h>
-#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
-#include <azure/iot/internal/az_iot_retry_hfsm.h>
-
 #include <azure/iot/az_iot_sm_provisioning_client.h>
+#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
 #include "mosquitto.h"
 
@@ -111,27 +108,6 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_IOT_PROVISIONING_REGISTER_REQ:
       class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
       break;
-    case AZ_IOT_HUB_CONNECT_REQ:
-      class_str = "AZ_IOT_HUB_CONNECT_REQ";
-      break;
-    case AZ_IOT_HUB_CONNECT_RSP:
-      class_str = "AZ_IOT_HUB_CONNECT_RSP";
-      break;
-    case AZ_IOT_HUB_DISCONNECT_REQ:
-      class_str = "AZ_IOT_HUB_DISCONNECT_REQ";
-      break;
-    case AZ_IOT_HUB_DISCONNECT_RSP:
-      class_str = "AZ_IOT_HUB_DISCONNECT_RSP";
-      break;
-    case AZ_IOT_HUB_TELEMETRY_REQ:
-      class_str = "AZ_IOT_HUB_TELEMETRY_REQ";
-      break;
-    case AZ_IOT_HUB_METHODS_REQ:
-      class_str = "AZ_IOT_HUB_METHODS_REQ";
-      break;
-    case AZ_IOT_HUB_METHODS_RSP:
-      class_str = "AZ_IOT_HUB_METHODS_RSP";
-      break;
     default:
       class_str = NULL;
   }
@@ -169,6 +145,20 @@ static az_platform_mutex disconnect_mutex;
 static az_iot_provisioning_client prov_codec;
 static az_iot_sm_provisioning_client prov_client;
 
+az_result provisioning_status_callback(
+    az_iot_sm_provisioning_client* client,
+    az_hfsm_event_type event_type)
+{
+  switch (event_type)
+  {
+    case AZ_IOT_PROVISIONING_REGISTER_RSP:
+    break;
+
+    default:
+  }
+
+  return AZ_OK;
+}
 
 az_result prov_registration_status_callback(az_iot_sm_provisioning_client* client)
 {
@@ -194,6 +184,12 @@ int main(int argc, char* argv[])
   (void)argv;
 
   /* Required before calling other mosquitto functions */
+  if (mosquitto_lib_init() != MOSQ_ERR_SUCCESS)
+  {
+    printf("Failed to initialize MosquittoLib\n");
+    return -1;
+  }
+
   _az_RETURN_IF_FAILED(az_mqtt_init());
   printf("Using MosquittoLib %d\n", mosquitto_lib_version(NULL, NULL, NULL));
 
@@ -214,7 +210,7 @@ int main(int argc, char* argv[])
 
   _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, ))
 
-  for (int i = 15; i > 0; i--)
+      for (int i = 15; i > 0; i--)
   {
     _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
@@ -228,7 +224,11 @@ int main(int argc, char* argv[])
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&disconnect_mutex));
   printf(LOG_APP "Done.\n");
 
-  _az_RETURN_IF_FAILED(az_mqtt_deinit());
+  if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
+  {
+    printf("Failed to cleanup MosquittoLib\n");
+    return -1;
+  }
 
   return 0;
 }

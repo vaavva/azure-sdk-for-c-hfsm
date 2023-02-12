@@ -35,15 +35,18 @@ typedef struct az_hfsm_policy az_hfsm_policy;
 
 typedef struct az_hfsm_pipeline az_hfsm_pipeline;
 
+typedef az_result (*az_hfsm_policy_handler)(az_hfsm_policy* me, az_hfsm_event event);
+
 /**
  * @brief The type representing a HFSM with dispatch capabilities. Derived from #az_hfsm.
  *
  */
 struct az_hfsm_policy
 {
-  az_hfsm hfsm; // Must be the first element to properly cast the struct to az_hfsm.
-  az_hfsm_policy* inbound;
-  az_hfsm_policy* outbound;
+  az_hfsm_policy_handler inbound_handler;
+  az_hfsm_policy_handler outbound_handler;
+  az_hfsm_policy* inbound_policy;
+  az_hfsm_policy* outbound_policy;
   az_hfsm_pipeline* pipeline;
 };
 
@@ -55,8 +58,8 @@ struct az_hfsm_pipeline
 {
   struct
   {
-    az_hfsm_policy* outbound_handler;
-    az_hfsm_policy* inbound_handler;
+    az_hfsm_policy* outbound_policy;
+    az_hfsm_policy* inbound_policy;
 #ifndef TRANSPORT_MQTT_SYNC
     az_platform_mutex mutex;
 #endif

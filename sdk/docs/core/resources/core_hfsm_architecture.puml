@@ -35,7 +35,7 @@ abstract class az_hfsm_event_data
 class az_hfsm_event_data_error
 {
     +error_type: az_result
-    +sender_hfsm: az_hfsm*
+    +sender: void*
     +sender_event: az_hfsm_event
 }
 
