@@ -13,9 +13,6 @@
 
 #include <azure/core/az_log.h>
 
-#include <azure/platform/az_mqtt_mosquitto.h>
-#include <azure/core/az_mqtt.h>
-
 #include <azure/platform/az_platform_posix.h>>
 #include <azure/core/az_platform.h>
 
@@ -25,7 +22,7 @@
 #include <azure/iot/az_iot_sm_provisioning_client.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
-#include "mosquitto.h"
+#include <azure/platform/az_mqtt_mosquitto.h>
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
@@ -201,8 +198,6 @@ int main(int argc, char* argv[])
       = az_context_create_with_expiration(&az_context_application, 30 * 1000);
 
   _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, &register_context));
-
-  az_iot_provisioning_client_register_response 
 
   for (int i = 15; i > 0; i--)
   {

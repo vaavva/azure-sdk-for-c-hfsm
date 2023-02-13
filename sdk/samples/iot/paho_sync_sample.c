@@ -12,12 +12,8 @@
 #include <stdlib.h>
 
 #include <azure/core/az_log.h>
-
-#include <azure/platform/az_mqtt_paho.h>
-#include <azure/core/az_mqtt.h>
-
-#include <azure/platform/az_platform_posix.h>>
 #include <azure/core/az_platform.h>
+#include <azure/platform/az_platform_posix.h>>
 
 #include <azure/core/internal/az_result_internal.h>
 
@@ -170,29 +166,33 @@ int main(int argc, char* argv[])
     .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
   };
 
-  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_init(
-      &prov_client, &prov_codec, &mqtt, cred, NULL, NULL));
+  _az_RETURN_IF_FAILED(
+      az_iot_sm_provisioning_client_init(&prov_client, &prov_codec, &mqtt, cred, NULL, NULL));
 
   az_context register_context
       = az_context_create_with_expiration(&az_context_application, 30 * 1000);
 
   _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, &register_context));
 
-  az_iot_provisioning_client_register_response 
-
   for (int i = 15; i > 0; i--)
   {
+    // HFSM_DESIGN: There are 2 options
+    // 1. We maintain a single wait_for_event function that exits with the most recent event
+    // returned by the server. 0-mem copy (MQTT stack must hold the memory allocated until the next
+    // `read` call).
+    //
+    // 2. We create separate wait_for* APIs. (deep) memory copy (topic+payload) and possible double
+    // parsing will be required.
+    
+    // Can return AZ_HFSM_EVENT_TIMEOUT which is not an error.
+    az_hfsm_event evt = az_iot_sm_provisioning_client_wait_for_event(&prov_client, 1000);
 
-    az_hfsm_event evt = az_iot_sm_provisioning_client_wait_for_event(
-      &prov_client,
-      1000);
-
-    switch(evt.type)
+    switch (evt.type)
     {
       case AZ_IOT_PROVISIONING_REGISTER_RSP:
         break;
-      break;
-      
+        break;
+
       default:
         break;
     }

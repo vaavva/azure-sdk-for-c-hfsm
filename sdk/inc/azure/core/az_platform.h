@@ -17,12 +17,21 @@
 
 #include <azure/core/az_result.h>
 
+// HFSM_DESIGN:
+// 1. The Platform stack implementation is abstracted out. The SDK cannot create or allocate
+// Platform objects (timers, mutexes). These are always allocated by the application and injected
+// within clients.
+// 2. The Platform stack implementation is selected during CMake Configure. Code is compiled with
+// Platform internals knowledge (e.g. struct sizes) and can allocate them internally.
+
+// Option #2 is implemented here.
+
 #include <stdbool.h>
 #include <stdint.h>
 #if AZ_PLATFORM_IMPL == POSIX
-    #include <time.h>
-    #include <signal.h>
-    #include <pthread.h>
+#include <pthread.h>
+#include <signal.h>
+#include <time.h>
 #endif
 
 #include <azure/core/_az_cfg_prefix.h>
@@ -34,29 +43,28 @@
  */
 typedef void (*az_platform_timer_callback)(void* sdk_data);
 
-
-//HFSM_DESIGN: ARM CMSIS-like typedefs:
+// HFSM_DESIGN: ARM CMSIS-like typedefs:
 //  The typedefs could change based on the selected platform to the actual types.
 //  e.g. #ifdef PLATFORM_POSIX
 //          #include <az_platform_t_posix.h>
 #if AZ_PLATFORM_IMPL == POSIX
-typedef struct 
+typedef struct
 {
-    struct 
-    {
-        az_platform_timer_callback callback;
-        void* sdk_data;
+  struct
+  {
+    az_platform_timer_callback callback;
+    void* sdk_data;
 
-        // POSIX specific
-        timer_t timerid;
-        struct sigevent sev;
-        struct itimerspec trigger;
-    } _internal;
+    // POSIX specific
+    timer_t timerid;
+    struct sigevent sev;
+    struct itimerspec trigger;
+  } _internal;
 } az_platform_timer;
 
 typedef pthread_mutex_t az_platform_mutex;
 
-#else //other AZ_PLATFORM_IMPL
+#else // other AZ_PLATFORM_IMPL
 typedef void* az_platform_timer;
 typedef void* az_platform_mutex;
 #endif
@@ -102,17 +110,16 @@ void az_platform_critical_error();
 
 /**
  * @brief Gets a positive pseudo-random integer.
- * 
+ *
  * @param[out] out_random A pseudo-random number greater than 0.
  *  *
  * @retval #AZ_OK Success.
  * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this
  * function.
- * 
+ *
  * @note This is NOT cryptographically secure.
  */
 AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random);
-
 
 /**
  * @brief Create a timer object.
@@ -140,14 +147,14 @@ AZ_NODISCARD az_result az_platform_timer_start(az_platform_timer* timer, int32_t
 
 /**
  * @brief Destroys a timer.
- * 
+ *
  * @param[in] timer_handle The timer handle.
  */
-AZ_NODISCARD az_result  az_platform_timer_destroy(az_platform_timer* timer);
+AZ_NODISCARD az_result az_platform_timer_destroy(az_platform_timer* timer);
 
 /**
  * @brief Creates a mutex.
- * 
+ *
  * @param mutex The mutex handle.
  * @return An #az_result value indicating the result of the operation.
  */

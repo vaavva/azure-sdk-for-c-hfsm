@@ -93,6 +93,10 @@ add_subdirectory(sdk/src/azure/iot)
 #PAL (Hardware + HTTP)
 add_subdirectory(sdk/src/azure/platform)
 
+## HFSM_TODO - remove: if (TRANSPORT_PAHO AND TRANSPORT_MOSQUITTO)
+## HFSM_TODO - remove:   message ( SEND_ERROR "Only one MQTT transport can be enabled at a time. Please set TRANSPORT_PAHO or TRANSPORT_MOSQUITTO to OFF." )
+## HFSM_TODO - remove: endif()
+
 # User can disable samples generation by setting env variable AZ_SDK_C_NO_SAMPLES
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
   if(TRANSPORT_PAHO)

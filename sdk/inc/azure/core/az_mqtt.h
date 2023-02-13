@@ -42,6 +42,14 @@
 // HFSM_TODO: for event type only.
 #include <azure/core/az_hfsm.h>
 
+// HFSM_DESIGN:
+// 1. The MQTT stack implementation is abstracted out. The SDK cannot create or allocate MQTT
+// objects. These are always allocated by the application and injected within clients.
+// 2. The MQTT stack implementation is selected during CMake Configure. Code is compiled with MQTT
+// internals knowledge (e.g. struct sizes).
+
+// Option #1 is implemented here.
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -63,8 +71,6 @@ typedef struct
    * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
    */
   az_span certificate_authority_trusted_roots;
-  // HFSM_DESIGN: Extension point to add MQTT stack specific options here.
-  az_mqtt_impl_options implementation_specific_options;
 } az_mqtt_options;
 
 typedef struct
@@ -160,13 +166,8 @@ struct az_mqtt
   struct
   {
     az_mqtt_inbound_handler _inbound_handler;
-    az_mqtt_impl_data _impl_data;
-    /// @brief The MQTT options.
     az_mqtt_options options;
   } _internal;
-
-  /// @brief The underlying MQTT implementation.
-  az_mqtt_impl mqtt_handle;
 };
 
 // Porting 1. The following functions must be called by the implementation when data is recevied:
@@ -239,8 +240,7 @@ az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data* disconnect_da
 //            send data:
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default();
-AZ_NODISCARD az_result
-az_mqtt_init(az_mqtt* mqtt, az_mqtt_impl* mqtt_handle, az_mqtt_options const* options);
+AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options);
 AZ_NODISCARD az_result
 az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_data* connect_data);
 AZ_NODISCARD az_result
