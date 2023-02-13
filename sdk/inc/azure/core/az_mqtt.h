@@ -170,7 +170,7 @@ struct az_mqtt
   } _internal;
 };
 
-// Porting 1. The following functions must be called by the implementation when data is recevied:
+// Porting 1. The following functions must be called by the implementation when data is received:
 
 AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data* recv_data)
 {

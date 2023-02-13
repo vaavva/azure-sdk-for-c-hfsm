@@ -12,8 +12,9 @@
 #include <stdlib.h>
 
 #include <azure/core/az_log.h>
+
+#include <azure/platform/az_platform_posix.h>
 #include <azure/core/az_platform.h>
-#include <azure/platform/az_platform_posix.h>>
 
 #include <azure/core/internal/az_result_internal.h>
 
@@ -23,6 +24,8 @@
 // For Provisioning events
 #include <azure/core/az_hfsm.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
+
+#include <azure/platform/az_mqtt_paho.h>
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("ssl://global.azure-devices-provisioning.net:8883");
@@ -150,10 +153,10 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  az_mqtt mqtt;
+  az_mqtt_paho mqtt_paho;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.certificate_authority_trusted_roots = ca_path;
-  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, NULL, NULL));
+  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt_paho, NULL, NULL));
 
   az_iot_provisioning_client prov_codec;
   _az_RETURN_IF_FAILED(
@@ -166,8 +169,8 @@ int main(int argc, char* argv[])
     .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
   };
 
-  _az_RETURN_IF_FAILED(
-      az_iot_sm_provisioning_client_init(&prov_client, &prov_codec, &mqtt, cred, NULL, NULL));
+  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_init(
+      &prov_client, &prov_codec, (az_mqtt*)&mqtt_paho, cred, NULL, NULL));
 
   az_context register_context
       = az_context_create_with_expiration(&az_context_application, 30 * 1000);
@@ -183,7 +186,7 @@ int main(int argc, char* argv[])
     //
     // 2. We create separate wait_for* APIs. (deep) memory copy (topic+payload) and possible double
     // parsing will be required.
-    
+
     // Can return AZ_HFSM_EVENT_TIMEOUT which is not an error.
     az_hfsm_event evt = az_iot_sm_provisioning_client_wait_for_event(&prov_client, 1000);
 

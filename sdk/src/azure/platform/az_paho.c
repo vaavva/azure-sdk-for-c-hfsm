@@ -66,7 +66,7 @@ AZ_NODISCARD az_result
 az_mqtt_paho_init(az_mqtt_paho* paho_mqtt, MQTTClient* mqtt_handle, az_mqtt_options const* options)
 {
   paho_mqtt->paho_handle = *mqtt_handle; // can be NULL.
-  return az_mqtt_init(paho_mqtt->mqtt, options);
+  return az_mqtt_init(&paho_mqtt->mqtt, options);
 }
 
 AZ_NODISCARD az_result
