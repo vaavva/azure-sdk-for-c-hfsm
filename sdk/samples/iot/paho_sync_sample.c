@@ -25,6 +25,7 @@
 #include <azure/iot/az_iot_sm_provisioning_client.h>
 
 // For Provisioning events
+#include <azure/core/az_hfsm.h>
 #include <azure/iot/internal/az_iot_provisioning_hfsm.h>
 
 static const az_span dps_endpoint
@@ -182,15 +183,22 @@ int main(int argc, char* argv[])
   for (int i = 15; i > 0; i--)
   {
 
-    _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
+    az_hfsm_event evt = az_iot_sm_provisioning_client_wait_for_event(
+      &prov_client,
+      1000);
+
+    switch(evt.type)
+    {
+      case AZ_IOT_PROVISIONING_REGISTER_RSP:
+        break;
+      break;
+      
+      default:
+        break;
+    }
+
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
-  }
-
-  if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
-  {
-    printf(LOG_APP "Failed to cleanup MosquittoLib\n");
-    return -1;
   }
 
   printf(LOG_APP "Done.\n");
