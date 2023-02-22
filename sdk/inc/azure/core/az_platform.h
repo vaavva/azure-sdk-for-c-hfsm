@@ -104,7 +104,7 @@ void az_platform_critical_error();
 /**
  * @brief Gets a positive pseudo-random integer.
  * 
- * @param[out] out_random A pseudo-random number greater than 0.
+ * @param[out] out_random A pseudo-random number greater than or equal to 0.
  * 
  * @retval #AZ_OK Success.
  * @retval #AZ_ERROR_DEPENDENCY_NOT_PROVIDED No platform implementation was supplied to support this

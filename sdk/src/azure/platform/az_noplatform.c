@@ -21,7 +21,7 @@ AZ_NODISCARD az_result az_platform_sleep_msec(int32_t milliseconds)
 
 void az_platform_critical_error()
 {
-  while(1)
+  while (1)
   {
   }
 }

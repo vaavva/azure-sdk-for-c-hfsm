@@ -116,6 +116,9 @@ if (UNIT_TESTING)
   add_subdirectory(sdk/tests/iot/provisioning)
   add_subdirectory(sdk/tests/iot/provisioning_v2)
 
+  # Platform
+  add_subdirectory(sdk/tests/platform)
+
 endif()
 
 # Fail generation when setting MOCKS ON without GCC
