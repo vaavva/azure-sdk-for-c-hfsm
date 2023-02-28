@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
   az_mqtt_paho mqtt_paho;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.certificate_authority_trusted_roots = ca_path;
-  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt_paho, NULL, NULL));
+  _az_RETURN_IF_FAILED(az_mqtt_paho_init(&mqtt_paho, NULL, NULL));
 
   az_iot_provisioning_client prov_codec;
   _az_RETURN_IF_FAILED(

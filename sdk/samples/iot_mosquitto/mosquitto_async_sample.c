@@ -13,8 +13,8 @@
 
 #include <azure/core/az_log.h>
 
-#include <azure/platform/az_platform_posix.h>>
 #include <azure/core/az_platform.h>
+#include <azure/platform/az_platform_posix.h>>
 
 #include <azure/core/internal/az_result_internal.h>
 
@@ -140,18 +140,16 @@ void az_platform_critical_error()
     ;
 }
 
-az_result provisioning_status_callback(
-    az_iot_sm_provisioning_client* client,
-    az_hfsm_event event)
+az_result provisioning_status_callback(az_iot_sm_provisioning_client* client, az_hfsm_event event)
 {
   switch (event.type)
   {
     case AZ_IOT_PROVISIONING_REGISTER_RSP:
-    // TODO:
+      // TODO:
       break;
 
     default:
-    // TODO:
+      // TODO:
       break;
   }
 
@@ -175,10 +173,10 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  az_mqtt mqtt;
+  az_mqtt_mosquitto mqtt;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.certificate_authority_trusted_roots = ca_path;
-  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, NULL));
+  _az_RETURN_IF_FAILED(az_mqtt_mosquitto_init(&mqtt, NULL));
 
   az_iot_provisioning_client prov_codec;
   _az_RETURN_IF_FAILED(
@@ -197,11 +195,22 @@ int main(int argc, char* argv[])
   az_context register_context
       = az_context_create_with_expiration(&az_context_application, 30 * 1000);
 
-  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, &register_context));
+  // Blocking?
+  // do as much work as possible.
+
+  az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
+    .topic_buffer = az_span_specialnx_value;// AZ_SPAN_FROM_BUFFER(topic_buffer),
+    .payload_buffer = az_span_specialnx_value; //AZ_SPAN_FROM_BUFFER(payload_buffer),
+  };
+
+ // NXPacket pack = NXPoolGet(...);
+ // az_span topic = MQTTStackGetTopic(pack);
+ // az_span payload = MQTTStackGetPayload(pack);
+
+  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, &register_data, &register_context));
 
   for (int i = 15; i > 0; i--)
   {
-
     _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);

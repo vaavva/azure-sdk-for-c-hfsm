@@ -9,16 +9,15 @@ option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 option(TRANSPORT_CURL "Build internal http transport implementation with CURL for HTTP Pipeline" OFF)
 option(UNIT_TESTING "Build unit test projects" OFF)
 option(UNIT_TESTING_MOCKS "wrap PAL functions with mock implementation for tests" OFF)
-option(TRANSPORT_MQTT_SYNC "Build with syncrhonous I/O MQTT support" OFF)
-option(TRANSPORT_PAHO "Build with Paho MQTT support" OFF)
-option(TRANSPORT_MOSQUITTO "Build with Mosquitto MQTT support" OFF)
 option(PRECONDITIONS "Build SDK with preconditions enabled" ON)
 option(LOGGING "Build SDK with logging support" ON)
 
 set(AZ_PLATFORM_IMPL "POSIX" CACHE STRING "Platform")
 set(AZ_CUSTOM_PLATFORM_IMPL_NAME "" CACHE STRING "If AZ_PLATFORM_IMPL is CUSTOM set this to the platform name.")
-
 set_property(CACHE AZ_PLATFORM_IMPL PROPERTY STRINGS "WIN32" "POSIX" "CUSTOM") 
+
+set(AZ_MQTT_TRANSPORT_IMPL "NONE" CACHE STRING "MQTT Transport")
+set_property(CACHE AZ_MQTT_TRANSPORT_IMPL PROPERTY STRINGS "NONE" "PAHO_SYNC" "MOSQUITTO_ASYNC")
 
 # disable preconditions when it's set to OFF
 if (NOT PRECONDITIONS)
@@ -85,6 +84,22 @@ else()
   set(PAL az_noplatform)
 endif()
 
+# Determine MQTT transport to build
+if(AZ_MQTT_TRANSPORT_IMPL STREQUAL "NONE")
+  set(TRANSPORT_PAHO OFF)
+  set(TRANSPORT_MOSQUITTO OFF)
+elseif(AZ_MQTT_TRANSPORT_IMPL STREQUAL "PAHO_SYNC")
+  set(TRANSPORT_PAHO ON)
+  set(TRANSPORT_MOSQUITTO OFF)
+  set(TRANSPORT_MQTT_SYNC ON)
+elseif(AZ_MQTT_TRANSPORT_IMPL STREQUAL "MOSQUITTO_ASYNC")
+  set(TRANSPORT_PAHO OFF)
+  set(TRANSPORT_MOSQUITTO ON)
+  set(TRANSPORT_MQTT_SYNC OFF)
+else()
+  message(FATAL_ERROR "Invalid AZ_MQTT_TRANSPORT_IMPL=${AZ_MQTT_TRANSPORT_IMPL}")
+endif()
+
 add_subdirectory(sdk/src/azure/core)
 
 # SDK Clients
@@ -92,10 +107,6 @@ add_subdirectory(sdk/src/azure/iot)
 
 #PAL (Hardware + HTTP)
 add_subdirectory(sdk/src/azure/platform)
-
-## HFSM_TODO - remove: if (TRANSPORT_PAHO AND TRANSPORT_MOSQUITTO)
-## HFSM_TODO - remove:   message ( SEND_ERROR "Only one MQTT transport can be enabled at a time. Please set TRANSPORT_PAHO or TRANSPORT_MOSQUITTO to OFF." )
-## HFSM_TODO - remove: endif()
 
 # User can disable samples generation by setting env variable AZ_SDK_C_NO_SAMPLES
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
