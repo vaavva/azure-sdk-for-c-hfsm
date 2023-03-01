@@ -29,9 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #if AZ_PLATFORM_IMPL == POSIX
-#include <pthread.h>
-#include <signal.h>
-#include <time.h>
+#include "azure/platform/az_platform_posix.h"
 #endif
 
 #include <azure/core/_az_cfg_prefix.h>

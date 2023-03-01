@@ -11,9 +11,9 @@
 
 typedef struct
 {
-  az_mqtt mqtt;
+  az_mqtt_internal mqtt;
   struct mosquitto* mosquitto_handle;
-} az_mqtt_mosquitto;
+} az_mqtt;
 
 AZ_NODISCARD az_result az_mqtt_mosquitto_init(
     az_mqtt_mosquitto* mqtt,

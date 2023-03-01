@@ -198,10 +198,10 @@ int main(int argc, char* argv[])
   // Blocking?
   // do as much work as possible.
 
-  az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
-    .topic_buffer = az_span_specialnx_value;// AZ_SPAN_FROM_BUFFER(topic_buffer),
-    .payload_buffer = az_span_specialnx_value; //AZ_SPAN_FROM_BUFFER(payload_buffer),
-  };
+//  az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
+//    .topic_buffer = az_span_specialnx_value;// AZ_SPAN_FROM_BUFFER(topic_buffer),
+//    .payload_buffer = az_span_specialnx_value; //AZ_SPAN_FROM_BUFFER(payload_buffer),
+//  };
 
  // NXPacket pack = NXPoolGet(...);
  // az_span topic = MQTTStackGetTopic(pack);

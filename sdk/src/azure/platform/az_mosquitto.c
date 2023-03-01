@@ -51,7 +51,7 @@ AZ_INLINE az_result _az_result_from_mosq(int mosquitto_ret)
 static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
   az_result ret;
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)obj;
+  az_mqtt* me = (az_mqtt*)obj;
 
   if (reason_code != 0)
   {

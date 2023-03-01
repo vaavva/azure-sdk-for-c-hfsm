@@ -28,12 +28,17 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
+// TODO:
 typedef struct
 {
   az_span username_buffer;
   az_span password_buffer;
   az_span client_id_buffer;
   az_credential_x509 credential;
+} az_hfsm_iot_provisioning_connect_data;
+
+typedef struct
+{
   az_span topic_buffer;
   az_span payload_buffer;
 } az_hfsm_iot_provisioning_register_data;
