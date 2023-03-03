@@ -30,42 +30,11 @@
 #include <stdint.h>
 #if AZ_PLATFORM_IMPL == POSIX
 #include "azure/platform/az_platform_posix.h"
+#else
+#include "azure/platform/az_platform_none.h"
 #endif
 
 #include <azure/core/_az_cfg_prefix.h>
-
-/**
- * @brief Timer callback.
- *
- * @param[in] sdk_data Data passed by the SDK during the #az_platform_timer_create call.
- */
-typedef void (*az_platform_timer_callback)(void* sdk_data);
-
-// HFSM_DESIGN: ARM CMSIS-like typedefs:
-//  The typedefs could change based on the selected platform to the actual types.
-//  e.g. #ifdef PLATFORM_POSIX
-//          #include <az_platform_t_posix.h>
-#if AZ_PLATFORM_IMPL == POSIX
-typedef struct
-{
-  struct
-  {
-    az_platform_timer_callback callback;
-    void* sdk_data;
-
-    // POSIX specific
-    timer_t timerid;
-    struct sigevent sev;
-    struct itimerspec trigger;
-  } _internal;
-} az_platform_timer;
-
-typedef pthread_mutex_t az_platform_mutex;
-
-#else // other AZ_PLATFORM_IMPL
-typedef void* az_platform_timer;
-typedef void* az_platform_mutex;
-#endif
 
 /**
  * @brief Gets the platform clock in milliseconds.
