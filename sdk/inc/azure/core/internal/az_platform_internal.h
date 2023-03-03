@@ -8,3 +8,12 @@
  */
 typedef void (*az_platform_timer_callback)(void* sdk_data);
 
+typedef struct
+{
+  struct
+  {
+    az_platform_timer_callback callback;
+    void* sdk_data;
+  } _internal;
+} az_platform_common;
+

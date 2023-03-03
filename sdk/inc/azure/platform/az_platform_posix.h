@@ -4,15 +4,14 @@
 #include <pthread.h>
 #include <signal.h>
 #include <time.h>
-#include <azure/core/internal/az_platform_timer_internal.h>
+#include <azure/core/internal/az_platform_internal.h>
 
 typedef struct
 {
+  az_platform_common platform_timer;
+  
   struct
   {
-    az_platform_timer_callback callback;
-    void* sdk_data;
-
     // POSIX specific
     timer_t timerid;
     struct sigevent sev;

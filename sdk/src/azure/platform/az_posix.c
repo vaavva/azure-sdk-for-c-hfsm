@@ -43,8 +43,8 @@ void _thread_handler(union sigval sv)
   az_platform_timer *timer = sv.sival_ptr;
 
   _az_PRECONDITION_NOT_NULL(timer);
-  _az_PRECONDITION_NOT_NULL(timer->_internal.callback);
-  timer->_internal.callback(timer->_internal.sdk_data);
+  _az_PRECONDITION_NOT_NULL(timer->platform_timer._internal.callback);
+  timer->platform_timer._internal.callback(timer->platform_timer._internal.sdk_data);
 }
 
 AZ_NODISCARD az_result az_platform_timer_create(
@@ -55,8 +55,8 @@ AZ_NODISCARD az_result az_platform_timer_create(
   _az_PRECONDITION_NOT_NULL(timer);
   memset(timer, 0, sizeof(az_platform_timer));
 
-  timer->_internal.callback = callback;
-  timer->_internal.sdk_data = sdk_data;
+  timer->platform_timer._internal.callback = callback;
+  timer->platform_timer._internal.sdk_data = sdk_data;
 
   timer->_internal.sev.sigev_notify = SIGEV_THREAD;
   timer->_internal.sev.sigev_notify_function = &_thread_handler;
