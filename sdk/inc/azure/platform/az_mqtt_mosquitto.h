@@ -1,21 +1,20 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-/**
- * @file
- *
- */
+#ifndef _az_MQTT_MOSQUITTO_H
+#define _az_MQTT_MOSQUITTO_H
 
 #include "mosquitto.h"
 #include <azure/core/internal/az_mqtt_internal.h>
 
-typedef struct
-{
-  az_mqtt_internal mqtt;
-  struct mosquitto* mosquitto_handle;
-} az_mqtt;
+#include <azure/core/_az_cfg_prefix.h>
 
-AZ_NODISCARD az_result az_mqtt_mosquitto_init(
-    az_mqtt_mosquitto* mqtt,
-    struct mosquitto* mosquitto_handle,
-    az_mqtt_options const* options);
+struct az_mqtt
+{
+  az_mqtt_common platform_mqtt;
+  struct mosquitto* mosquitto_handle;
+};
+
+#include <azure/core/_az_cfg_suffix.h>
+
+#endif // _az_MQTT_MOSQUITTO_H

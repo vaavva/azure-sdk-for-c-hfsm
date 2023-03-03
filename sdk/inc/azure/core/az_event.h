@@ -11,7 +11,7 @@
 
 
 // HFSM_TODO: Events will be public for logging purposes.
-#define _az_HFSM_MAKE_EVENT(hfsm_id, code) \
+#define _az_MAKE_EVENT(hfsm_id, code) \
   ((az_event_type)(((uint32_t)(hfsm_id) << 16U) | (uint32_t)(code)))
 
 /**

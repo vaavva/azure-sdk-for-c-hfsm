@@ -14,15 +14,14 @@
  * https://mosquitto.org/api/files/mosquitto-h.html
  */
 
-#include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
 #include <azure/iot/az_iot_common.h>
-
-#include <azure/platform/az_mqtt_mosquitto.h>
+#include <azure/core/az_platform.h>
+#include <azure/core/az_mqtt.h>
 #include <mosquitto.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -52,6 +51,8 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
 {
   az_result ret;
   az_mqtt* me = (az_mqtt*)obj;
+  
+  _az_PRECONDITION(mosq == me->mosquitto_handle);
 
   if (reason_code != 0)
   {
@@ -72,7 +73,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
 static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
 {
   (void)mosq;
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)obj;
+  az_mqtt* me = (az_mqtt*)obj;
 
   az_result ret = az_mqtt_inbound_disconnect(
       (az_mqtt*)me,
@@ -93,7 +94,7 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
 static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
 {
   (void)mosq;
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)obj;
+  az_mqtt* me = (az_mqtt*)obj;
 
   az_result ret = az_mqtt_inbound_puback((az_mqtt*)me, &(az_mqtt_puback_data){ mid });
 
@@ -114,7 +115,7 @@ static void _az_mosqitto_on_subscribe(
   (void)qos_count;
   (void)granted_qos;
 
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)obj;
+  az_mqtt* me = (az_mqtt*)obj;
 
   az_result ret = az_mqtt_inbound_suback((az_mqtt*)me, &(az_mqtt_suback_data){ mid });
 
@@ -140,7 +141,7 @@ static void _az_mosquitto_on_message(
     const struct mosquitto_message* message)
 {
   (void)mosq;
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)obj;
+  az_mqtt* me = (az_mqtt*)obj;
 
   az_result ret = az_mqtt_inbound_recv(
       (az_mqtt*)me,
@@ -173,8 +174,8 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
   return (az_mqtt_options) { .certificate_authority_trusted_roots = NULL };
 }
 
-AZ_NODISCARD az_result az_mqtt_mosquitto_init(
-    az_mqtt_mosquitto* mosquitto_mqtt,
+AZ_NODISCARD az_result az_mqtt_init(
+    az_mqtt* mosquitto_mqtt,
     struct mosquitto* mosquitto_handle,
     az_mqtt_options const* options)
 {
@@ -186,7 +187,7 @@ AZ_NODISCARD az_result
 az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_data* connect_data)
 {
   az_result ret;
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)mqtt;
+  az_mqtt* me = (az_mqtt*)mqtt;
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
 
@@ -248,7 +249,7 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
 AZ_NODISCARD az_result
 az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_data)
 {
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)mqtt;
+  az_mqtt* me = (az_mqtt*)mqtt;
 
   return _az_result_from_mosq(mosquitto_subscribe(
       me->mosquitto_handle,
@@ -260,7 +261,7 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 AZ_NODISCARD az_result
 az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_data)
 {
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)mqtt;
+  az_mqtt* me = (az_mqtt*)mqtt;
 
   return _az_result_from_mosq(mosquitto_publish(
       me->mosquitto_handle,
@@ -274,14 +275,14 @@ az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_d
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context)
 {
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)mqtt;
+  az_mqtt* me = (az_mqtt*)mqtt;
 
   return _az_result_from_mosq(mosquitto_disconnect(me->mosquitto_handle));
 }
 
 AZ_NODISCARD az_result az_mqtt_wait_for_event(az_mqtt* mqtt, int32_t timeout)
 {
-  az_mqtt_mosquitto* me = (az_mqtt_mosquitto*)mqtt;
+  az_mqtt* me = (az_mqtt*)mqtt;
 
   return _az_result_from_mosq(mosquitto_loop(me->mosquitto_handle, timeout, 1));
 }

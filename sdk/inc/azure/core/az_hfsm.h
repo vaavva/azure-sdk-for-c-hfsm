@@ -35,21 +35,21 @@
 enum az_event_type_hfsm
 {
   /// Entry event: must not set or use the data field, must be handled by each state.
-  AZ_HFSM_EVENT_ENTRY = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 1),
+  AZ_HFSM_EVENT_ENTRY = _az_MAKE_EVENT(_az_FACILITY_HFSM, 1),
 
   /// Exit event: must not set or use the data field, must be handled by each state.
-  AZ_HFSM_EVENT_EXIT = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 2),
+  AZ_HFSM_EVENT_EXIT = _az_MAKE_EVENT(_az_FACILITY_HFSM, 2),
 
   /// Generic error event: must use a data field containing a structure derived from
   /// #az_hfsm_error_data
-  AZ_HFSM_EVENT_ERROR = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 3),
+  AZ_HFSM_EVENT_ERROR = _az_MAKE_EVENT(_az_FACILITY_HFSM, 3),
 
   /**
    * @brief Generic timeout event: if multiple timers are necessary it's recommended to create
    * separate timeout events.
    *
    */
-  AZ_HFSM_EVENT_TIMEOUT = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 4),
+  AZ_HFSM_EVENT_TIMEOUT = _az_MAKE_EVENT(_az_FACILITY_HFSM, 4),
 };
 
 /**

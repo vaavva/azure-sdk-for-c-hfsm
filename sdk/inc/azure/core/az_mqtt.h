@@ -38,7 +38,9 @@
 #include <azure/core/az_credentials_x509.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-
+#include <azure/core/az_event.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #if defined(TRANSPORT_MOSQUITTO)
     #include <azure/platform/az_mqtt_mosquitto.h>
@@ -49,18 +51,11 @@
 #endif
 
 
-// HFSM_TODO: for event type only.
-#include <azure/core/az_hfsm.h>
-#include <stdbool.h>
-#include <stdint.h>
-
 #include <azure/core/_az_cfg_prefix.h>
 
 // HFSM_TODO: we may want to add enums for the various MQTT status codes. These could be used to
 //            simplify logging.
 
-// MQTT library handle (type defined by implementation)
-typedef struct az_mqtt az_mqtt;
 
 typedef struct
 {
@@ -125,92 +120,92 @@ typedef struct
  *
  */
 // HFSM_TODO: az_log_classification_iot uses _az_FACILITY_IOT_MQTT up to ID 2.
-enum az_hfsm_event_type_mqtt
+enum az_event_type_mqtt
 {
   /// MQTT Connect Request event.
-  AZ_HFSM_MQTT_EVENT_CONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 10),
+  AZ_MQTT_EVENT_CONNECT_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 10),
 
   /// MQTT Connect Response event.
-  AZ_HFSM_MQTT_EVENT_CONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 11),
+  AZ_MQTT_EVENT_CONNECT_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 11),
 
-  AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 12),
+  AZ_MQTT_EVENT_DISCONNECT_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 12),
 
-  AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 13),
+  AZ_MQTT_EVENT_DISCONNECT_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 13),
 
-  AZ_HFSM_MQTT_EVENT_PUB_RECV_IND = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 14),
+  AZ_MQTT_EVENT_PUB_RECV_IND = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 14),
 
-  AZ_HFSM_MQTT_EVENT_PUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 15),
+  AZ_MQTT_EVENT_PUB_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 15),
 
-  AZ_HFSM_MQTT_EVENT_PUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 16),
+  AZ_MQTT_EVENT_PUBACK_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 16),
 
-  AZ_HFSM_MQTT_EVENT_SUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
+  AZ_MQTT_EVENT_SUB_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
 
-  AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 18),
+  AZ_MQTT_EVENT_SUBACK_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 18),
 };
 
 // Porting 1. The following functions must be called by the implementation when data is received:
 
 AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data* recv_data)
 {
-  if (!mqtt->_internal._inbound_handler)
+  if (!mqtt->platform_mqtt._internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._inbound_handler(
-      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUB_RECV_IND, .data = recv_data });
+  mqtt->platform_mqtt._internal._inbound_handler(
+      mqtt, (az_event){ .type = AZ_MQTT_EVENT_PUB_RECV_IND, .data = recv_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data* connack_data)
 {
-  if (!mqtt->_internal._inbound_handler)
+  if (!mqtt->platform_mqtt._internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._inbound_handler(
-      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_RSP, .data = connack_data });
+  mqtt->platform_mqtt._internal._inbound_handler(
+      mqtt, (az_event){ .type = AZ_MQTT_EVENT_CONNECT_RSP, .data = connack_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data* suback_data)
 {
-  if (!mqtt->_internal._inbound_handler)
+  if (!mqtt->platform_mqtt._internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._inbound_handler(
-      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_SUBACK_RSP, .data = suback_data });
+  mqtt->platform_mqtt._internal._inbound_handler(
+      mqtt, (az_event){ .type = AZ_MQTT_EVENT_SUBACK_RSP, .data = suback_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data* puback_data)
 {
-  if (!mqtt->_internal._inbound_handler)
+  if (!mqtt->platform_mqtt._internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._inbound_handler(
-      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_PUBACK_RSP, .data = puback_data });
+  mqtt->platform_mqtt._internal._inbound_handler(
+      mqtt, (az_event){ .type = AZ_MQTT_EVENT_PUBACK_RSP, .data = puback_data });
   return AZ_OK;
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data* disconnect_data)
 {
-  if (!mqtt->_internal._inbound_handler)
+  if (!mqtt->platform_mqtt._internal._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal._inbound_handler(
-      mqtt, (az_hfsm_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP, .data = disconnect_data });
+  mqtt->platform_mqtt._internal._inbound_handler(
+      mqtt, (az_event){ .type = AZ_MQTT_EVENT_DISCONNECT_RSP, .data = disconnect_data });
   return AZ_OK;
 }
 
