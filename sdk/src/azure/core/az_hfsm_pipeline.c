@@ -22,7 +22,7 @@ az_hfsm_pipeline_init(az_hfsm_pipeline* pipeline, az_hfsm_policy* outbound, az_h
 }
 
 AZ_NODISCARD az_result
-az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event event)
+az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_event const event)
 {
   az_result ret;
 
@@ -40,7 +40,7 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event e
 }
 
 AZ_NODISCARD az_result
-az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event event)
+az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_event const event)
 {
   az_result ret;
 
@@ -58,7 +58,7 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event ev
 }
 
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
+az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_event const event)
 {
   _az_PRECONDITION_NOT_NULL(policy->inbound_handler);
   az_result ret = policy->inbound_handler(policy, event);
@@ -68,7 +68,7 @@ az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const 
     // Replace the original event with an error event that is flowed to the application.
     ret = policy->inbound_handler(
         policy,
-        (az_hfsm_event){ AZ_HFSM_EVENT_ERROR,
+        (az_event){ AZ_HFSM_EVENT_ERROR,
                          &(az_hfsm_event_data_error){
                              .error_type = ret,
                              .sender = policy->inbound_handler,
@@ -80,7 +80,7 @@ az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const 
 }
 
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event)
+az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_event const event)
 {
   // The error is flowed back to the application.
   return az_hfsm_send_event((az_hfsm*)policy->outbound_policy, event);
@@ -89,7 +89,7 @@ az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const
 static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
 {
   az_hfsm_pipeline_timer* timer = (az_hfsm_pipeline_timer*)sdk_data;
-  az_hfsm_event timer_event = (az_hfsm_event){ .type = AZ_HFSM_EVENT_TIMEOUT, .data = timer };
+  az_event timer_event = (az_event){ .type = AZ_HFSM_EVENT_TIMEOUT, .data = timer };
 
   az_result ret = az_hfsm_pipeline_post_outbound_event(timer->_internal.pipeline, timer_event);
 
@@ -97,7 +97,7 @@ static void _az_hfsm_pipeline_timer_callback(void* sdk_data)
   {
     ret = az_hfsm_pipeline_post_inbound_event(
         timer->_internal.pipeline,
-        (az_hfsm_event){
+        (az_event){
             .type = AZ_HFSM_EVENT_ERROR,
             .data = &(az_hfsm_event_data_error){
                 .error_type = ret,
@@ -129,12 +129,12 @@ AZ_NODISCARD az_result az_hfsm_pipeline_sync_process_loop(az_hfsm_pipeline* pipe
   // Process outbound events if any have been cached by the upper layers (e.g. API). This call is
   // blocking.
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_outbound_event(
-      pipeline, (az_hfsm_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
+      pipeline, (az_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
 
   // Process inbound events (e.g. network read). This call is blocking. When configurable, it should
   // wait at most AZ_MQTT_SYNC_MAX_POLLING_MILLISECONDS.
   _az_RETURN_IF_FAILED(az_hfsm_pipeline_post_inbound_event(
-      pipeline, (az_hfsm_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
+      pipeline, (az_event){ AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP, NULL }));
 
   // Process timer elapsed events.
   // HFSM_TODO: sync timer calculations.

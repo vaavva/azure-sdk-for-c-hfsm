@@ -23,29 +23,16 @@
 #define _az_HFSM_H
 
 #include <azure/core/az_result.h>
+#include <azure/core/az_event.h>
 #include <stdint.h>
 
 #include <azure/core/_az_cfg_prefix.h>
-
-
-// HFSM_TODO: Events will be public for logging purposes.
-#define _az_HFSM_MAKE_EVENT(hfsm_id, code) \
-  ((az_hfsm_event_type)(((uint32_t)(hfsm_id) << 16U) | (uint32_t)(code)))
-
-/**
- * @brief The type represents event types handled by a HFSM.
- *
- * @note See the following `az_hfsm_event_type` values from various headers:
- *  - #az_hfsm_event_type_core
- *  - #az_hfsm_event_type_iot
- */
-typedef int32_t az_hfsm_event_type;
 
 /**
  * @brief Common HFSM event types.
  *
  */
-enum az_hfsm_event_type_core
+enum az_event_type_hfsm
 {
   /// Entry event: must not set or use the data field, must be handled by each state.
   AZ_HFSM_EVENT_ENTRY = _az_HFSM_MAKE_EVENT(_az_FACILITY_HFSM, 1),
@@ -88,25 +75,6 @@ enum az_result_hfsm
 typedef struct az_hfsm az_hfsm;
 
 /**
- * @brief The type represents an event handled by HFSM.
- *
- */
-typedef struct
-{
-  /**
-   * @brief The event type.
-   *
-   */
-  az_hfsm_event_type type;
-
-  /**
-   * @brief The event data.
-   *
-   */
-  void* data;
-} az_hfsm_event;
-
-/**
  * @brief The type representing the minimum data required for an #AZ_HFSM_EVENT_ERROR event.
  *
  */
@@ -118,7 +86,7 @@ typedef struct
    */
   az_result error_type;
   void* sender;
-  az_hfsm_event sender_event;
+  az_event sender_event;
 } az_hfsm_event_data_error;
 
 /**
@@ -126,14 +94,14 @@ typedef struct
  *
  * @note The entry and exit events must not expect a `data` field.
  */
-extern const az_hfsm_event az_hfsm_event_entry;
+extern const az_event az_hfsm_event_entry;
 
 /**
  * @brief The generic state exit event.
  *
  * @note The entry and exit events must not expect a `data` field.
  */
-extern const az_hfsm_event az_hfsm_event_exit;
+extern const az_event az_hfsm_event_exit;
 
 /**
  * @brief The function signature for all HFSM states.
@@ -141,7 +109,7 @@ extern const az_hfsm_event az_hfsm_event_exit;
  * @note All HFSM states must follow the pattern of a single `switch ((int32_t)event.type)`
  *       statement. Code should not exist outside of the switch statement.
  */
-typedef az_result (*az_hfsm_state_handler)(az_hfsm* me, az_hfsm_event event);
+typedef az_result (*az_hfsm_state_handler)(az_hfsm* me, az_event event);
 
 /**
  * @brief The type of the function returning the parent of any given child state.
@@ -236,7 +204,7 @@ AZ_NODISCARD az_result az_hfsm_transition_superstate(
  * @param[in] event The event being sent.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event);
+AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_event event);
 
 #include <azure/core/_az_cfg_suffix.h>
 

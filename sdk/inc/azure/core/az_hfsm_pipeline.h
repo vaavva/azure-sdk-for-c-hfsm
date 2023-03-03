@@ -35,7 +35,7 @@ typedef struct az_hfsm_policy az_hfsm_policy;
 
 typedef struct az_hfsm_pipeline az_hfsm_pipeline;
 
-typedef az_result (*az_hfsm_policy_handler)(az_hfsm_policy* me, az_hfsm_event event);
+typedef az_result (*az_hfsm_policy_handler)(az_hfsm_policy* me, az_event event);
 
 /**
  * @brief The type representing a HFSM with dispatch capabilities. Derived from #az_hfsm.
@@ -85,7 +85,7 @@ AZ_NODISCARD az_result az_hfsm_pipeline_init(
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
+az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_event const event);
 
 /**
  * @brief Queues an outbound event to the pipeline.
@@ -101,7 +101,7 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event co
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event const event);
+az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_event const event);
 
 /**
  * @brief Sends an inbound event from the current policy.
@@ -114,7 +114,7 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_hfsm_event c
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
+az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_event const event);
 
 /**
  * @brief Sends an outbound event from the current policy.
@@ -127,7 +127,7 @@ az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_hfsm_event const 
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_hfsm_event const event);
+az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_event const event);
 
 #ifdef TRANSPORT_MQTT_SYNC
 enum az_hfsm_event_type_pipeline

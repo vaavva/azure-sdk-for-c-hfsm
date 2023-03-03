@@ -16,16 +16,6 @@
 #define _az_PLATFORM_H
 
 #include <azure/core/az_result.h>
-
-// HFSM_DESIGN:
-// 1. The Platform stack implementation is abstracted out. The SDK cannot create or allocate
-// Platform objects (timers, mutexes). These are always allocated by the application and injected
-// within clients.
-// 2. The Platform stack implementation is selected during CMake Configure. Code is compiled with
-// Platform internals knowledge (e.g. struct sizes) and can allocate them internally.
-
-// Option #2 is implemented here.
-
 #include <stdbool.h>
 #include <stdint.h>
 #if AZ_PLATFORM_IMPL == POSIX

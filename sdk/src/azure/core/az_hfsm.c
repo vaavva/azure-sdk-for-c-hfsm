@@ -20,8 +20,8 @@
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 
-const az_hfsm_event az_hfsm_event_entry = { AZ_HFSM_EVENT_ENTRY, NULL };
-const az_hfsm_event az_hfsm_event_exit = { AZ_HFSM_EVENT_EXIT, NULL };
+const az_event az_hfsm_event_entry = { AZ_HFSM_EVENT_ENTRY, NULL };
+const az_event az_hfsm_event_exit = { AZ_HFSM_EVENT_EXIT, NULL };
 
 AZ_NODISCARD az_result
 az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent get_parent_func)
@@ -123,7 +123,7 @@ AZ_NODISCARD az_result az_hfsm_transition_superstate(
   return AZ_OK;
 }
 
-AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_hfsm_event event)
+AZ_NODISCARD az_result az_hfsm_send_event(az_hfsm* h, az_event event)
 {
   _az_PRECONDITION_NOT_NULL(h);
   az_result ret;

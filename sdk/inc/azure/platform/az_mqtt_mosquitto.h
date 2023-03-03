@@ -7,7 +7,7 @@
  */
 
 #include "mosquitto.h"
-#include <azure/core/az_mqtt.h>
+#include <azure/core/internal/az_mqtt_internal.h>
 
 typedef struct
 {

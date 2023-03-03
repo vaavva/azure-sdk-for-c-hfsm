@@ -39,17 +39,18 @@
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
+
+#if defined(TRANSPORT_MOSQUITTO)
+    #include <azure/platform/az_mqtt_mosquitto.h>
+#elif defined(TRANSPORT_PAHO)
+    #include <azure/platform/az_mqtt_paho.h>
+#else
+    #include <azure/platform/az_mqtt_notransport.h>
+#endif
+
+
 // HFSM_TODO: for event type only.
 #include <azure/core/az_hfsm.h>
-
-// HFSM_DESIGN:
-// 1. The MQTT stack implementation is abstracted out. The SDK cannot create or allocate MQTT
-// objects. These are always allocated by the application and injected within clients.
-// 2. The MQTT stack implementation is selected during CMake Configure. Code is compiled with MQTT
-// internals knowledge (e.g. struct sizes).
-
-// Option #1 is implemented here.
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -60,18 +61,6 @@
 
 // MQTT library handle (type defined by implementation)
 typedef struct az_mqtt az_mqtt;
-
-// The following must be defined prior to including this file.
-// typedef void* az_mqtt_impl;
-// typedef void* az_mqtt_impl_options;
-
-typedef struct
-{
-  /**
-   * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
-   */
-  az_span certificate_authority_trusted_roots;
-} az_mqtt_options;
 
 typedef struct
 {
@@ -157,17 +146,6 @@ enum az_hfsm_event_type_mqtt
   AZ_HFSM_MQTT_EVENT_SUB_REQ = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 17),
 
   AZ_HFSM_MQTT_EVENT_SUBACK_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 18),
-};
-
-typedef void (*az_mqtt_inbound_handler)(az_mqtt* mqtt, az_hfsm_event event);
-
-struct az_mqtt
-{
-  struct
-  {
-    az_mqtt_inbound_handler _inbound_handler;
-    az_mqtt_options options;
-  } _internal;
 };
 
 // Porting 1. The following functions must be called by the implementation when data is received:
