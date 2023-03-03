@@ -62,7 +62,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
     mosquitto_disconnect(mosq);
   }
 
-  ret = az_mqtt_inbound_connack((az_mqtt*)me, &(az_mqtt_connack_data){ reason_code });
+  ret = az_mqtt_inbound_connack(me, &(az_mqtt_connack_data){ reason_code });
 
   if (az_result_failed(ret))
   {
@@ -76,7 +76,7 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
   az_mqtt* me = (az_mqtt*)obj;
 
   az_result ret = az_mqtt_inbound_disconnect(
-      (az_mqtt*)me,
+      me,
       &(az_mqtt_disconnect_data){ .tls_authentication_error = false,
                                   .disconnect_requested = (rc == 0) });
 
@@ -96,7 +96,7 @@ static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
   (void)mosq;
   az_mqtt* me = (az_mqtt*)obj;
 
-  az_result ret = az_mqtt_inbound_puback((az_mqtt*)me, &(az_mqtt_puback_data){ mid });
+  az_result ret = az_mqtt_inbound_puback(me, &(az_mqtt_puback_data){ mid });
 
   if (az_result_failed(ret))
   {
@@ -117,7 +117,7 @@ static void _az_mosqitto_on_subscribe(
 
   az_mqtt* me = (az_mqtt*)obj;
 
-  az_result ret = az_mqtt_inbound_suback((az_mqtt*)me, &(az_mqtt_suback_data){ mid });
+  az_result ret = az_mqtt_inbound_suback(me, &(az_mqtt_suback_data){ mid });
 
   if (az_result_failed(ret))
   {
@@ -144,7 +144,7 @@ static void _az_mosquitto_on_message(
   az_mqtt* me = (az_mqtt*)obj;
 
   az_result ret = az_mqtt_inbound_recv(
-      (az_mqtt*)me,
+      me,
       &(az_mqtt_recv_data){ .qos = (int8_t)message->qos,
                             .id = (int32_t)message->mid,
                             .payload = az_span_create(message->payload, message->payloadlen),
@@ -248,10 +248,8 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
 AZ_NODISCARD az_result
 az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_data)
 {
-  az_mqtt* me = (az_mqtt*)mqtt;
-
   return _az_result_from_mosq(mosquitto_subscribe(
-      me->mosquitto_handle,
+      mqtt->mosquitto_handle,
       &sub_data->out_id,
       (char*)az_span_ptr(sub_data->topic_filter),
       sub_data->qos));
@@ -260,10 +258,8 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 AZ_NODISCARD az_result
 az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_data)
 {
-  az_mqtt* me = (az_mqtt*)mqtt;
-
   return _az_result_from_mosq(mosquitto_publish(
-      me->mosquitto_handle,
+      mqtt->mosquitto_handle,
       &pub_data->out_id,
       (char*)az_span_ptr(pub_data->topic), // Assumes properly formed NULL terminated string.
       az_span_size(pub_data->payload),
@@ -274,14 +270,11 @@ az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_d
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context)
 {
-  az_mqtt* me = (az_mqtt*)mqtt;
 
-  return _az_result_from_mosq(mosquitto_disconnect(me->mosquitto_handle));
+  return _az_result_from_mosq(mosquitto_disconnect(mqtt->mosquitto_handle));
 }
 
 AZ_NODISCARD az_result az_mqtt_wait_for_event(az_mqtt* mqtt, int32_t timeout)
 {
-  az_mqtt* me = (az_mqtt*)mqtt;
-
-  return _az_result_from_mosq(mosquitto_loop(me->mosquitto_handle, timeout, 1));
+  return _az_result_from_mosq(mosquitto_loop(mqtt->mosquitto_handle, timeout, 1));
 }

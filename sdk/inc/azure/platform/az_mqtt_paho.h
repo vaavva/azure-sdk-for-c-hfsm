@@ -1,12 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-/**
- * @file
- *
- */
+#ifndef _az_MQTT_PAHO_H
+#define _az_MQTT_PAHO_H
 
-#include <azure/core/az_mqtt.h>
 #ifdef _MSC_VER
 #pragma warning(push)
 // warning C4201: nonstandard extension used: nameless struct/union
@@ -17,9 +14,20 @@
 #pragma warning(pop)
 #endif
 
+#include <azure/core/internal/az_mqtt_internal.h>
+#include <azure/core/_az_cfg_prefix.h>
+
 typedef struct
 {
-  az_mqtt mqtt;
+  az_mqtt_options_common platform_options;
+} az_mqtt_options;
+
+struct
+{
+  struct {
+    az_mqtt_common platform_mqtt;
+    az_mqtt_options options;
+  } _internal;
 
   MQTTClient paho_handle;
 
@@ -28,5 +36,6 @@ typedef struct
   char* last_topic;
 } az_mqtt_paho;
 
-AZ_NODISCARD az_result
-az_mqtt_paho_init(az_mqtt* mqtt, MQTTClient* paho_handle, az_mqtt_options const* options);
+#include <azure/core/_az_cfg_suffix.h>
+
+#endif // _az_MQTT_PAHO_H

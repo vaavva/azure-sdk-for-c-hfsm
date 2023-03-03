@@ -20,24 +20,13 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
+#include <azure/core/az_mqtt.h>
+
 #include <azure/iot/az_iot_common.h>
-
-#include <azure/platform/az_mqtt_paho.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef _MSC_VER
-#pragma warning(push)
-// warning C4201: nonstandard extension used: nameless struct/union
-#pragma warning(disable : 4201)
-#endif
-#include <MQTTClient.h>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
-#include <azure/core/az_mqtt.h>
 
 #include <azure/core/_az_cfg.h>
 
@@ -59,27 +48,24 @@ AZ_INLINE az_result _az_result_from_paho(int paho_ret)
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 {
-  return (az_mqtt_options){ .certificate_authority_trusted_roots = AZ_SPAN_EMPTY };
+  return (az_mqtt_options){ .platform_options.certificate_authority_trusted_roots = NULL };
 }
 
-AZ_NODISCARD az_result
-az_mqtt_paho_init(az_mqtt_paho* paho_mqtt, MQTTClient* mqtt_handle, az_mqtt_options const* options)
+AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options)
 {
-  paho_mqtt->paho_handle = *mqtt_handle; // can be NULL.
-  return az_mqtt_init(&paho_mqtt->mqtt, options);
+  _az_PRECONDITION_NOT_NULL(mqtt);
+  mqtt->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
 }
 
 AZ_NODISCARD az_result
 az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_data* connect_data)
 {
-  az_mqtt_paho* mqtt_paho = (az_mqtt_paho*)mqtt;
-
-  if (!mqtt_paho->paho_handle)
+  if (!mqtt->paho_handle)
   {
     // Create the Paho MQTT client.
 
     _az_RETURN_IF_FAILED(_az_result_from_paho(MQTTClient_create(
-        &mqtt_paho->paho_handle,
+        &mqtt->paho_handle,
         az_span_ptr(connect_data->host),
         az_span_ptr(connect_data->client_id),
         MQTTCLIENT_PERSISTENCE_NONE,
@@ -97,16 +83,16 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
   mqtt_ssl_options.verify = 1;
   mqtt_ssl_options.enableServerCertAuth = 1;
   mqtt_ssl_options.keyStore = az_span_ptr(connect_data->certificate.key);
-  if (az_span_size(mqtt->_internal.options.certificate_authority_trusted_roots)
+  if (az_span_size(mqtt->_internal.options.platform_options.certificate_authority_trusted_roots)
       != 0) // Is only set if required by OS.
   {
     mqtt_ssl_options.trustStore
-        = (char*)az_span_ptr(mqtt->_internal.options.certificate_authority_trusted_roots);
+        = (char*)az_span_ptr(mqtt->_internal.options.platform_options.certificate_authority_trusted_roots);
   }
   mqtt_connect_options.ssl = &mqtt_ssl_options;
 
   // Connect MQTT client to the Azure IoT Device Provisioning Service.
-  int rc = MQTTClient_connect(mqtt_paho->paho_handle, &mqtt_connect_options);
+  int rc = MQTTClient_connect(mqtt->paho_handle, &mqtt_connect_options);
 
   if (rc >= 0)
   {
@@ -140,12 +126,10 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
 AZ_NODISCARD az_result
 az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_data)
 {
-  az_mqtt_paho* mqtt_paho = (az_mqtt_paho*)mqtt;
-
   // MQTT Packet ID is not supported by Paho.
   sub_data->out_id = 0;
-  int rc
-      = MQTTClient_subscribe(mqtt_paho->paho_handle, az_span_ptr(sub_data->topic_filter), sub_data->qos);
+  int rc = MQTTClient_subscribe(
+      mqtt->paho_handle, az_span_ptr(sub_data->topic_filter), sub_data->qos);
 
   switch (rc)
   {
@@ -174,8 +158,6 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 AZ_NODISCARD az_result
 az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_data)
 {
-  az_mqtt_paho* mqtt_paho = (az_mqtt_paho*)mqtt;
-
   // Set MQTT message options.
   MQTTClient_message pubmsg = MQTTClient_message_initializer;
   pubmsg.payload = az_span_ptr(pub_data->payload);
@@ -184,8 +166,8 @@ az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_d
   pubmsg.retained = 0;
 
   // Publish the register request.
-  int rc
-      = MQTTClient_publishMessage(mqtt_paho->paho_handle, az_span_ptr(pub_data->topic), &pubmsg, NULL);
+  int rc = MQTTClient_publishMessage(
+      mqtt->paho_handle, az_span_ptr(pub_data->topic), &pubmsg, NULL);
 
   switch (rc)
   {
@@ -213,16 +195,14 @@ az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_d
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context)
 {
-  az_mqtt_paho* mqtt_paho = (az_mqtt_paho*)mqtt;
-
-  int rc = MQTTClient_disconnect(mqtt_paho->paho_handle, AZ_IOT_MQTT_DISCONNECT_MS);
+  int rc = MQTTClient_disconnect(mqtt->paho_handle, AZ_IOT_MQTT_DISCONNECT_MS);
   switch (rc)
   {
     case MQTTCLIENT_SUCCESS:
       _az_RETURN_IF_FAILED(az_mqtt_inbound_disconnect(
           mqtt,
           &(az_mqtt_disconnect_data){ .disconnect_requested = true,
-                                      .tls_authentication_error = false }));    
+                                      .tls_authentication_error = false }));
       break;
 
     default:
@@ -233,19 +213,17 @@ AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* co
 
 AZ_NODISCARD az_result az_mqtt_wait_for_event(az_mqtt* mqtt, int32_t timeout)
 {
-  az_mqtt_paho* mqtt_paho = (az_mqtt_paho*)mqtt;
-
   // Release previous objects.
-  if (mqtt_paho->last_topic)
+  if (mqtt->last_topic)
   {
-    MQTTClient_free(mqtt_paho->last_topic);
-    mqtt_paho->last_topic = NULL;
+    MQTTClient_free(mqtt->last_topic);
+    mqtt->last_topic = NULL;
   }
 
-  if (mqtt_paho->last_message)
+  if (mqtt->last_message)
   {
-    MQTTClient_freeMessage(&mqtt_paho->last_message);
-    mqtt_paho->last_message = NULL;
+    MQTTClient_freeMessage(&mqtt->last_message);
+    mqtt->last_message = NULL;
   }
 
   int rc;
@@ -253,14 +231,14 @@ AZ_NODISCARD az_result az_mqtt_wait_for_event(az_mqtt* mqtt, int32_t timeout)
   char* topic = NULL;
   MQTTClient_message* message = NULL;
 
-  rc = MQTTClient_receive(mqtt_paho->paho_handle, &topic, &topic_len, &message, timeout);
+  rc = MQTTClient_receive(mqtt->paho_handle, &topic, &topic_len, &message, timeout);
 
   switch (rc)
   {
     case MQTTCLIENT_SUCCESS:
     {
-      mqtt_paho->last_topic = topic;
-      mqtt_paho->last_message = message;
+      mqtt->last_topic = topic;
+      mqtt->last_message = message;
 
       az_mqtt_recv_data data = (az_mqtt_recv_data){
         .id = message->msgid,

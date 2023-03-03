@@ -136,9 +136,11 @@ endif()
   endif()
 
   target_include_directories(az_mosquitto INTERFACE ${MOSQUITTO_INCLUDE_DIR})
+endif() # TRANSPORT_MOSQUITTO
 
-  # Paho Platform
-  if (TRANSPORT_PAHO)
+
+# Paho Platform
+if (TRANSPORT_PAHO)
   find_package(eclipse-paho-mqtt-c CONFIG)
   if(NOT eclipse-paho-mqtt-c_FOUND)
     find_package(eclipse-paho-mqtt-c REQUIRED)
@@ -148,7 +150,7 @@ endif()
   if(NOT OpenSSL_FOUND)
     find_package(OpenSSL REQUIRED)
   endif()
-  
+
   add_library (
     az_paho
       STATIC
@@ -169,6 +171,4 @@ endif()
 
   target_include_directories(az_paho INTERFACE ${PAHO_INCLUDE_DIR})
 
-  endif()
-
-endif()
+endif() # TRANSPORT_PAHO
