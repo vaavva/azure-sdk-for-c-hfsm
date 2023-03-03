@@ -15,15 +15,11 @@ typedef struct
    * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
    */
   az_span certificate_authority_trusted_roots;
-} az_mqtt_options;
+} az_mqtt_options_common;
 
 typedef struct
 {
-  struct 
-  {
-    az_mqtt_inbound_handler _inbound_handler;
-    az_mqtt_options options;
-  } _internal;
+  az_mqtt_inbound_handler _inbound_handler;
 } az_mqtt_common;
 
 #endif // _az_MQTT_INTERNAL_H

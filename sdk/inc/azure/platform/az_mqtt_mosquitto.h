@@ -9,9 +9,19 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
+typedef struct
+{
+  az_mqtt_options_common platform_options;
+  az_span openssl_engine;
+} az_mqtt_options;
+
 struct az_mqtt
 {
-  az_mqtt_common platform_mqtt;
+  struct {
+    az_mqtt_common platform_mqtt;
+    az_mqtt_options options;
+  } _internal;
+
   struct mosquitto* mosquitto_handle;
 };
 

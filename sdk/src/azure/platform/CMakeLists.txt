@@ -109,7 +109,7 @@ endif()
       ${CMAKE_CURRENT_LIST_DIR}/az_mosquitto.c
   )
 
-  add_compile_definitions(mosquitto_iot_sample
+  add_compile_definitions(az_mosquitto
     LIBMOSQUITTO_STATIC
   )
 

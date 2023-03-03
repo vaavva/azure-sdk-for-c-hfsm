@@ -14,14 +14,14 @@
  * https://mosquitto.org/api/files/mosquitto-h.html
  */
 
+#include <azure/core/az_mqtt.h>
+#include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
 #include <azure/iot/az_iot_common.h>
-#include <azure/core/az_platform.h>
-#include <azure/core/az_mqtt.h>
 #include <mosquitto.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -51,7 +51,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
 {
   az_result ret;
   az_mqtt* me = (az_mqtt*)obj;
-  
+
   _az_PRECONDITION(mosq == me->mosquitto_handle);
 
   if (reason_code != 0)
@@ -171,12 +171,14 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
 
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 {
-  return (az_mqtt_options) { .certificate_authority_trusted_roots = NULL };
+  return (az_mqtt_options){ .platform_options.certificate_authority_trusted_roots = NULL,
+                            .openssl_engine = NULL };
 }
 
 AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options)
 {
-  return az_mqtt_init(&mosquitto_mqtt->mqtt, options);
+  _az_PRECONDITION_NOT_NULL(mqtt);
+  mqtt->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
 }
 
 AZ_NODISCARD az_result
@@ -211,7 +213,8 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
 
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_tls_set(
       me->mosquitto_handle,
-      (const char*)az_span_ptr(me->mqtt._internal.options.certificate_authority_trusted_roots),
+      (const char*)az_span_ptr(
+          me->_internal.options.platform_options.certificate_authority_trusted_roots),
       NULL,
       (const char*)az_span_ptr(connect_data->certificate.cert),
       (const char*)az_span_ptr(connect_data->certificate.key),

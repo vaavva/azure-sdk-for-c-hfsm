@@ -146,12 +146,12 @@ enum az_event_type_mqtt
 
 AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data* recv_data)
 {
-  if (!mqtt->platform_mqtt._internal._inbound_handler)
+  if (!mqtt->_internal.platform_mqtt._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->platform_mqtt._internal._inbound_handler(
+  mqtt->_internal.platform_mqtt._inbound_handler(
       mqtt, (az_event){ .type = AZ_MQTT_EVENT_PUB_RECV_IND, .data = recv_data });
   return AZ_OK;
 }
@@ -159,12 +159,12 @@ AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_rec
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data* connack_data)
 {
-  if (!mqtt->platform_mqtt._internal._inbound_handler)
+  if (!mqtt->_internal.platform_mqtt._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->platform_mqtt._internal._inbound_handler(
+  mqtt->_internal.platform_mqtt._inbound_handler(
       mqtt, (az_event){ .type = AZ_MQTT_EVENT_CONNECT_RSP, .data = connack_data });
   return AZ_OK;
 }
@@ -172,12 +172,12 @@ az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data* connack_data)
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data* suback_data)
 {
-  if (!mqtt->platform_mqtt._internal._inbound_handler)
+  if (!mqtt->_internal.platform_mqtt._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->platform_mqtt._internal._inbound_handler(
+  mqtt->_internal.platform_mqtt._inbound_handler(
       mqtt, (az_event){ .type = AZ_MQTT_EVENT_SUBACK_RSP, .data = suback_data });
   return AZ_OK;
 }
@@ -185,12 +185,12 @@ az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data* suback_data)
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data* puback_data)
 {
-  if (!mqtt->platform_mqtt._internal._inbound_handler)
+  if (!mqtt->_internal.platform_mqtt._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->platform_mqtt._internal._inbound_handler(
+  mqtt->_internal.platform_mqtt._inbound_handler(
       mqtt, (az_event){ .type = AZ_MQTT_EVENT_PUBACK_RSP, .data = puback_data });
   return AZ_OK;
 }
@@ -198,12 +198,12 @@ az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data* puback_data)
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data* disconnect_data)
 {
-  if (!mqtt->platform_mqtt._internal._inbound_handler)
+  if (!mqtt->_internal.platform_mqtt._inbound_handler)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->platform_mqtt._internal._inbound_handler(
+  mqtt->_internal.platform_mqtt._inbound_handler(
       mqtt, (az_event){ .type = AZ_MQTT_EVENT_DISCONNECT_RSP, .data = disconnect_data });
   return AZ_OK;
 }
