@@ -174,12 +174,8 @@ AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
   return (az_mqtt_options) { .certificate_authority_trusted_roots = NULL };
 }
 
-AZ_NODISCARD az_result az_mqtt_init(
-    az_mqtt* mosquitto_mqtt,
-    struct mosquitto* mosquitto_handle,
-    az_mqtt_options const* options)
+AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options)
 {
-  mosquitto_mqtt->mosquitto_handle = mosquitto_handle;
   return az_mqtt_init(&mosquitto_mqtt->mqtt, options);
 }
 

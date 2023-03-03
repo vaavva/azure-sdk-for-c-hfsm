@@ -42,14 +42,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if defined(TRANSPORT_MOSQUITTO)
+#if AZ_MQTT_TRANSPORT_IMPL == MOSQUITTO
     #include <azure/platform/az_mqtt_mosquitto.h>
-#elif defined(TRANSPORT_PAHO)
+#elif AZ_MQTT_TRANSPORT_IMPL == PAHO
     #include <azure/platform/az_mqtt_paho.h>
 #else
     #include <azure/platform/az_mqtt_notransport.h>
 #endif
-
 
 #include <azure/core/_az_cfg_prefix.h>
 
