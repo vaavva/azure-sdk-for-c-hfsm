@@ -24,8 +24,6 @@ elseif(AZ_PLATFORM_IMPL STREQUAL "POSIX")
      #HFSM_TODO ${CMAKE_CURRENT_LIST_DIR}/az_platform_sync.c
   )
 
-  target_compile_definitions(az_posix PRIVATE AZ_PLATFORM_IMPL=${AZ_PLATFORM_IMPL})
-
   target_link_libraries(az_posix
     PRIVATE
       az_core

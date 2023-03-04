@@ -14,19 +14,26 @@
  * https://mosquitto.org/api/files/mosquitto-h.html
  */
 
+#include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_span.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
-#include <azure/core/az_mqtt.h>
-
+// HFSM_TODO: Following include for AZ_IOT_DEFAULT_MQTT_CONNECT_KEEPALIVE_SECONDS only.
 #include <azure/iot/az_iot_common.h>
-#include <stdio.h>
+
 #include <stdlib.h>
-
-
+#ifdef _MSC_VER
+#pragma warning(push)
+// warning C4201: nonstandard extension used: nameless struct/union
+#pragma warning(disable : 4201)
+#endif
+#include <MQTTClient.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #include <azure/core/_az_cfg.h>
 

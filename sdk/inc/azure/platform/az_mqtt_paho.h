@@ -22,7 +22,7 @@ typedef struct
   az_mqtt_options_common platform_options;
 } az_mqtt_options;
 
-struct
+struct az_mqtt
 {
   struct {
     az_mqtt_common platform_mqtt;
@@ -34,7 +34,7 @@ struct
   // Last message and topic lifetime management.
   MQTTClient_message* last_message;
   char* last_topic;
-} az_mqtt_paho;
+};
 
 #include <azure/core/_az_cfg_suffix.h>
 

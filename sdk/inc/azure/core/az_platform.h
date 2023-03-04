@@ -18,7 +18,7 @@
 #include <azure/core/az_result.h>
 #include <stdbool.h>
 #include <stdint.h>
-#if AZ_PLATFORM_IMPL == POSIX
+#ifdef PLATFORM_POSIX
 #include "azure/platform/az_platform_posix.h"
 #else
 #include "azure/platform/az_platform_none.h"
