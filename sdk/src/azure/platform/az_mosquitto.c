@@ -21,6 +21,9 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
+// HFSM_TODO: Following include for AZ_LOG_HFSM_MQTT_STACK only.
+#include <azure/iot/az_iot_common.h>
+
 #include <mosquitto.h>
 #include <pthread.h>
 #include <stdlib.h>

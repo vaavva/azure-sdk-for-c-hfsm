@@ -16,7 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <azure/core/az_hfsm.h>
+#include <azure/core/internal/az_hfsm.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_precondition_internal.h>
 

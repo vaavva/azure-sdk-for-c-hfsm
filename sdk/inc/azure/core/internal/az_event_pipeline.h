@@ -2,8 +2,8 @@
 /* SPDX-License-Identifier: MIT */
 
 /**
- * @file az_hfsm_pipeline.h
- * @brief Definition of #az_hfsm_pipeline and related types describing a bi-directional HFSM
+ * @file
+ * @brief Definition of #_az_event_pipeline and related types describing a bi-directional HFSM
  *        pipeline.
  *
  * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
@@ -12,64 +12,38 @@
  * @note The blocking I/O model (when TRANSPORT_MQTT_SYNC is defined) is not thread-safe.
  */
 
-// HFSM_TODO: Move to Core/Internal
+#ifndef _az_EVENT_PIPELINE_H
+#define _az_EVENT_PIPELINE_H
 
-#ifndef _az_HFSM_PIPELINE_H
-#define _az_HFSM_PIPELINE_H
-
-// Define AZ_HFSM_PIPELINE_SYNC to manually control when pipeline events are executed.
-// The default action is to immediately process events on the same stack.
-// #define AZ_HFSM_PIPELINE_SYNC
-
-#include <azure/core/az_hfsm.h>
+#include <azure/core/az_event.h>
+#include <azure/core/internal/az_hfsm.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
 #include <stdint.h>
 
-/**
- * @brief USed to declare HFSM policies.
- *
- */
 // Definition is below.
-typedef struct az_hfsm_policy az_hfsm_policy;
-
-typedef struct az_hfsm_pipeline az_hfsm_pipeline;
-
-typedef az_result (*az_hfsm_policy_handler)(az_hfsm_policy* me, az_event event);
-
-/**
- * @brief The type representing a HFSM with dispatch capabilities. Derived from #az_hfsm.
- *
- */
-struct az_hfsm_policy
-{
-  az_hfsm_policy_handler inbound_handler;
-  az_hfsm_policy_handler outbound_handler;
-  az_hfsm_policy* inbound_policy;
-  az_hfsm_policy* outbound_policy;
-  az_hfsm_pipeline* pipeline;
-};
+typedef struct _az_event_pipeline _az_event_pipeline;
 
 /**
  * @brief Internal definition of an MQTT pipeline.
  *
  */
-struct az_hfsm_pipeline
+struct _az_event_pipeline
 {
   struct
   {
-    az_hfsm_policy* outbound_policy;
-    az_hfsm_policy* inbound_policy;
+    az_event_policy* outbound_policy;
+    az_event_policy* inbound_policy;
 #ifndef TRANSPORT_MQTT_SYNC
     az_platform_mutex mutex;
 #endif
   } _internal;
 };
 
-AZ_NODISCARD az_result az_hfsm_pipeline_init(
-    az_hfsm_pipeline* pipeline,
-    az_hfsm_policy* outbound,
-    az_hfsm_policy* inbound);
+AZ_NODISCARD az_result _az_event_pipeline_init(
+    _az_event_pipeline* pipeline,
+    az_event_policy* outbound,
+    az_event_policy* inbound);
 
 /**
  * @brief Queues an inbound event to the pipeline.
@@ -80,12 +54,12 @@ AZ_NODISCARD az_result az_hfsm_pipeline_init(
  * @note This function should not be used during pipeline processing. The function can be called
  * either from the application or from within a system-level (timer, MQTT stack, etc) callback.
  *
- * @param[in] pipeline The #az_hfsm_pipeline to use for this call.
+ * @param[in] pipeline The #_az_event_pipeline to use for this call.
  * @param[in] event The event being enqueued.
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_event const event);
+_az_event_pipeline_post_inbound_event(_az_event_pipeline* pipeline, az_event const event);
 
 /**
  * @brief Queues an outbound event to the pipeline.
@@ -96,12 +70,12 @@ az_hfsm_pipeline_post_inbound_event(az_hfsm_pipeline* pipeline, az_event const e
  * @note This function should not be used during pipeline processing. The function can be called
  * either from the application or from within a system-level (timer, MQTT stack, etc) callback.
  *
- * @param[in] pipeline The #az_hfsm_pipeline to use for this call.
+ * @param[in] pipeline The #_az_event_pipeline to use for this call.
  * @param[in] event The event being enqueued.
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_event const event);
+_az_event_pipeline_post_outbound_event(_az_event_pipeline* pipeline, az_event const event);
 
 /**
  * @brief Sends an inbound event from the current policy.
@@ -114,7 +88,7 @@ az_hfsm_pipeline_post_outbound_event(az_hfsm_pipeline* pipeline, az_event const 
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_event const event);
+_az_event_pipeline_send_inbound_event(az_event_policy* policy, az_event const event);
 
 /**
  * @brief Sends an outbound event from the current policy.
@@ -127,17 +101,17 @@ az_hfsm_pipeline_send_inbound_event(az_hfsm_policy* policy, az_event const event
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_send_outbound_event(az_hfsm_policy* policy, az_event const event);
+_az_event_pipeline_send_outbound_event(az_event_policy* policy, az_event const event);
 
 #ifdef TRANSPORT_MQTT_SYNC
 enum az_hfsm_event_type_pipeline
 {
   /**
-   * @brief The event type posted by #az_hfsm_pipeline_sync_process_loop to allow syncrhonous
+   * @brief The event type posted by #_az_event_pipeline_sync_process_loop to allow syncrhonous
    * pipeline event processing.
    *
    */
-  AZ_HFSM_PIPELINE_EVENT_PROCESS_LOOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
+  _az_event_pipeline_EVENT_PROCESS_LOOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
 };
 
 /**
@@ -146,10 +120,10 @@ enum az_hfsm_event_type_pipeline
  * @details This call will allow the MQTT stack to perform synchonous I/O. The current thread is
  * blocked until I/O is complete.
  *
- * @param pipeline The #az_hfsm_pipeline.
+ * @param pipeline The #_az_event_pipeline.
  * @return The #az_result error code.
  */
-AZ_NODISCARD az_result az_hfsm_pipeline_sync_process_loop(az_hfsm_pipeline* pipeline);
+AZ_NODISCARD az_result _az_event_pipeline_sync_process_loop(_az_event_pipeline* pipeline);
 #endif // TRANSPORT_MQTT_SYNC
 
 /**
@@ -163,12 +137,12 @@ typedef struct
 
   struct
   {
-    az_hfsm_pipeline* pipeline;
+    _az_event_pipeline* pipeline;
   } _internal;
-} az_hfsm_pipeline_timer;
+} _az_event_pipeline_timer;
 
 /**
- * @brief Creates an #az_platform_timer associated with an #az_hfsm_pipeline.
+ * @brief Creates an #az_platform_timer associated with an #_az_event_pipeline.
  * @details When the timer elapses, a TIMEOUT _outbound_ message will be generated. The event.#data
  *          contains a pointer to the original #az_platform_timer.
  * @param pipeline The pipeline.
@@ -176,6 +150,6 @@ typedef struct
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_pipeline_timer_create(az_hfsm_pipeline* pipeline, az_hfsm_pipeline_timer* out_timer);
+_az_event_pipeline_timer_create(_az_event_pipeline* pipeline, _az_event_pipeline_timer* out_timer);
 
-#endif //_az_HFSM_PIPELINE_H
+#endif //_az_EVENT_PIPELINE_H
