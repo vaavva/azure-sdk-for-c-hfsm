@@ -20,9 +20,8 @@
 #define _az_HFSM_MQTT_INTERNAL_H
 
 #include <azure/core/az_config.h>
+#include <azure/core/az_event_policy.h>>
 #include <azure/core/az_mqtt.h>
-#include <azure/core/az_hfsm.h>
-#include <azure/core/az_hfsm_pipeline.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 
@@ -41,14 +40,10 @@ typedef struct
   // Derived from az_policy which is a kind of az_hfsm.
   struct
   {
-    az_hfsm_policy policy;
-
-    // Extension point for the implementation.
-    // HFSM_DESIGN: We could have different definitions for az_mqtt_impl to support additional
-    //              memory reserved for the implementation:
+    az_event_policy policy;
     az_mqtt mqtt;
   } _internal;
-} az_hfsm_mqtt_policy;
+} az_mqtt_connection_policy;
 
 /**
  * @brief Initializes the MQTT Platform Layer.
