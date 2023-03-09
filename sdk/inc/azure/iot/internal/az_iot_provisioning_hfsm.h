@@ -37,6 +37,8 @@ typedef struct
   az_credential_x509 credential;
 } az_hfsm_iot_provisioning_connect_data;
 
+const az_hfsm_iot_provisioning_connect_data application_connection_management = { 0 };
+
 typedef struct
 {
   az_span topic_buffer;
@@ -79,6 +81,9 @@ enum az_hfsm_event_type_iot_provisioning_hfsm
 
   /// Device Registration Response
   AZ_IOT_PROVISIONING_REGISTER_RSP = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 3),
+
+  AZ_IOT_PROVISIONING_REGISTER_PROGRESS = _az_HFSM_MAKE_EVENT(_az_FACILITY_PROVISIONING_HFSM, 4),
+
 };
 
 AZ_NODISCARD az_hfsm_iot_provisioning_policy_options

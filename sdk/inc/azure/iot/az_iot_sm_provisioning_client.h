@@ -34,7 +34,7 @@ typedef struct az_iot_sm_provisioning_client az_iot_sm_provisioning_client;
 
 typedef az_result (*az_iot_sm_provisioning_client_status_callback)(
     az_iot_sm_provisioning_client* client,
-    az_hfsm_event event);
+    az_event event);
 
 typedef struct
 {

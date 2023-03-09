@@ -134,40 +134,39 @@ create_map_file(mosquitto_sample_connect mosquitto_sample_connect.map)
 
 # create_map_file(mosquitto_iot_sample mosquitto_iot_sample.map)
 
-# Azure IoT State Machine DPS Sample
-# add_executable (mosquitto_async_sample
-#   ${CMAKE_CURRENT_LIST_DIR}/mosquitto_async_sample.c
-# )
-# add_compile_definitions(mosquitto_async_sample
-#   LIBMOSQUITTO_STATIC
-# )
-# 
-# target_include_directories(mosquitto_async_sample
-#   PRIVATE
-#     ${MOSQUITTO_INCLUDE_DIR}
-# )
-# 
-# target_link_libraries(mosquitto_async_sample
-#   PRIVATE
-#     ${MOSQUITTO_LIBRARIES}
-#     ${PTHREAD_LIBRARIES}
-#     OpenSSL::SSL 
-#     OpenSSL::Crypto
-#     az::mosquitto
-#     az::iot::hub
-#     az::iot::provisioning
-#     az::iot::hfsm
-#     rt  #HFSM_TODO: Test only: -lrt (Posix) should be included to az_platform, not here.
-# )
-# 
-# if(WIN32)
-# target_link_libraries(mosquitto_async_sample
-#   PRIVATE
-#   crypt32
-#   Ws2_32
-# )
-# endif()
-# 
-# create_map_file(mosquitto_async_sample mosquitto_async_sample.map)
+# Azure IoT State Machine Sample
+add_executable (mosquitto_async_sample
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_async_sample.c
+)
+add_compile_definitions(mosquitto_async_sample
+  LIBMOSQUITTO_STATIC
+)
+
+target_include_directories(mosquitto_async_sample
+  PRIVATE
+    ${MOSQUITTO_INCLUDE_DIR}
+)
+
+target_link_libraries(mosquitto_async_sample
+  PRIVATE
+    ${MOSQUITTO_LIBRARIES}
+    ${PTHREAD_LIBRARIES}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
+    az::mosquitto
+    az::iot::hub
+    az::iot::provisioning
+    rt  #HFSM_TODO: Test only: -lrt (Posix) should be included to az_platform, not here.
+)
+
+if(WIN32)
+target_link_libraries(mosquitto_async_sample
+  PRIVATE
+  crypt32
+  Ws2_32
+)
+endif()
+
+create_map_file(mosquitto_async_sample mosquitto_async_sample.map)
 
 endif() # TRANSPORT_MOSQUITTO

@@ -8,7 +8,7 @@
 
 typedef struct
 {
-  az_platform_common platform_timer;
+  az_platform_timer_common platform_timer;
   
   struct
   {

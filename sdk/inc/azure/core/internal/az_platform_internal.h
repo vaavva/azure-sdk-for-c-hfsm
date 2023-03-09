@@ -15,5 +15,5 @@ typedef struct
     az_platform_timer_callback callback;
     void* sdk_data;
   } _internal;
-} az_platform_common;
+} az_platform_timer_common;
 

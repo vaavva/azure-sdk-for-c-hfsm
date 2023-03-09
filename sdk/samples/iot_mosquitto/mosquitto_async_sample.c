@@ -12,37 +12,29 @@
 #include <stdlib.h>
 
 #include <azure/core/az_log.h>
-
-#include <azure/core/az_platform.h>
-#include <azure/platform/az_platform_posix.h>>
-
 #include <azure/core/internal/az_result_internal.h>
 
 #include <azure/az_iot.h>
-#include <azure/iot/az_iot_sm_provisioning_client.h>
-#include <azure/iot/internal/az_iot_provisioning_hfsm.h>
-
-#include <azure/platform/az_mqtt_mosquitto.h>
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
 static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
 static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
-static char hub_endpoint_buffer[120];
-static az_span hub_endpoint;
 static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/rsa_baltimore_ca.pem");
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem");
 static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
 
-// static const az_span cert_path2 =
-// AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"); static const az_span key_path2
-// = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
-
+static char hub_endpoint_buffer[120];
 static char client_id_buffer[64];
 static char username_buffer[128];
 static char password_buffer[1];
+
 static char topic_buffer[128];
 static char payload_buffer[256];
+
+// static const az_span cert_path2 =
+// AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"); static const az_span key_path2
+// = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
 
 void az_sdk_log_callback(az_log_classification classification, az_span message);
 bool az_sdk_log_filter_callback(az_log_classification classification);
@@ -111,6 +103,8 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
       class_str = NULL;
   }
 
+  // TODO: add thread ID.
+
   if (class_str == NULL)
   {
     printf(LOG_SDK "[\x1B[31mUNKNOWN: %x\x1B[0m] %s\n", classification, az_span_ptr(message));
@@ -140,7 +134,7 @@ void az_platform_critical_error()
     ;
 }
 
-az_result provisioning_status_callback(az_iot_sm_provisioning_client* client, az_hfsm_event event)
+az_result iot_callback(az_iot_connection* client, az_event event)
 {
   switch (event.type)
   {
@@ -173,41 +167,37 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  az_mqtt_mosquitto mqtt;
+  az_mqtt mqtt;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
-  mqtt_options.certificate_authority_trusted_roots = ca_path;
-  _az_RETURN_IF_FAILED(az_mqtt_mosquitto_init(&mqtt, NULL));
+  mqtt_options.platform_options.certificate_authority_trusted_roots = ca_path;
+  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, &mqtt_options));
 
-  az_iot_provisioning_client prov_codec;
-  _az_RETURN_IF_FAILED(
-      az_iot_provisioning_client_init(&prov_codec, dps_endpoint, id_scope, device_id, NULL));
+  az_iot_connection iot_connection;
 
-  az_iot_sm_provisioning_client prov_client;
-  az_credential_x509 cred = (az_credential_x509){
+  az_credential_x509 credential = (az_credential_x509){
     .cert = cert_path1,
     .key = key_path1,
     .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
   };
 
-  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_init(
-      &prov_client, &prov_codec, &mqtt, cred, provisioning_status_callback, NULL));
+  az_iot_connection_options iot_connection_options = az_mqtt_options_default();
+  az_context connection_context = az_context_create_with_expiration(
+      &az_context_application, az_context_get_expiration(&az_context_application));
 
-  az_context register_context
-      = az_context_create_with_expiration(&az_context_application, 30 * 1000);
+  _az_RETURN_IF_FAILED(az_iot_connection_init(
+      &iot_connection, connection_context, &mqtt, &credential, iot_callback));
 
-  // Blocking?
-  // do as much work as possible.
+  az_iot_provisioning_client prov_client;
+  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
+      &prov_client, &iot_connection, dps_endpoint, id_scope, device_id, NULL));
 
-//  az_hfsm_iot_provisioning_register_data register_data = (az_hfsm_iot_provisioning_register_data){
-//    .topic_buffer = az_span_specialnx_value;// AZ_SPAN_FROM_BUFFER(topic_buffer),
-//    .payload_buffer = az_span_specialnx_value; //AZ_SPAN_FROM_BUFFER(payload_buffer),
-//  };
+  _az_RETURN_IF_FAILED(az_iot_connection_open(&iot_connection));
 
- // NXPacket pack = NXPoolGet(...);
- // az_span topic = MQTTStackGetTopic(pack);
- // az_span payload = MQTTStackGetPayload(pack);
+  az_context register_context = az_context_create_with_expiration(
+      &connection_context, 30 * AZ_TIME_MILLISECONDS_PER_SECOND);
 
-  _az_RETURN_IF_FAILED(az_iot_sm_provisioning_client_register(&prov_client, &register_data, &register_context));
+  _az_RETURN_IF_FAILED(
+      az_iot_provisioning_client_register(&prov_client, &register_data, &register_context));
 
   for (int i = 15; i > 0; i--)
   {
@@ -215,6 +205,8 @@ int main(int argc, char* argv[])
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
+
+  _az_RETURN_IF_FAILED(az_iot_connection_close(&iot_connection));
 
   if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
   {

@@ -53,6 +53,7 @@ AZ_NODISCARD az_iot_provisioning_client_options az_iot_provisioning_client_optio
 
 AZ_NODISCARD az_result az_iot_provisioning_client_init(
     az_iot_provisioning_client* client,
+    az_iot_connection& connection,
     az_span global_device_hostname,
     az_span id_scope,
     az_span registration_id,
