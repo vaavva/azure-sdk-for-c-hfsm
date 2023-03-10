@@ -1,0 +1,63 @@
+Edit online	
+@startuml IoTPipeline
+left to right direction
+' Horizontal lines: -->, <--, <-->
+' Vertical lines: ->, <-, <->
+title IoT Pipeline
+
+map Application {
+    Connection => Callback
+}
+
+map DPS_API {
+}
+
+map ADU_API {
+}
+
+map CSR_API {
+}
+
+package Event_Pipeline
+{
+    map Optional_Policy1 {
+    }
+
+    package SubClients {
+        map DPS {
+        }
+        map ADU {
+        }
+        map CSR {
+        }
+    }
+
+    map Connection {
+    }
+
+    map Optional_Policy2 {
+    }
+
+    map MQTT {
+        az_mqtt => az_mqtt_impl
+    }
+}
+
+Application --> DPS_API
+Application --> ADU_API
+Application --> CSR_API
+
+DPS_API --> Optional_Policy1
+ADU_API --> Optional_Policy1
+CSR_API --> Optional_Policy1
+
+Optional_Policy1 <--> DPS
+Optional_Policy1 <--> ADU 
+Optional_Policy1 <--> CSR 
+
+DPS <--> Connection
+ADU <--> Connection
+CSR <--> Connection
+Connection <--> Optional_Policy2 
+Optional_Policy2 <--> MQTT
+@enduml

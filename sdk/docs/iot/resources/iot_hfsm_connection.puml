@@ -5,32 +5,36 @@ state Idle
     state Started {
         state Connecting
         Connecting : <b>MQTT_CONNECT_RSP(err_auth)/</b>
-        Connecting : \t rotate_credentials();
-        Connecting : \t ^MQTT_CONNECT_REQ
+        Connecting : \t if(rotate_credentials()) ^MQTT_CONNECT_REQ
+        Connecting : \t else ^ERROR
 
         state Connected
         Connected : <b>entry/</b> 
         Connected : \t pipeline_send(MQTT_CONNECT_RSP(success))
 
         state ReconnectTimeout
-        ReconnectTimeout: <b>entry/</b> start timer;
-        ReconnectTimeout: <b>exit/</b> stop timer
+        ReconnectTimeout : <b>entry/</b> 
+        ReconnectTimeout : \t start timer;
+        ReconnectTimeout : \t connect_counter++;
+        ReconnectTimeout : <b>exit/</b> stop timer
+        ReconnectTimeout : <b>TIMEOUT/</b> if (connect_counter > MAX) ^ERROR
 
         state Disconnecting
         Disconnecting : <b>entry/</b> start timer; 
         Disconnecting : <b>exit/</b> stop timer
 
-        [*] -> Connecting : ^MQTT_CONNECT_REQ
+        [*] -> Connecting : / ^MQTT_CONNECT_REQ
         Connecting --> Connected : MQTT_CONNECT_RSP(success)
         Connecting -> ReconnectTimeout : MQTT_CONNECT_RSP(timeout)
         Connecting --> Disconnecting : AZ_IOT_CLOSE / ^MQTT_DISCONNECT_REQ
         Connected --> Disconnecting : AZ_IOT_CLOSE / ^MQTT_DISCONNECT_REQ
-        ReconnectTimeout -> Connecting : TIMEOUT
+        ReconnectTimeout -> Connecting : TIMEOUT (connect_counter <= MAX)
     }
+    Started : <b>entry/</b> connect_counter=0;
 
     [*] --> Idle
     Idle -> Started : AZ_IOT_OPEN
     Started --> Idle : MQTT_DISCONNECT_RSP
-    Started --> Faulted: ERROR, TIMEOUT/ pipeline_send(ERROR)
+    Started --> Faulted: ERROR, TIMEOUT/ pipeline_send_inbound(ERROR)
 
 @enduml

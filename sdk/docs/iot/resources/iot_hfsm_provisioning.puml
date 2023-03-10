@@ -1,0 +1,61 @@
+@startuml
+
+state AzureIotProvisioning {
+    state Idle
+    state Faulted
+    state Registering {
+        state Subscribing
+        Subscribing : <b>entry/</b> start timer
+        Subscribing : <b>exit/</b> stop timer
+
+        state Subscribed {
+            state StartRegister
+            StartRegister : <b>entry/</b> start timer
+            StartRegister : <b>exit/</b> stop timer
+
+            state WaitRegister
+            WaitRegister : <b>entry/</b> start timer
+            WaitRegister : <b>exit/</b> stop timer
+            WaitRegister : <b>MQTT_RECV_IND/</b> {
+            WaitRegister : \t if (provisioningDone) ^AZ_PROVISIONING_REGISTER_RSP
+            WaitRegister : \t else if (!error) { 
+            WaitRegister : \t\t pipeline_send_inbound(AZ_PROVISIONING_REGISTER_STATUS)
+            WaitRegister : \t\t ^^QUERY
+            WaitRegister : \t}
+            WaitRegister : \t else ^ERROR
+            WaitRegister : }
+
+            state Delay
+            Delay : <b>entry/</b> start timer(retry-after)
+            Delay : <b>exit/</b> stop timer
+
+            state Query
+            Query : <b>entry/</b> start timer
+            Query : <b>exit/</b> stop timer
+
+            [*] -> StartRegister : / ^MQTT_PUB_REQ(register)
+            StartRegister --> StartRegister : TIMEOUT / ^MQTT_PUB_REQ(register)
+            StartRegister --> WaitRegister : MQTT_PUB_RSP
+            WaitRegister --> StartRegister : TIMEOUT / ^MQTT_PUB_REQ(register)
+            WaitRegister -> Delay : QUERY
+            Delay --> Query : TIMEOUT / ^MQTT_PUB_REQ(query)
+            Query --> Query : TIMEOUT / ^MQTT_PUB_REQ(query)
+            Query -> WaitRegister : MQTT_PUB_RSP
+        }
+        Subscribed : <b>MQTT_SUB_RSP</b>: // ignore
+        Subscribed : <b>MQTT_PUB_RSP</b>: // ignore
+
+        [*] -> Subscribing : / ^MQTT_SUB_REQ(...)
+        Subscribing --> Subscribed : MQTT_SUB_RSP
+        Subscribing --> Subscribing : TIMEOUT / ^MQTT_SUB_REQ(...)
+    }
+
+    [*] -> Idle
+    Idle --> Registering : AZ_PROVISIONING_REGISTER_REQ
+    Registering --> Idle : AZ_PROVISIONING_REGISTER_RSP
+    Registering --> Faulted : ERROR, az_context cancelled
+}
+
+AzureIotProvisioning : // All MQTT operations are QoS == 0
+
+@enduml
