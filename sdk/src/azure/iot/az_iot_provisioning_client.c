@@ -605,3 +605,15 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
 
   return AZ_OK;
 }
+
+
+
+// TODO: Move within the HFSM policy. Public API Impl.
+
+AZ_NODISCARD az_result az_iot_provisioning_client_register(
+    az_iot_provisioning_client const* client,
+    az_context* context,
+    az_iot_provisioning_register_data* data)
+{
+  return AZ_ERROR_NOT_IMPLEMENTED;
+}

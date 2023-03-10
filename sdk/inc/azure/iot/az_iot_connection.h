@@ -37,6 +37,7 @@ typedef az_result (*az_iot_connection_callback)(
 
 typedef struct
 {
+  bool disable_connection_management;
   az_credential_x509 secondary_credential;
 } az_iot_connection_options;
 
@@ -45,14 +46,15 @@ struct az_iot_connection
   struct
   {
     // Pipeline and policies
+    _az_event_pipeline pipeline;
 
     // Register operation
     az_iot_connection_callback event_callback;
 
     // Memory for generated fields
-    char username_buffer[AZ_IOT_MAX_USERNAME_SIZE];
-    char password_buffer[AZ_IOT_MAX_PASSWORD_SIZE];
-    char client_id_buffer[AZ_IOT_MAX_CLIENT_ID_SIZE];
+    az_span client_id_buffer;
+    az_span username_buffer;
+    az_span password_buffer;
   } _internal;
 };
 
@@ -63,6 +65,12 @@ AZ_NODISCARD az_result az_iot_connection_init(
     az_context* context,
     az_mqtt* mqtt_client,
     az_credential_x509* primary_credential,
+    char* client_id_buffer,
+    size_t client_id_buffer_size,
+    char* username_buffer,
+    size_t username_buffer_size,
+    char* password_buffer,
+    size_t password_buffer_size,
     az_iot_connection_callback event_callback,
     az_iot_connection_options* options);
 

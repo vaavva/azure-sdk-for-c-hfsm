@@ -25,7 +25,6 @@ static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/rsa_
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem");
 static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
 
-static char hub_endpoint_buffer[120];
 static char client_id_buffer[64];
 static char username_buffer[128];
 static char password_buffer[1];
@@ -189,7 +188,18 @@ int main(int argc, char* argv[])
       &az_context_application, az_context_get_expiration(&az_context_application));
 
   _az_RETURN_IF_FAILED(az_iot_connection_init(
-      &iot_connection, &connection_context, &mqtt, &credential, iot_callback, NULL));
+      &iot_connection,
+      &connection_context,
+      &mqtt,
+      &credential,
+      client_id_buffer,
+      sizeof(client_id_buffer),
+      username_buffer,
+      sizeof(username_buffer),
+      password_buffer,
+      sizeof(username_buffer),
+      iot_callback,
+      NULL));
 
   az_iot_provisioning_client prov_client;
   _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(

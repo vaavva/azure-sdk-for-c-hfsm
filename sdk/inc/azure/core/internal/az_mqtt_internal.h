@@ -15,7 +15,6 @@ typedef struct
    * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
    */
   az_span certificate_authority_trusted_roots;
-  bool disable_connection_management;
   bool clean_session;
 } az_mqtt_options_common;
 

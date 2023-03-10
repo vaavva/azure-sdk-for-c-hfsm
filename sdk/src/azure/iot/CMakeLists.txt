@@ -12,6 +12,7 @@ include(CheckAndIncludeCodeCov)
 # Azure IoT Common Library
 add_library (az_iot_common
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_common.c
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_connection.c
 )
 
 target_include_directories (az_iot_common
@@ -22,6 +23,8 @@ target_include_directories (az_iot_common
 target_link_libraries(az_iot_common
   PUBLIC
     az::core
+    # HFSM_DESIGN: link with the selected MQTT implementation.
+    az::mqtt_impl
 )
 
 add_library (az::iot::common ALIAS az_iot_common)
@@ -66,8 +69,6 @@ target_link_libraries(az_iot_provisioning
   PUBLIC
     az::core
     az::iot::common
-    # HFSM_DESIGN: link with the selected MQTT implementation.
-    az::mqtt_impl
 )
 
 add_library (az::iot::provisioning ALIAS az_iot_provisioning)

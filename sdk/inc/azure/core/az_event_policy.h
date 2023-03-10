@@ -74,7 +74,7 @@ az_event_policy_send_inbound_event(az_event_policy* policy, az_event const event
  * @param event The event being sent.
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result
+AZ_INLINE az_result
 az_event_policy_send_outbound_event(az_event_policy* policy, az_event const event)
 {
   // The error is flowed back to the application.
