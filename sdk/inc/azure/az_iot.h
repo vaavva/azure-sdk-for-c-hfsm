@@ -20,7 +20,10 @@
 #include <azure/iot/az_iot_hub_client_properties.h>
 #include <azure/iot/az_iot_provisioning_client.h>
 
+// HFSM_DESIGN: The following are required for the new stateful clients.
+#include <azure/core/az_event.h>
 #include <azure/core/az_mqtt.h>
+#include <azure/iot/az_iot_connection.h>
 
 
 #endif // _az_IOT_CORE_H

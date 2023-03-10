@@ -16,9 +16,9 @@
 #define _az_EVENT_PIPELINE_H
 
 #include <azure/core/az_event.h>
-#include <azure/core/internal/az_hfsm.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
+#include <azure/core/az_event_policy.h>
 #include <stdint.h>
 
 // Definition is below.

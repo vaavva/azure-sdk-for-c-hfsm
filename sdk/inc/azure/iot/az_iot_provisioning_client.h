@@ -20,6 +20,7 @@
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_common.h>
+#include <azure/iot/az_iot_connection.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -80,6 +81,7 @@ AZ_NODISCARD az_iot_provisioning_client_options az_iot_provisioning_client_optio
  * @param[in] options __[nullable]__ A reference to an #az_iot_provisioning_client_options
  * structure. Can be `NULL` for default options.
  * @pre \p client must not be `NULL`.
+ * @pre \p connection may be `NULL` if connection management is not required (codec usage only).
  * @pre \p global_device_hostname must be a valid span of size greater than 0.
  * @pre \p id_scope must be a valid span of size greater than 0.
  * @pre \p registration_id must be a valid span of size greater than 0.
@@ -87,6 +89,7 @@ AZ_NODISCARD az_iot_provisioning_client_options az_iot_provisioning_client_optio
  */
 AZ_NODISCARD az_result az_iot_provisioning_client_init(
     az_iot_provisioning_client* client,
+    az_iot_connection* connection,
     az_span global_device_hostname,
     az_span id_scope,
     az_span registration_id,
@@ -473,6 +476,26 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
     uint8_t* mqtt_payload,
     size_t mqtt_payload_size,
     size_t* out_mqtt_payload_length);
+
+// HFSM_DESIGN: the following is the stateful portion of the client:
+
+typedef struct
+{
+  az_span topic_buffer;
+  az_span payload_buffer;
+} az_iot_provisioning_register_data;
+
+/// @brief
+/// @param client
+/// @param context
+/// @param data Must be available until a AZ_IOT_PROVISIONING_REGISTER_RSP event is received..
+/// @details Registration will generate AZ_IOT_PROVISIONING_REGISTER_STATUS and
+///          AZ_IOT_PROVISIONING_REGISTER_RSP events.
+/// @return
+AZ_NODISCARD az_result az_iot_provisioning_client_register(
+    az_iot_provisioning_client const* client,
+    az_context* context,
+    az_iot_provisioning_register_data* data);
 
 #include <azure/core/_az_cfg_suffix.h>
 

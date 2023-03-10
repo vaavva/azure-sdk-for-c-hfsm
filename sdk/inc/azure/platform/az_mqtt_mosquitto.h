@@ -13,6 +13,7 @@ typedef struct
 {
   az_mqtt_options_common platform_options;
   az_span openssl_engine;
+  // HFSM_TODO: add initial mosquitto_handle here.
 } az_mqtt_options;
 
 struct az_mqtt

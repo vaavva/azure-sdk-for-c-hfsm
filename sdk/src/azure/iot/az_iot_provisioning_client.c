@@ -10,6 +10,7 @@
 #include <azure/core/internal/az_span_internal.h>
 #include <azure/iot/az_iot_common.h>
 #include <azure/iot/az_iot_provisioning_client.h>
+#include <azure/iot/az_iot_connection.h>
 
 #include <azure/core/_az_cfg.h>
 
@@ -53,7 +54,7 @@ AZ_NODISCARD az_iot_provisioning_client_options az_iot_provisioning_client_optio
 
 AZ_NODISCARD az_result az_iot_provisioning_client_init(
     az_iot_provisioning_client* client,
-    az_iot_connection& connection,
+    az_iot_connection* connection,
     az_span global_device_hostname,
     az_span id_scope,
     az_span registration_id,

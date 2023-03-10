@@ -184,7 +184,7 @@ create_map_file(paho_iot_provisioning_sas_sample paho_iot_provisioning_sas_sampl
 # target_link_libraries(paho_sync_sample
 #   PRIVATE
 #     az::iot::sample::common
-#     az::paho
+#     az::mqtt_impl
 # )
 # 
 # create_map_file(paho_sync_sample paho_sync_sample.map)

@@ -14,6 +14,7 @@
 #include <azure/core/az_log.h>
 #include <azure/core/internal/az_result_internal.h>
 
+#include <azure/az_core.h>
 #include <azure/az_iot.h>
 
 static const az_span dps_endpoint
@@ -60,32 +61,32 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_HFSM_EVENT_ERROR:
       class_str = "HFSM_ERROR";
       break;
-    case AZ_HFSM_MQTT_EVENT_CONNECT_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_REQ";
+    case AZ_MQTT_EVENT_CONNECT_REQ:
+      class_str = "AZ_MQTT_EVENT_CONNECT_REQ";
       break;
-    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_CONNECT_RSP";
+    case AZ_MQTT_EVENT_CONNECT_RSP:
+      class_str = "AZ_MQTT_EVENT_CONNECT_RSP";
       break;
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ";
+    case AZ_MQTT_EVENT_DISCONNECT_REQ:
+      class_str = "AZ_MQTT_EVENT_DISCONNECT_REQ";
       break;
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP";
+    case AZ_MQTT_EVENT_DISCONNECT_RSP:
+      class_str = "AZ_MQTT_EVENT_DISCONNECT_RSP";
       break;
-    case AZ_HFSM_MQTT_EVENT_PUB_RECV_IND:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUB_RECV_IND";
+    case AZ_MQTT_EVENT_PUB_RECV_IND:
+      class_str = "AZ_MQTT_EVENT_PUB_RECV_IND";
       break;
-    case AZ_HFSM_MQTT_EVENT_PUB_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUB_REQ";
+    case AZ_MQTT_EVENT_PUB_REQ:
+      class_str = "AZ_MQTT_EVENT_PUB_REQ";
       break;
-    case AZ_HFSM_MQTT_EVENT_PUBACK_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_PUBACK_RSP";
+    case AZ_MQTT_EVENT_PUBACK_RSP:
+      class_str = "AZ_MQTT_EVENT_PUBACK_RSP";
       break;
-    case AZ_HFSM_MQTT_EVENT_SUB_REQ:
-      class_str = "AZ_HFSM_MQTT_EVENT_SUB_REQ";
+    case AZ_MQTT_EVENT_SUB_REQ:
+      class_str = "AZ_MQTT_EVENT_SUB_REQ";
       break;
-    case AZ_HFSM_MQTT_EVENT_SUBACK_RSP:
-      class_str = "AZ_HFSM_MQTT_EVENT_SUBACK_RSP";
+    case AZ_MQTT_EVENT_SUBACK_RSP:
+      class_str = "AZ_MQTT_EVENT_SUBACK_RSP";
       break;
     case AZ_LOG_HFSM_MQTT_STACK:
       class_str = "AZ_LOG_HFSM_MQTT_STACK";
@@ -96,9 +97,9 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_LOG_MQTT_RECEIVED_PAYLOAD:
       class_str = "AZ_LOG_MQTT_RECEIVED_PAYLOAD";
       break;
-    case AZ_IOT_PROVISIONING_REGISTER_REQ:
-      class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
-      break;
+    // TODO: case AZ_IOT_PROVISIONING_REGISTER_REQ:
+    //   class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
+    //   break;
     default:
       class_str = NULL;
   }
@@ -138,9 +139,12 @@ az_result iot_callback(az_iot_connection* client, az_event event)
 {
   switch (event.type)
   {
-    case AZ_IOT_PROVISIONING_REGISTER_RSP:
-      // TODO:
+    case AZ_MQTT_EVENT_CONNECT_RSP:
+    {
+      az_mqtt_connack_data* connack_data = (az_mqtt_connack_data*)event.data;
+      printf(LOG_APP "[%p] CONNACK: %d", client, connack_data->connack_reason);
       break;
+    }
 
     default:
       // TODO:
@@ -170,6 +174,7 @@ int main(int argc, char* argv[])
   az_mqtt mqtt;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.platform_options.certificate_authority_trusted_roots = ca_path;
+
   _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, &mqtt_options));
 
   az_iot_connection iot_connection;
@@ -180,12 +185,11 @@ int main(int argc, char* argv[])
     .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
   };
 
-  az_iot_connection_options iot_connection_options = az_mqtt_options_default();
   az_context connection_context = az_context_create_with_expiration(
       &az_context_application, az_context_get_expiration(&az_context_application));
 
   _az_RETURN_IF_FAILED(az_iot_connection_init(
-      &iot_connection, connection_context, &mqtt, &credential, iot_callback));
+      &iot_connection, &connection_context, &mqtt, &credential, iot_callback, NULL));
 
   az_iot_provisioning_client prov_client;
   _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
@@ -193,11 +197,15 @@ int main(int argc, char* argv[])
 
   _az_RETURN_IF_FAILED(az_iot_connection_open(&iot_connection));
 
-  az_context register_context = az_context_create_with_expiration(
-      &connection_context, 30 * AZ_TIME_MILLISECONDS_PER_SECOND);
+  az_context register_context = az_context_create_with_expiration(&connection_context, 30 * 1000);
+
+  az_iot_provisioning_register_data register_data = {
+    .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
+    .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
+  };
 
   _az_RETURN_IF_FAILED(
-      az_iot_provisioning_client_register(&prov_client, &register_data, &register_context));
+      az_iot_provisioning_client_register(&prov_client, &register_context, &register_data));
 
   for (int i = 15; i > 0; i--)
   {

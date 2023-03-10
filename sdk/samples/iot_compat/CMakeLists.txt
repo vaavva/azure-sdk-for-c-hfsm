@@ -86,7 +86,7 @@ target_link_libraries(prov_dev_client_ll_x509_sample
     ${PTHREAD_LIBRARIES}
     OpenSSL::SSL 
     OpenSSL::Crypto
-    az::mosquitto
+    az::mqtt_impl
     az::iot::hub
     az::iot::provisioning
     az::iot::compat::csdk

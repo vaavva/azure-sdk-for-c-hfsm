@@ -113,9 +113,6 @@ endif()
 
   target_link_libraries(az_mosquitto PRIVATE az_core)
 
-  # make sure that users can consume the project as a library.
-  add_library (az::mosquitto ALIAS az_mosquitto)
-
   target_link_libraries(az_mosquitto 
     PUBLIC 
       ${MOSQUITTO_LIBRARIES}
@@ -134,6 +131,9 @@ endif()
   endif()
 
   target_include_directories(az_mosquitto INTERFACE ${MOSQUITTO_INCLUDE_DIR})
+
+  # make sure that users can consume the project as a library.
+  add_library (az::mqtt_impl ALIAS az_mosquitto)
 endif() # TRANSPORT_MOSQUITTO
 
 
@@ -157,9 +157,6 @@ if (TRANSPORT_PAHO)
 
   target_link_libraries(az_paho PRIVATE az_core)
 
-  # make sure that users can consume the project as a library.
-  add_library (az::paho ALIAS az_paho)
-
   target_link_libraries(az_paho
   PUBLIC
     eclipse-paho-mqtt-c::paho-mqtt3cs-static
@@ -169,4 +166,6 @@ if (TRANSPORT_PAHO)
 
   target_include_directories(az_paho INTERFACE ${PAHO_INCLUDE_DIR})
 
+  # make sure that users can consume the project as a library.
+  add_library (az::mqtt_impl ALIAS az_paho)
 endif() # TRANSPORT_PAHO

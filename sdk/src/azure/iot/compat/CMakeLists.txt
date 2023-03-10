@@ -47,7 +47,7 @@ target_link_libraries(az_iot_compat_csdk
     ${PTHREAD_LIBRARIES}
     OpenSSL::SSL 
     OpenSSL::Crypto
-    az::mosquitto
+    az::mqtt_impl
     az::iot::hub
     az::iot::provisioning
     az::iot::hfsm

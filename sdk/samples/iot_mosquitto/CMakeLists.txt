@@ -83,7 +83,7 @@ create_map_file(mosquitto_sample_connect mosquitto_sample_connect.map)
 #     ${PTHREAD_LIBRARIES}
 #     OpenSSL::SSL 
 #     OpenSSL::Crypto
-#     az::mosquitto
+#     az::mqtt_impl
 #     az::iot::hub
 #     az::iot::provisioning
 # )
@@ -117,7 +117,7 @@ create_map_file(mosquitto_sample_connect mosquitto_sample_connect.map)
 #     ${PTHREAD_LIBRARIES}
 #     OpenSSL::SSL 
 #     OpenSSL::Crypto
-#     az::mosquitto
+#     az::mqtt_impl
 #     az::iot::hub
 #     az::iot::provisioning
 #     az::iot::hfsm
@@ -153,7 +153,7 @@ target_link_libraries(mosquitto_async_sample
     ${PTHREAD_LIBRARIES}
     OpenSSL::SSL 
     OpenSSL::Crypto
-    az::mosquitto
+    az::mqtt_impl
     az::iot::hub
     az::iot::provisioning
     rt  #HFSM_TODO: Test only: -lrt (Posix) should be included to az_platform, not here.

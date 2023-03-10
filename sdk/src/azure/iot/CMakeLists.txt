@@ -66,6 +66,8 @@ target_link_libraries(az_iot_provisioning
   PUBLIC
     az::core
     az::iot::common
+    # HFSM_DESIGN: link with the selected MQTT implementation.
+    az::mqtt_impl
 )
 
 add_library (az::iot::provisioning ALIAS az_iot_provisioning)
