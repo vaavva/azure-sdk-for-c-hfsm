@@ -49,8 +49,8 @@ AZ_NODISCARD az_result az_platform_timer_create(
   _az_PRECONDITION_NOT_NULL(timer_handle);
 
   test_mock_timer = timer_handle;
-  timer_handle->_internal.callback = callback;
-  timer_handle->_internal.sdk_data = sdk_data;
+  timer_handle->platform_timer._internal.callback = callback;
+  timer_handle->platform_timer._internal.sdk_data = sdk_data;
 
   return AZ_OK;
 }

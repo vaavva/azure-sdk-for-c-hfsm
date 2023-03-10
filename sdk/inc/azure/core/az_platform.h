@@ -16,51 +16,15 @@
 #define _az_PLATFORM_H
 
 #include <azure/core/az_result.h>
-
 #include <stdbool.h>
 #include <stdint.h>
-#if AZ_PLATFORM_IMPL == POSIX
-    #include <time.h>
-    #include <signal.h>
-    #include <pthread.h>
+#ifdef PLATFORM_POSIX
+#include "azure/platform/az_platform_posix.h"
+#else
+#include "azure/platform/az_platform_none.h"
 #endif
 
 #include <azure/core/_az_cfg_prefix.h>
-
-/**
- * @brief Timer callback.
- *
- * @param[in] sdk_data Data passed by the SDK during the #az_platform_timer_create call.
- */
-typedef void (*az_platform_timer_callback)(void* sdk_data);
-
-#if AZ_PLATFORM_IMPL == POSIX
-/**
- * @brief Platform timer definition specific to POSIX.
- */
-typedef struct
-{
-    struct 
-    {
-        az_platform_timer_callback callback;
-        void* sdk_data;
-
-        // POSIX specific
-        timer_t timerid;
-        struct sigevent sev;
-        struct itimerspec trigger;
-    } _internal;
-} az_platform_timer;
-
-/**
- * @brief Platform mutex definition specific to POSIX.
- */
-typedef pthread_mutex_t az_platform_mutex;
-
-#else //other AZ_PLATFORM_IMPL
-typedef void* az_platform_timer;
-typedef void* az_platform_mutex;
-#endif
 
 /**
  * @brief Gets the platform clock in milliseconds.

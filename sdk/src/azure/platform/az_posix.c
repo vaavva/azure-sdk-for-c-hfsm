@@ -43,11 +43,12 @@ AZ_NODISCARD az_result az_platform_get_random(int32_t* out_random)
 
 void _timer_callback_handler(union sigval sv)
 {
-  az_platform_timer* timer_handle = sv.sival_ptr;
+  az_platform_timer *timer_handle = sv.sival_ptr;
 
   _az_PRECONDITION_NOT_NULL(timer_handle);
-  _az_PRECONDITION_NOT_NULL(timer_handle->_internal.callback);
-  timer_handle->_internal.callback(timer_handle->_internal.sdk_data);
+  _az_PRECONDITION_NOT_NULL(timer_handle->platform_timer._internal.callback);
+
+  timer_handle->platform_timer._internal.callback(timer_handle->platform_timer._internal.sdk_data);
 }
 
 AZ_NODISCARD az_result az_platform_timer_create(
@@ -59,8 +60,8 @@ AZ_NODISCARD az_result az_platform_timer_create(
   _az_PRECONDITION_NOT_NULL(callback);
   memset(timer_handle, 0, sizeof(az_platform_timer));
 
-  timer_handle->_internal.callback = callback;
-  timer_handle->_internal.sdk_data = sdk_data;
+  timer_handle->platform_timer._internal.callback = callback;
+  timer_handle->platform_timer._internal.sdk_data = sdk_data;
 
   timer_handle->_internal.sev.sigev_notify = SIGEV_THREAD;
   timer_handle->_internal.sev.sigev_notify_function = &_timer_callback_handler;
