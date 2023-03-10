@@ -12,7 +12,6 @@
 #include <stdlib.h>
 
 #include <azure/core/az_log.h>
-#include <azure/core/internal/az_result_internal.h>
 
 #include <azure/az_core.h>
 #include <azure/az_iot.h>
@@ -41,6 +40,18 @@ bool az_sdk_log_filter_callback(az_log_classification classification);
 
 #define LOG_APP "\x1B[34mAPP: \x1B[0m"
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
+
+
+#define LOG_AND_EXIT_IF_FAILED(exp)       \
+  do                                    \
+  {                                     \
+    az_result const _az_result = (exp); \
+    if (az_result_failed(_az_result))   \
+    {                                   \
+      printf(LOG_APP "%s failed with error 0x%x\n", #exp, _az_result); \
+      return _az_result;                \
+    }                                   \
+  } while (0)
 
 void az_sdk_log_callback(az_log_classification classification, az_span message)
 {
@@ -174,7 +185,7 @@ int main(int argc, char* argv[])
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.platform_options.certificate_authority_trusted_roots = ca_path;
 
-  _az_RETURN_IF_FAILED(az_mqtt_init(&mqtt, &mqtt_options));
+  LOG_AND_EXIT_IF_FAILED(az_mqtt_init(&mqtt, &mqtt_options));
 
   az_iot_connection iot_connection;
 
@@ -187,7 +198,7 @@ int main(int argc, char* argv[])
   az_context connection_context = az_context_create_with_expiration(
       &az_context_application, az_context_get_expiration(&az_context_application));
 
-  _az_RETURN_IF_FAILED(az_iot_connection_init(
+  LOG_AND_EXIT_IF_FAILED(az_iot_connection_init(
       &iot_connection,
       &connection_context,
       &mqtt,
@@ -202,10 +213,10 @@ int main(int argc, char* argv[])
       NULL));
 
   az_iot_provisioning_client prov_client;
-  _az_RETURN_IF_FAILED(az_iot_provisioning_client_init(
+  LOG_AND_EXIT_IF_FAILED(az_iot_provisioning_client_init(
       &prov_client, &iot_connection, dps_endpoint, id_scope, device_id, NULL));
 
-  _az_RETURN_IF_FAILED(az_iot_connection_open(&iot_connection));
+  LOG_AND_EXIT_IF_FAILED(az_iot_connection_open(&iot_connection));
 
   az_context register_context = az_context_create_with_expiration(&connection_context, 30 * 1000);
 
@@ -214,17 +225,17 @@ int main(int argc, char* argv[])
     .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
   };
 
-  _az_RETURN_IF_FAILED(
+  LOG_AND_EXIT_IF_FAILED(
       az_iot_provisioning_client_register(&prov_client, &register_context, &register_data));
 
   for (int i = 15; i > 0; i--)
   {
-    _az_RETURN_IF_FAILED(az_platform_sleep_msec(1000));
+    LOG_AND_EXIT_IF_FAILED(az_platform_sleep_msec(1000));
     printf(LOG_APP "Waiting %ds        \r", i);
     fflush(stdout);
   }
 
-  _az_RETURN_IF_FAILED(az_iot_connection_close(&iot_connection));
+  LOG_AND_EXIT_IF_FAILED(az_iot_connection_close(&iot_connection));
 
   if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
   {
