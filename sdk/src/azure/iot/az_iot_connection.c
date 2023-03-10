@@ -6,6 +6,15 @@
 
 #include <azure/core/_az_cfg.h>
 
+static az_result root(az_hfsm* me, az_event event);
+
+static az_result idle(az_hfsm* me, az_event event);
+static az_result started(az_hfsm* me, az_event event);
+
+static az_result connecting(az_hfsm* me, az_event event);
+static az_result connected(az_hfsm* me, az_event event);
+static az_result disconnecting(az_hfsm* me, az_event event);
+
 AZ_NODISCARD az_iot_connection_options az_iot_connection_options_default()
 {
     return (az_iot_connection_options){ 0 };
