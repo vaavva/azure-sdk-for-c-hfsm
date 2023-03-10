@@ -145,6 +145,7 @@ add_compile_definitions(mosquitto_async_sample
 target_include_directories(mosquitto_async_sample
   PRIVATE
     ${MOSQUITTO_INCLUDE_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
 )
 
 target_link_libraries(mosquitto_async_sample

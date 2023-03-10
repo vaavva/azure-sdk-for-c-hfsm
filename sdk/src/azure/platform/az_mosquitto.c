@@ -180,6 +180,8 @@ AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* option
 {
   _az_PRECONDITION_NOT_NULL(mqtt);
   mqtt->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
+
+  return AZ_OK;
 }
 
 AZ_NODISCARD az_result
