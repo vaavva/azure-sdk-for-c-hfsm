@@ -10,8 +10,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <az_log_listener.h>
+
 #include <azure/core/az_log.h>
 #include <azure/az_core.h>
 #include <azure/az_iot.h>
@@ -21,8 +21,12 @@ static const az_span dps_endpoint
 static const az_span id_scope = AZ_SPAN_LITERAL_FROM_STR("0ne00003E26");
 static const az_span device_id = AZ_SPAN_LITERAL_FROM_STR("dev1-ecc");
 static const az_span ca_path = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/rsa_baltimore_ca.pem");
+
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem");
 static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
+
+static const az_span cert_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem");
+static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
 
 static char client_id_buffer[64];
 static char username_buffer[128];
@@ -30,12 +34,6 @@ static char password_buffer[1];
 
 static char topic_buffer[128];
 static char payload_buffer[256];
-
-// static const az_span cert_path2 =
-// AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_cert.pem"); static const az_span key_path2
-// = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/dev1-ecc_key.pem");
-
-
 
 void az_platform_critical_error()
 {
@@ -89,11 +87,20 @@ int main(int argc, char* argv[])
 
   az_iot_connection iot_connection;
 
-  az_credential_x509 credential = (az_credential_x509){
+  az_credential_x509 primary_credential = (az_credential_x509){
     .cert = cert_path1,
     .key = key_path1,
     .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
   };
+
+  az_credential_x509 secondary_credential = (az_credential_x509){
+    .cert = cert_path2,
+    .key = key_path2,
+    .key_type = AZ_CREDENTIALS_X509_KEY_MEMORY,
+  };
+
+  az_iot_connection_options connection_options = az_iot_connection_options_default();
+  connection_options.secondary_credential = secondary_credential;
 
   az_context connection_context = az_context_create_with_expiration(
       &az_context_application, az_context_get_expiration(&az_context_application));
@@ -102,7 +109,7 @@ int main(int argc, char* argv[])
       &iot_connection,
       &connection_context,
       &mqtt,
-      &credential,
+      &primary_credential,
       client_id_buffer,
       sizeof(client_id_buffer),
       username_buffer,
