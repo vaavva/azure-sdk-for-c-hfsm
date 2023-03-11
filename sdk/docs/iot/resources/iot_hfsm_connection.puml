@@ -13,9 +13,16 @@ state AzureIoTConnection {
         Connecting : <b>MQTT_CONNECT_RSP(success)/</b> 
         Connecting : \t connect_counter=0;
         Connecting : \t callback(MQTT_CONNECT_RSP(success));
-        Connecting : \t pipeline_send(MQTT_CONNECT_RSP(success))
+        Connecting : \t pipeline_send_inbound(MQTT_CONNECT_RSP(success))
 
         state Connected
+        Connected : <b>MQTT_SUB_REQ/</b> :
+        Connected : <b>MQTT_PUB_REQ/</b> :
+        Connected : \t pipeline_send_outbound(event)
+        Connected : 
+        Connected : <b>MQTT_PUBACK_RSP/</b> :
+        Connected : <b>MQTT_SUBACK_RSP/</b> :
+        Connected : \t pipeline_send_inbound(event)
 
         state ReconnectTimeout
         ReconnectTimeout : <b>entry/</b> 
