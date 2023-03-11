@@ -10,6 +10,8 @@
 // For HFSM ENTER/EXIT events.
 #include <azure/core/internal/az_hfsm.h>
 
+#include <stdio.h>
+
 /*
 Black:   \x1B[30m
 Red:     \x1B[31m

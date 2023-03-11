@@ -84,9 +84,17 @@ AZ_NODISCARD az_result az_iot_connection_init(
 /// @brief Opens the connection to the broker.
 /// @param client
 /// @return
-AZ_NODISCARD az_result az_iot_connection_open(az_iot_connection* client);
+AZ_INLINE az_result az_iot_connection_open(az_iot_connection* client)
+{
+  return _az_event_pipeline_post_outbound_event(
+      &client->_internal.event_pipeline, (az_event){ AZ_EVENT_IOT_CONNECTION_OPEN, NULL });
+}
 
-AZ_NODISCARD az_result az_iot_connection_close(az_iot_connection* client);
+AZ_INLINE az_result az_iot_connection_close(az_iot_connection* client)
+{
+  return _az_event_pipeline_post_outbound_event(
+      &client->_internal.event_pipeline, (az_event){ AZ_EVENT_IOT_CONNECTION_CLOSE, NULL });
+}
 
 AZ_INLINE az_result _az_iot_connection_api_callback(az_iot_connection* client, az_event event)
 {
