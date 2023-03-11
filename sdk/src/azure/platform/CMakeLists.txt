@@ -73,3 +73,95 @@ if (TRANSPORT_CURL)
   target_include_directories(az_curl INTERFACE ${CURL_INCLUDE_DIR})
 
 endif()
+
+# Mosquitto Platform
+
+if (TRANSPORT_MOSQUITTO)
+  find_package(mosquitto  CONFIG)
+  if(NOT mosquitto_FOUND)
+    find_package(mosquitto REQUIRED)
+  endif()
+
+  find_package(OpenSSL CONFIG)
+  if(NOT OpenSSL_FOUND)
+    find_package(OpenSSL REQUIRED)
+  endif()
+
+if (WIN32)
+  find_package(pthread CONFIG)
+  if(NOT pthread_FOUND)
+    find_package(pthread REQUIRED)
+  endif()
+  # HFSM_TODO: From https://github.com/microsoft/vcpkg/issues/23705 and associated PR:
+  #find_package(PThreads4W REQUIRED)
+  #target_link_libraries(main PRIVATE PThreads4W::PThreads4W)
+endif()
+
+  add_library (
+    az_mosquitto
+      STATIC
+      ${CMAKE_CURRENT_LIST_DIR}/az_mosquitto.c
+  )
+
+  add_compile_definitions(az_mosquitto
+    LIBMOSQUITTO_STATIC
+  )
+
+  target_link_libraries(az_mosquitto PRIVATE az_core)
+
+  target_link_libraries(az_mosquitto 
+    PUBLIC 
+      ${MOSQUITTO_LIBRARIES}
+      ${PTHREAD_LIBRARIES}
+      #${MOSQUITTO_LIBRARY}
+      OpenSSL::SSL 
+      OpenSSL::Crypto
+  )
+  
+  if(WIN32)
+  target_link_libraries(az_mosquitto
+    PUBLIC
+      crypt32
+      Ws2_32
+  )
+  endif()
+
+  target_include_directories(az_mosquitto INTERFACE ${MOSQUITTO_INCLUDE_DIR})
+
+  # make sure that users can consume the project as a library.
+  add_library (az::mqtt_impl ALIAS az_mosquitto)
+endif() # TRANSPORT_MOSQUITTO
+
+
+# Paho Platform
+if (TRANSPORT_PAHO)
+  find_package(eclipse-paho-mqtt-c CONFIG)
+  if(NOT eclipse-paho-mqtt-c_FOUND)
+    find_package(eclipse-paho-mqtt-c REQUIRED)
+  endif()
+
+  find_package(OpenSSL CONFIG)
+  if(NOT OpenSSL_FOUND)
+    find_package(OpenSSL REQUIRED)
+  endif()
+
+  add_library (
+    az_paho
+      STATIC
+      ${CMAKE_CURRENT_LIST_DIR}/az_paho.c
+  )
+
+  target_link_libraries(az_paho PRIVATE az_core)
+
+  target_link_libraries(az_paho
+  PUBLIC
+    eclipse-paho-mqtt-c::paho-mqtt3cs-static
+    OpenSSL::SSL
+    OpenSSL::Crypto
+  )
+
+  target_include_directories(az_paho INTERFACE ${PAHO_INCLUDE_DIR})
+
+  # make sure that users can consume the project as a library.
+  add_library (az::mqtt_impl ALIAS az_paho)
+endif() # TRANSPORT_PAHO

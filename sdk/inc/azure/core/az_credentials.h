@@ -43,6 +43,9 @@ typedef struct
 {
   struct
   {
+
+    // HFSM_TODO: az_credentials must be generic with x-protocol support (instead of just HTTP)
+    //            specific credentials objects should exist for HTTP(blob/sas) / MQTT(X.509 cert).
     _az_http_policy_process_fn apply_credential_policy;
 
     /// If the credential doesn't support scopes, this function pointer is `NULL`.

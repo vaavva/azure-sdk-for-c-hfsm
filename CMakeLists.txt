@@ -9,8 +9,6 @@ option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 option(TRANSPORT_CURL "Build internal http transport implementation with CURL for HTTP Pipeline" OFF)
 option(UNIT_TESTING "Build unit test projects" OFF)
 option(UNIT_TESTING_MOCKS "wrap PAL functions with mock implementation for tests" OFF)
-option(PIPELINE_SYNC "Build with synchronous I/O support" OFF)
-option(TRANSPORT_PAHO "Build IoT Samples with Paho MQTT support" OFF)
 option(PRECONDITIONS "Build SDK with preconditions enabled" ON)
 option(LOGGING "Build SDK with logging support" ON)
 option(ADDRESS_SANITIZER "Build with address sanitizer" OFF)
@@ -18,6 +16,13 @@ option(ADDRESS_SANITIZER "Build with address sanitizer" OFF)
 # vcpkg integration
 include(AzureVcpkg)
 az_vcpkg_integrate()
+set(AZ_PLATFORM_IMPL "POSIX" CACHE STRING "Platform")
+set(AZ_CUSTOM_PLATFORM_IMPL_NAME "" CACHE STRING "If AZ_PLATFORM_IMPL is CUSTOM set this to the platform name.")
+set_property(CACHE AZ_PLATFORM_IMPL PROPERTY STRINGS "WIN32" "POSIX" "CUSTOM") 
+
+set(AZ_MQTT_TRANSPORT_IMPL "NONE" CACHE STRING "MQTT Transport")
+set(AZ_CUSTOM_MQTT_TRANSPORT_IMPL "" CACHE STRING "If AZ_MQTT_TRANSPORT_IMPL is CUSTOM set this to the platform name.")
+set_property(CACHE AZ_MQTT_TRANSPORT_IMPL PROPERTY STRINGS "PAHO" "MOSQUITTO" "CUSTOM")
 
 # disable preconditions when it's set to OFF
 if (NOT PRECONDITIONS)
@@ -36,10 +41,6 @@ endif()
 # make libcurl option enabled to be visible to code
 if(TRANSPORT_CURL)
   add_compile_definitions(TRANSPORT_CURL)
-endif()
-
-if(PIPELINE_SYNC)
-  add_compile_definitions(PIPELINE_SYNC)
 endif()
 
 project(az LANGUAGES C)
@@ -75,6 +76,26 @@ else()
   set(PAL az_noplatform)
 endif()
 
+# Determine MQTT transport to build
+if(AZ_MQTT_TRANSPORT_IMPL STREQUAL "PAHO")
+  set(MQTT_TRANSPORT az_mqtt_paho)
+  set(TRANSPORT_PAHO ON)
+  add_compile_definitions(TRANSPORT_PAHO)
+elseif(AZ_MQTT_TRANSPORT_IMPL STREQUAL "MOSQUITTO")
+  set(MQTT_TRANSPORT az_mqtt_mosquitto)
+  set(TRANSPORT_MOSQUITTO ON)
+  add_compile_definitions(TRANSPORT_MOSQUITTO)
+elseif(AZ_MQTT_TRANSPORT_IMPL STREQUAL "CUSTOM")
+  if(AZ_CUSTOM_MQTT_TRANSPORT_IMPL STREQUAL "")
+  message(FATAL_ERROR "When using AZ_MQTT_TRANSPORT_IMPL=CUSTOM, AZ_CUSTOM_MQTT_TRANSPORT_IMPL must be defined as well. See Readme.")
+  endif()
+  set(MQTT_TRANSPORT ${AZ_CUSTOM_MQTT_TRANSPORT_IMPL})
+  add_compile_definitions(TRANSPORT_${AZ_CUSTOM_MQTT_TRANSPORT_IMPL})
+else()
+  #notransport
+  set(MQTT_TRANSPORT az_mqtt_notransport)
+endif()
+
 add_subdirectory(sdk/src/azure/core)
 
 # SDK Clients
@@ -87,6 +108,18 @@ add_subdirectory(sdk/src/azure/platform)
 if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
   if(TRANSPORT_PAHO)
     add_subdirectory(sdk/samples/iot)
+  endif()
+endif()
+
+# User can disable samples generation by setting env variable AZ_SDK_C_NO_SAMPLES
+if(NOT DEFINED ENV{AZ_SDK_C_NO_SAMPLES})
+  if(TRANSPORT_MOSQUITTO)
+    if(TRANSPORT_MQTT_SYNC)
+#      add_subdirectory(sdk/src/azure/iot/compat)
+#      add_subdirectory(sdk/samples/iot_compat)
+    else()
+      add_subdirectory(sdk/samples/iot_mosquitto)
+    endif()
   endif()
 endif()
 
