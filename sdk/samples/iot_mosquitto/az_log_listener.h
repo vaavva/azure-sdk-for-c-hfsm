@@ -33,25 +33,34 @@ AZ_INLINE char* az_result_to_string(az_result result)
   {
     case AZ_OK:
       return "AZ_OK";
+    case AZ_ERROR_CANCELED:
+      return "AZ_ERROR_CANCELED";
     case AZ_ERROR_ARG:
       return "AZ_ERROR_ARG";
-    case AZ_ERROR_UNEXPECTED_CHAR:
-      return "AZ_ERROR_UNEXPECTED_CHAR";
-    case AZ_ERROR_ITEM_NOT_FOUND:
-      return "AZ_ERROR_ITEM_NOT_FOUND";
-    case AZ_ERROR_NOT_IMPLEMENTED:
-      return "AZ_ERROR_NOT_IMPLEMENTED";
-    case AZ_ERROR_UNEXPECTED_END:
-      return "AZ_ERROR_UNEXPECTED_END";
     case AZ_ERROR_NOT_ENOUGH_SPACE:
       return "AZ_ERROR_NOT_ENOUGH_SPACE";
+    case AZ_ERROR_NOT_IMPLEMENTED:
+      return "AZ_ERROR_NOT_IMPLEMENTED";
+    case AZ_ERROR_ITEM_NOT_FOUND:
+      return "AZ_ERROR_ITEM_NOT_FOUND";
+    case AZ_ERROR_UNEXPECTED_CHAR:
+      return "AZ_ERROR_UNEXPECTED_CHAR";
+    case AZ_ERROR_UNEXPECTED_END:
+      return "AZ_ERROR_UNEXPECTED_END";
     case AZ_ERROR_NOT_SUPPORTED:
       return "AZ_ERROR_NOT_SUPPORTED";
-    case AZ_ERROR_HTTP_INVALID_STATE:
-      return "AZ_ERROR_HTTP_INVALID_STATE";
-    case AZ_ERROR_HTTP_INVALID_METHOD_VERB:
-      return "AZ_ERROR_HTTP_INVALID_METHOD_VERB";
-
+    case AZ_ERROR_DEPENDENCY_NOT_PROVIDED:
+      return "AZ_ERROR_DEPENDENCY_NOT_PROVIDED";
+    case AZ_ERROR_OUT_OF_MEMORY:
+      return "AZ_ERROR_OUT_OF_MEMORY";
+    case AZ_TIMEOUT:
+      return "AZ_TIMEOUT";
+    case AZ_ERROR_JSON_INVALID_STATE:
+      return "AZ_ERROR_JSON_INVALID_STATE";
+    case AZ_ERROR_JSON_NESTING_OVERFLOW:
+      return "AZ_ERROR_JSON_NESTING_OVERFLOW";
+    case AZ_ERROR_JSON_READER_DONE:
+      return "AZ_ERROR_JSON_READER_DONE";
     default:
       return "UNKNOWN";
   }

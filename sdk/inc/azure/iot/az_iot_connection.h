@@ -17,13 +17,13 @@
 #ifndef _az_IOT_CONNECTION
 #define _az_IOT_CONNECTION
 
-#include <azure/core/az_result.h>
-#include <azure/core/az_span.h>
 #include <azure/core/az_context.h>
 #include <azure/core/az_credentials_x509.h>
 #include <azure/core/az_mqtt.h>
+#include <azure/core/az_result.h>
+#include <azure/core/az_span.h>
 #include <azure/core/internal/az_event_pipeline.h>
-#include <azure/iot/az_iot_connection_policy.h>
+#include <azure/iot/internal/az_iot_subclients_policy.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -39,27 +39,36 @@ enum az_event_type_iot_connection
 
 typedef struct az_iot_connection az_iot_connection;
 
-typedef az_result (*az_iot_connection_callback)(
-    az_iot_connection* client,
-    az_event event);
+typedef az_result (*az_iot_connection_callback)(az_iot_connection* client, az_event event);
 
 typedef struct
 {
-  bool disable_connection_management;
-  az_credential_x509 secondary_credential;
+  bool connection_management;
+
+  // HFSM_DESIGN The following are required if connection_management is true.
+  //             If we want to further optimize, we can convert connection_management to
+  //             a preprocessor statement.
+  az_span client_id_buffer;
+  az_span username_buffer;
+  az_span password_buffer;
+  az_credential_x509* primary_credential;
+  az_credential_x509* secondary_credential;
 } az_iot_connection_options;
 
 struct az_iot_connection
 {
   struct
   {
-    _az_event_pipeline pipeline;
+    _az_hfsm connection_policy;
+    _az_iot_subclients_policy subclient_policy;
+
+    _az_event_pipeline event_pipeline;
+
+    az_mqtt* mqtt_client;
+    az_context* context;
     az_iot_connection_callback event_callback;
 
-    // Memory for generated fields
-    az_span client_id_buffer;
-    az_span username_buffer;
-    az_span password_buffer;
+    az_iot_connection_options options;
   } _internal;
 };
 
@@ -69,22 +78,20 @@ AZ_NODISCARD az_result az_iot_connection_init(
     az_iot_connection* client,
     az_context* context,
     az_mqtt* mqtt_client,
-    az_credential_x509* primary_credential,
-    char* client_id_buffer,
-    size_t client_id_buffer_size,
-    char* username_buffer,
-    size_t username_buffer_size,
-    char* password_buffer,
-    size_t password_buffer_size,
     az_iot_connection_callback event_callback,
     az_iot_connection_options* options);
 
 /// @brief Opens the connection to the broker.
-/// @param client 
-/// @return 
+/// @param client
+/// @return
 AZ_NODISCARD az_result az_iot_connection_open(az_iot_connection* client);
 
 AZ_NODISCARD az_result az_iot_connection_close(az_iot_connection* client);
+
+AZ_INLINE az_result _az_iot_connection_api_callback(az_iot_connection* client, az_event event)
+{
+  return client->_internal.event_callback(client, event);
+}
 
 #include <azure/core/_az_cfg_suffix.h>
 

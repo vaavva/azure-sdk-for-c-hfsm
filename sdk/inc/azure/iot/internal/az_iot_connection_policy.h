@@ -19,24 +19,15 @@
 
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-#include <azure/core/az_context.h>
-#include <azure/core/az_credentials_x509.h>
-#include <azure/core/az_mqtt.h>
-#include <azure/core/internal/az_event_pipeline.h>
-
-#include <stdbool.h>
-#include <stdint.h>
+#include <azure/core/internal/az_hfsm.h>
 
 #include <azure/core/_az_cfg_prefix.h>
 
-struct az_iot_connection_policy
+typedef struct
 {
-  struct
-  {
-    az_event_policy policy;
-
-  } _internal;
-};
+  _az_hfsm policy;
+  az_iot_connection * connection;
+} _az_iot_connection_policy;
 
 #include <azure/core/_az_cfg_suffix.h>
 

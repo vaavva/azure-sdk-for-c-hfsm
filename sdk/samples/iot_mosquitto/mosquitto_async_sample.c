@@ -7,14 +7,14 @@
  *
  */
 
+#include <az_log_listener.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <az_log_listener.h>
 
-#include <azure/core/az_log.h>
 #include <azure/az_core.h>
 #include <azure/az_iot.h>
+#include <azure/core/az_log.h>
 
 static const az_span dps_endpoint
     = AZ_SPAN_LITERAL_FROM_STR("global.azure-devices-provisioning.net");
@@ -30,7 +30,6 @@ static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/de
 
 static char client_id_buffer[64];
 static char username_buffer[128];
-static char password_buffer[1];
 
 static char topic_buffer[128];
 static char payload_buffer[256];
@@ -100,24 +99,18 @@ int main(int argc, char* argv[])
   };
 
   az_iot_connection_options connection_options = az_iot_connection_options_default();
-  connection_options.secondary_credential = secondary_credential;
+  connection_options.connection_management = true;
+  connection_options.client_id_buffer = AZ_SPAN_FROM_BUFFER(client_id_buffer);
+  connection_options.username_buffer = AZ_SPAN_FROM_BUFFER(username_buffer);
+  connection_options.password_buffer = AZ_SPAN_EMPTY;
+  connection_options.primary_credential = &primary_credential;
+  connection_options.secondary_credential = &secondary_credential;
 
   az_context connection_context = az_context_create_with_expiration(
       &az_context_application, az_context_get_expiration(&az_context_application));
 
   LOG_AND_EXIT_IF_FAILED(az_iot_connection_init(
-      &iot_connection,
-      &connection_context,
-      &mqtt,
-      &primary_credential,
-      client_id_buffer,
-      sizeof(client_id_buffer),
-      username_buffer,
-      sizeof(username_buffer),
-      password_buffer,
-      sizeof(username_buffer),
-      iot_callback,
-      NULL));
+      &iot_connection, &connection_context, &mqtt, iot_callback, &connection_options));
 
   az_iot_provisioning_client prov_client;
   LOG_AND_EXIT_IF_FAILED(az_iot_provisioning_client_init(
