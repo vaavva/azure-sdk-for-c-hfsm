@@ -5,7 +5,6 @@
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
 #include <azure/core/internal/az_log_internal.h>
-#include <azure/core/internal/az_result_internal.h>
 #include <azure/iot/az_iot_connection.h>
 
 #include <azure/core/_az_cfg.h>
@@ -182,8 +181,7 @@ static az_result started(az_event_policy* me, az_event event)
       break;
 
     case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
-      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, started, disconnecting));
-      _az_RETURN_IF_FAILED(_disconnect(this_policy));
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, started, idle));
       break;
 
     case AZ_MQTT_EVENT_DISCONNECT_RSP:
@@ -238,6 +236,11 @@ static az_result connecting(az_event_policy* me, az_event event)
       break;
     }
 
+    case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, connecting, disconnecting));
+      _az_RETURN_IF_FAILED(_disconnect(this_policy));
+      break;
+
     default:
       ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
@@ -259,10 +262,14 @@ static az_result reconnect_timeout(az_event_policy* me, az_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // TODO
+      // HFSM_TODO: reconnect timer (apply reconnect policy), counter not implemented.
       break;
 
     case AZ_HFSM_EVENT_EXIT:
+      // TODO
+      break;
+
+    case AZ_HFSM_EVENT_TIMEOUT:
       // TODO
       break;
 
@@ -290,6 +297,11 @@ static az_result connected(az_event_policy* me, az_event event)
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
       // No-op.
+      break;
+
+    case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, connected, disconnecting));
+      _az_RETURN_IF_FAILED(_disconnect((az_iot_connection*)me));
       break;
 
     default:

@@ -1,12 +1,19 @@
 @startuml
 
 state AzureIoTConnection {
-state Idle
+    state Idle
+    state Faulted
+
     state Started {
         state Connecting
         Connecting : <b>MQTT_CONNECT_RSP(err_auth)/</b>
         Connecting : \t if(rotate_credentials()) ^MQTT_CONNECT_REQ
         Connecting : \t else ^ERROR
+        Connecting :
+        Connecting : <b>MQTT_CONNECT_RSP(success)/</b> 
+        Connecting : \t connect_counter=0;
+        Connecting : \t callback(MQTT_CONNECT_RSP(success));
+        Connecting : \t pipeline_send(MQTT_CONNECT_RSP(success))
 
         state Connected
 
@@ -22,7 +29,7 @@ state Idle
         Disconnecting : <b>exit/</b> stop timer
 
         [*] -> Connecting : / ^MQTT_CONNECT_REQ
-        Connecting --> Connected : MQTT_CONNECT_RSP(success) / pipeline_send(MQTT_CONNECT_RSP(success))
+        Connecting --> Connected : MQTT_CONNECT_RSP(success)
         Connecting -> ReconnectTimeout : MQTT_CONNECT_RSP(timeout)
         Connecting --> Disconnecting : AZ_IOT_CONNECTION_CLOSE / ^MQTT_DISCONNECT_REQ
         Connected --> Disconnecting : AZ_IOT_CONNECTION_CLOSE / ^MQTT_DISCONNECT_REQ
@@ -32,7 +39,7 @@ state Idle
 
     [*] --> Idle
     Idle -> Started : AZ_IOT_CONNECTION_OPEN
-    Started --> Idle : MQTT_DISCONNECT_RSP
+    Started --> Idle : MQTT_DISCONNECT_RSP, AZ_IOT_CONNECTION_CLOSE
     Started --> Faulted: ERROR, TIMEOUT/ pipeline_send_inbound(ERROR)
 
 @enduml

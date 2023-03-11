@@ -22,6 +22,7 @@
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+#include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_event_pipeline.h>
 #include <azure/iot/internal/az_iot_subclients_policy.h>
 
@@ -103,7 +104,12 @@ AZ_INLINE az_result az_iot_connection_close(az_iot_connection* client)
 
 AZ_INLINE az_result _az_iot_connection_api_callback(az_iot_connection* client, az_event event)
 {
-  return client->_internal.event_callback(client, event);
+  if (client->_internal.event_callback != NULL)
+  {
+   _az_RETURN_IF_FAILED(client->_internal.event_callback(client, event));
+  }
+
+  return AZ_OK;
 }
 
 AZ_NODISCARD az_result
