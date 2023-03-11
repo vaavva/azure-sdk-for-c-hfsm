@@ -17,13 +17,11 @@
  * and they are subject to change in future versions of the SDK which would break your code.
  */
 
-// HFSM_TODO: Move to Core/Internal
-
 #ifndef _az_HFSM_H
 #define _az_HFSM_H
 
 #include <azure/core/az_result.h>
-#include <azure/core/az_event.h>
+#include <azure/core/az_event_policy.h>
 #include <stdint.h>
 
 #include <azure/core/_az_cfg_prefix.h>
@@ -39,34 +37,6 @@ enum az_event_type_hfsm
 
   /// Exit event: must not set or use the data field, must be handled by each state.
   AZ_HFSM_EVENT_EXIT = _az_MAKE_EVENT(_az_FACILITY_HFSM, 2),
-
-  /// Generic error event: must use a data field containing a structure derived from
-  /// #az_hfsm_error_data
-  AZ_HFSM_EVENT_ERROR = _az_MAKE_EVENT(_az_FACILITY_HFSM, 3),
-
-  /**
-   * @brief Generic timeout event: if multiple timers are necessary it's recommended to create
-   * separate timeout events.
-   *
-   */
-  AZ_HFSM_EVENT_TIMEOUT = _az_MAKE_EVENT(_az_FACILITY_HFSM, 4),
-};
-
-/**
- * @brief HFSM specific az_result types.
- *
- */
-enum az_result_hfsm
-{
-  /**
-   * @brief Indicates to the HFSM engine that the superstate should handle the event.
-   * @details This event should not be leaked out of the HFSM system (i.e. the root state should
-   * never return this az_result type). The event indicates normal operation but was constructed as
-   * an error to detect this case.
-   *
-   */
-  AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
-  AZ_HFSM_RETURN_NOT_THIS_ORTHOGONAL_REGION = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 1),
 };
 
 /**
@@ -74,21 +44,6 @@ enum az_result_hfsm
  *
  */
 typedef struct az_hfsm az_hfsm;
-
-/**
- * @brief The type representing the minimum data required for an #AZ_HFSM_EVENT_ERROR event.
- *
- */
-typedef struct
-{
-  /**
-   * @brief The error type as an #az_result.
-   *
-   */
-  az_result error_type;
-  void* sender;
-  az_event sender_event;
-} az_hfsm_event_data_error;
 
 /**
  * @brief The generic state entry event.
@@ -105,27 +60,21 @@ extern const az_event az_hfsm_event_entry;
 extern const az_event az_hfsm_event_exit;
 
 /**
- * @brief The function signature for all HFSM states.
- *
- * @note All HFSM states must follow the pattern of a single `switch ((int32_t)event.type)`
- *       statement. Code should not exist outside of the switch statement.
- */
-typedef az_result (*az_hfsm_state_handler)(az_hfsm* me, az_event event);
-
-/**
  * @brief The type of the function returning the parent of any given child state.
  *
  * @note All HFSMs must define a `get_parent` function. A top-level state is mandatory.
  *       `get_parent(top_level_state)` must always return `NULL`.
  */
-typedef az_hfsm_state_handler (*az_hfsm_get_parent)(az_hfsm_state_handler child_state);
+typedef az_event_policy_handler (*az_hfsm_get_parent)(az_event_policy_handler child_state);
 
-// Avoiding a circular dependency between az_hfsm, az_hfsm_state_handler and az_hfsm_get_parent.
+// Avoiding a circular dependency between az_hfsm, az_event_policy_handler and az_hfsm_get_parent.
 struct az_hfsm
 {
+  az_event_policy policy;
+
   struct
   {
-    az_hfsm_state_handler current_state;
+    az_event_policy_handler current_state;
     az_hfsm_get_parent get_parent_func;
   } _internal;
 };
@@ -140,7 +89,7 @@ struct az_hfsm
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent get_parent_func);
+az_hfsm_init(az_hfsm* h, az_event_policy_handler root_state, az_hfsm_get_parent get_parent_func);
 
 /**
  * @brief Transition to a peer state.
@@ -156,8 +105,8 @@ az_hfsm_init(az_hfsm* h, az_hfsm_state_handler root_state, az_hfsm_get_parent ge
  */
 AZ_NODISCARD az_result az_hfsm_transition_peer(
     az_hfsm* h,
-    az_hfsm_state_handler source_state,
-    az_hfsm_state_handler destination_state);
+    az_event_policy_handler source_state,
+    az_event_policy_handler destination_state);
 
 /**
  * @brief Transition to a sub state.
@@ -173,8 +122,8 @@ AZ_NODISCARD az_result az_hfsm_transition_peer(
  */
 AZ_NODISCARD az_result az_hfsm_transition_substate(
     az_hfsm* h,
-    az_hfsm_state_handler source_state,
-    az_hfsm_state_handler destination_state);
+    az_event_policy_handler source_state,
+    az_event_policy_handler destination_state);
 
 /**
  * @brief Transition to a super state.
@@ -190,8 +139,8 @@ AZ_NODISCARD az_result az_hfsm_transition_substate(
  */
 AZ_NODISCARD az_result az_hfsm_transition_superstate(
     az_hfsm* h,
-    az_hfsm_state_handler source_state,
-    az_hfsm_state_handler destination_state);
+    az_event_policy_handler source_state,
+    az_event_policy_handler destination_state);
 
 /**
  * @brief Synchronously sends an event to a HFSM object.

@@ -7,6 +7,8 @@
 #include <azure/az_core.h>
 #include <azure/az_iot.h>
 #include <azure/core/az_log.h>
+// For HFSM ENTER/EXIT events.
+#include <azure/core/internal/az_hfsm.h>
 
 /*
 Black:   \x1B[30m

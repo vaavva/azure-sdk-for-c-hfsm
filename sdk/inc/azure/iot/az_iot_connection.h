@@ -23,11 +23,19 @@
 #include <azure/core/az_credentials_x509.h>
 #include <azure/core/az_mqtt.h>
 #include <azure/core/internal/az_event_pipeline.h>
+#include <azure/iot/az_iot_connection_policy.h>
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #include <azure/core/_az_cfg_prefix.h>
+
+enum az_event_type_iot_connection
+{
+  AZ_EVENT_IOT_CONNECTION_OPEN = _az_MAKE_EVENT(_az_FACILITY_IOT, 10),
+
+  AZ_EVENT_IOT_CONNECTION_CLOSE = _az_MAKE_EVENT(_az_FACILITY_IOT, 11),
+};
 
 typedef struct az_iot_connection az_iot_connection;
 
@@ -45,10 +53,7 @@ struct az_iot_connection
 {
   struct
   {
-    // Pipeline and policies
     _az_event_pipeline pipeline;
-
-    // Register operation
     az_iot_connection_callback event_callback;
 
     // Memory for generated fields

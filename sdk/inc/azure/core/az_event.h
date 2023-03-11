@@ -42,5 +42,39 @@ typedef struct
   void* data;
 } az_event;
 
+
+/**
+ * @brief Common event types.
+ *
+ */
+enum az_event_type_generic
+{
+  /// Generic error event: must use a data field containing a structure derived from
+  /// #az_hfsm_error_data
+  AZ_HFSM_EVENT_ERROR = _az_MAKE_EVENT(_az_FACILITY_HFSM, 3),
+
+  /**
+   * @brief Generic timeout event: if multiple timers are necessary it's recommended to create
+   * separate timeout events.
+   *
+   */
+  AZ_HFSM_EVENT_TIMEOUT = _az_MAKE_EVENT(_az_FACILITY_HFSM, 4),
+};
+
+/**
+ * @brief The type representing the minimum data required for an #AZ_HFSM_EVENT_ERROR event.
+ *
+ */
+typedef struct
+{
+  /**
+   * @brief The error type as an #az_result.
+   *
+   */
+  az_result error_type;
+  void* sender;
+  az_event sender_event;
+} az_hfsm_event_data_error;
+
 #include <azure/core/_az_cfg_suffix.h>
 #endif /* _az_EVENT_H */
