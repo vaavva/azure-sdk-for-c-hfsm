@@ -12,7 +12,7 @@ Add the following:
  "hfsm state": {
   "prefix": ["state", "hfsm-state"],
   "body": [
-   "static az_result $1(az_hfsm* me, az_event event)",
+   "static az_result $1(az_event_policy* me, az_event event)",
    "{",
    "  az_result ret = AZ_OK;",
    "  (void)me;",
@@ -46,12 +46,12 @@ Add the following:
  "hfsm parent": {
   "prefix": ["parent", "get-parent", "hfsm-get-parent"],
   "body": [
-   "static az_result root(az_hfsm* me, az_event event);",
-   "static az_result idle(az_hfsm* me, az_event event);",
+   "static az_result root(az_event_policy* me, az_event event);",
+   "static az_result idle(az_event_policy* me, az_event event);",
    "",
-   "static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)",
+   "static az_event_policy_handler _get_parent(az_event_policy_handler child_state)",
    "{",
-   "  az_hfsm_state_handler parent_state;",
+   "  az_event_policy_handler parent_state;",
    "",
    "  if (child_state == root)",
    "  {",

@@ -9,8 +9,6 @@ state Idle
         Connecting : \t else ^ERROR
 
         state Connected
-        Connected : <b>entry/</b> 
-        Connected : \t pipeline_send(MQTT_CONNECT_RSP(success))
 
         state ReconnectTimeout
         ReconnectTimeout : <b>entry/</b> 
@@ -24,16 +22,16 @@ state Idle
         Disconnecting : <b>exit/</b> stop timer
 
         [*] -> Connecting : / ^MQTT_CONNECT_REQ
-        Connecting --> Connected : MQTT_CONNECT_RSP(success)
+        Connecting --> Connected : MQTT_CONNECT_RSP(success) / pipeline_send(MQTT_CONNECT_RSP(success))
         Connecting -> ReconnectTimeout : MQTT_CONNECT_RSP(timeout)
-        Connecting --> Disconnecting : AZ_IOT_CLOSE / ^MQTT_DISCONNECT_REQ
-        Connected --> Disconnecting : AZ_IOT_CLOSE / ^MQTT_DISCONNECT_REQ
+        Connecting --> Disconnecting : AZ_IOT_CONNECTION_CLOSE / ^MQTT_DISCONNECT_REQ
+        Connected --> Disconnecting : AZ_IOT_CONNECTION_CLOSE / ^MQTT_DISCONNECT_REQ
         ReconnectTimeout -> Connecting : TIMEOUT (connect_counter <= MAX)
     }
     Started : <b>entry/</b> connect_counter=0;
 
     [*] --> Idle
-    Idle -> Started : AZ_IOT_OPEN
+    Idle -> Started : AZ_IOT_CONNECTION_OPEN
     Started --> Idle : MQTT_DISCONNECT_RSP
     Started --> Faulted: ERROR, TIMEOUT/ pipeline_send_inbound(ERROR)
 

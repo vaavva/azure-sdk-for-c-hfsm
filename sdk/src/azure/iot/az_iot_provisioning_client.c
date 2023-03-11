@@ -9,8 +9,8 @@
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
 #include <azure/iot/az_iot_common.h>
-#include <azure/iot/az_iot_provisioning_client.h>
 #include <azure/iot/az_iot_connection.h>
+#include <azure/iot/az_iot_provisioning_client.h>
 
 #include <azure/core/_az_cfg.h>
 
@@ -71,6 +71,31 @@ AZ_NODISCARD az_result az_iot_provisioning_client_init(
 
   client->_internal.options
       = options == NULL ? az_iot_provisioning_client_options_default() : *options;
+
+  if ((connection != NULL) && (az_span_size(connection->_internal.options.hostname) == 0))
+  {
+    connection->_internal.options.hostname = client->_internal.global_device_endpoint;
+
+    size_t buffer_size;
+
+    _az_RETURN_IF_FAILED(az_iot_provisioning_client_get_client_id(
+        client,
+        (char*)az_span_ptr(connection->_internal.options.client_id_buffer),
+        (size_t)az_span_size(connection->_internal.options.client_id_buffer),
+        &buffer_size));
+    connection->_internal.options.client_id_buffer
+        = az_span_slice(connection->_internal.options.client_id_buffer, 0, (int32_t)buffer_size);
+
+    _az_RETURN_IF_FAILED(az_iot_provisioning_client_get_user_name(
+        client,
+        (char*)az_span_ptr(connection->_internal.options.username_buffer),
+        (size_t)az_span_size(connection->_internal.options.username_buffer),
+        &buffer_size));
+    connection->_internal.options.username_buffer
+        = az_span_slice(connection->_internal.options.username_buffer, 0, (int32_t)buffer_size);
+
+    // HFSM_TODO: SAS token is not implemented. password is always AZ_SPAN_EMTPY.
+  }
 
   return AZ_OK;
 }
@@ -605,8 +630,6 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
 
   return AZ_OK;
 }
-
-
 
 // TODO: Move within the HFSM policy. Public API Impl.
 

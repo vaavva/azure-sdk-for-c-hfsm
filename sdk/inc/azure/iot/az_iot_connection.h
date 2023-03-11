@@ -32,9 +32,9 @@
 
 enum az_event_type_iot_connection
 {
-  AZ_EVENT_IOT_CONNECTION_OPEN = _az_MAKE_EVENT(_az_FACILITY_IOT, 10),
+  AZ_EVENT_IOT_CONNECTION_OPEN_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT, 10),
 
-  AZ_EVENT_IOT_CONNECTION_CLOSE = _az_MAKE_EVENT(_az_FACILITY_IOT, 11),
+  AZ_EVENT_IOT_CONNECTION_CLOSE_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT, 11),
 };
 
 typedef struct az_iot_connection az_iot_connection;
@@ -43,9 +43,14 @@ typedef az_result (*az_iot_connection_callback)(az_iot_connection* client, az_ev
 
 typedef struct
 {
+  // HFSM_DESIGN Leave default to have all the values filled in by the first sub-client.
+  az_span hostname;
+  int16_t port;
+
   bool connection_management;
 
-  // HFSM_DESIGN The following are required if connection_management is true.
+  // HFSM_DESIGN The following settings and buffers are required if connection_management is true.
+  //             The first sub-client attached is responsible with filling in the values.
   //             If we want to further optimize, we can convert connection_management to
   //             a preprocessor statement.
   az_span client_id_buffer;
@@ -87,19 +92,22 @@ AZ_NODISCARD az_result az_iot_connection_init(
 AZ_INLINE az_result az_iot_connection_open(az_iot_connection* client)
 {
   return _az_event_pipeline_post_outbound_event(
-      &client->_internal.event_pipeline, (az_event){ AZ_EVENT_IOT_CONNECTION_OPEN, NULL });
+      &client->_internal.event_pipeline, (az_event){ AZ_EVENT_IOT_CONNECTION_OPEN_REQ, NULL });
 }
 
 AZ_INLINE az_result az_iot_connection_close(az_iot_connection* client)
 {
   return _az_event_pipeline_post_outbound_event(
-      &client->_internal.event_pipeline, (az_event){ AZ_EVENT_IOT_CONNECTION_CLOSE, NULL });
+      &client->_internal.event_pipeline, (az_event){ AZ_EVENT_IOT_CONNECTION_CLOSE_REQ, NULL });
 }
 
 AZ_INLINE az_result _az_iot_connection_api_callback(az_iot_connection* client, az_event event)
 {
   return client->_internal.event_callback(client, event);
 }
+
+AZ_NODISCARD az_result
+_az_iot_connection_policy_init(_az_hfsm* hfsm, az_event_policy* outbound, az_event_policy* inbound);
 
 #include <azure/core/_az_cfg_suffix.h>
 

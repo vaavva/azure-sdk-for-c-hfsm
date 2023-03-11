@@ -1,27 +1,29 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // SPDX-License-Identifier: MIT
 
+#include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
 #include <azure/core/internal/az_log_internal.h>
+#include <azure/core/internal/az_result_internal.h>
 #include <azure/iot/az_iot_connection.h>
 
 #include <azure/core/_az_cfg.h>
 
-static az_result root(az_hfsm* me, az_event event);
+static az_result root(az_event_policy* me, az_event event);
 
-static az_result idle(az_hfsm* me, az_event event);
-static az_result started(az_hfsm* me, az_event event);
-static az_result faulted(az_hfsm* me, az_event event);
+static az_result idle(az_event_policy* me, az_event event);
+static az_result started(az_event_policy* me, az_event event);
+static az_result faulted(az_event_policy* me, az_event event);
 
-static az_result connecting(az_hfsm* me, az_event event);
-static az_result connected(az_hfsm* me, az_event event);
-static az_result disconnecting(az_hfsm* me, az_event event);
-static az_result reconnect_timeout(az_hfsm* me, az_event event);
+static az_result connecting(az_event_policy* me, az_event event);
+static az_result connected(az_event_policy* me, az_event event);
+static az_result disconnecting(az_event_policy* me, az_event event);
+static az_result reconnect_timeout(az_event_policy* me, az_event event);
 
-static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
+static az_event_policy_handler _get_parent(az_event_policy_handler child_state)
 {
-  az_hfsm_state_handler parent_state;
+  az_event_policy_handler parent_state;
 
   if (child_state == root)
   {
@@ -31,7 +33,8 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
   {
     parent_state = root;
   }
-  else if (child_state == connecting || child_state == connected || child_state == disconnecting
+  else if (
+      child_state == connecting || child_state == connected || child_state == disconnecting
       || child_state == reconnect_timeout)
   {
     parent_state = started;
@@ -46,14 +49,14 @@ static az_hfsm_state_handler _get_parent(az_hfsm_state_handler child_state)
   return parent_state;
 }
 
-static az_result root(az_hfsm* me, az_event event)
+static az_result root(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
-  az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
+  az_iot_connection* this_policy = (az_iot_connection*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/root"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/root"));
   }
 
   switch (event.type)
@@ -63,8 +66,7 @@ static az_result root(az_hfsm* me, az_event event)
       break;
 
     case AZ_HFSM_EVENT_ERROR:
-      if (az_result_failed(
-              az_hfsm_pipeline_send_inbound_event((az_hfsm_policy*)this_policy, event)))
+      if (az_result_failed(az_event_policy_send_inbound_event(me, event)))
       {
         az_platform_critical_error();
       }
@@ -74,7 +76,7 @@ static az_result root(az_hfsm* me, az_event event)
     default:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
-        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_provisioning/root: PANIC!"));
+        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("iot_conn/root: PANIC!"));
       }
 
       az_platform_critical_error();
@@ -84,77 +86,69 @@ static az_result root(az_hfsm* me, az_event event)
   return ret;
 }
 
-AZ_INLINE az_result
-_dps_connect(az_hfsm_iot_provisioning_policy* me, az_hfsm_iot_provisioning_register_data* data)
+static az_result faulted(az_event_policy* me, az_event event)
 {
-  // Cache topic and payload buffers for later use.
-  me->_internal.topic_buffer = data->topic_buffer;
-  me->_internal.payload_buffer = data->payload_buffer;
+  az_result ret = AZ_ERROR_HFSM_INVALID_STATE;
+  (void)me;
 
-  az_hfsm_mqtt_connect_data connect_data;
-  connect_data.host = me->_internal.provisioning_client->_internal.global_device_endpoint;
-  connect_data.port = me->_internal.options.port;
-
-  switch (data->auth_type)
+  if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    case AZ_HFSM_IOT_AUTH_X509:
-      connect_data.client_certificate = data->auth.x509.cert;
-      connect_data.client_private_key = data->auth.x509.key;
-      connect_data.password = AZ_SPAN_EMPTY;
-      break;
-
-    case AZ_HFSM_IOT_AUTH_SAS:
-    default:
-      return AZ_ERROR_NOT_IMPLEMENTED;
-      break;
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/faulted"));
   }
 
-  size_t buffer_size;
+  return ret;
+}
 
-  _az_RETURN_IF_FAILED(az_iot_provisioning_client_get_client_id(
-      me->_internal.provisioning_client,
-      (char*)az_span_ptr(data->client_id_buffer),
-      (size_t)az_span_size(data->client_id_buffer),
-      &buffer_size));
-  connect_data.client_id = az_span_slice(data->client_id_buffer, 0, (int32_t)buffer_size);
+AZ_INLINE az_result _connect(az_iot_connection* me)
+{
+  // HFSM_TODO: key rotation not implemented.
+  // HFSM_TODO: key-form (Engine/HSM) not implemented.
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.hostname, 1, false);
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.client_id_buffer, 1, false);
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.username_buffer, 1, false);
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.password_buffer, 1, false);
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.primary_credential->cert, 1, false);
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.primary_credential->key, 1, false);
 
-  _az_RETURN_IF_FAILED(az_iot_provisioning_client_get_user_name(
-      me->_internal.provisioning_client,
-      (char*)az_span_ptr(data->username_buffer),
-      (size_t)az_span_size(data->username_buffer),
-      &buffer_size));
-  connect_data.username = az_span_slice(data->username_buffer, 0, (int32_t)buffer_size);
+  // HFSM_TODO: we only support X.509 authentication.
+  az_mqtt_connect_data connect_data = (az_mqtt_connect_data){
+    .host = me->_internal.options.hostname,
+    .port = me->_internal.options.port,
+    .client_id = me->_internal.options.client_id_buffer,
+    .username = me->_internal.options.username_buffer,
+    .password = me->_internal.options.password_buffer,
+    .certificate.cert = me->_internal.options.primary_credential->cert,
+    .certificate.key = me->_internal.options.primary_credential->key,
+  };
 
-  _az_RETURN_IF_FAILED(az_hfsm_pipeline_send_outbound_event(
-      (az_hfsm_policy*)me,
-      (az_event){ .type = AZ_HFSM_MQTT_EVENT_CONNECT_REQ, .data = &connect_data }));
+  _az_RETURN_IF_FAILED(
+      az_mqtt_outbound_connect(me->_internal.mqtt_client, me->_internal.context, &connect_data));
 
   return AZ_OK;
 }
 
-static az_result idle(az_hfsm* me, az_event event)
+static az_result idle(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
-  az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
+  az_iot_connection* this_policy = (az_iot_connection*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/idle"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/idle"));
   }
 
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
-    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
+    case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_REGISTER_REQ:
-      _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, idle, started));
-      _az_RETURN_IF_FAILED(az_hfsm_transition_substate(me, started, connecting));
-      _az_RETURN_IF_FAILED(
-          _dps_connect(this_policy, (az_hfsm_iot_provisioning_register_data*)event.data));
+    case AZ_EVENT_IOT_CONNECTION_OPEN_REQ:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, idle, started));
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, started, connecting));
+      _az_RETURN_IF_FAILED(_connect(this_policy));
       break;
 
     default:
@@ -165,21 +159,19 @@ static az_result idle(az_hfsm* me, az_event event)
   return ret;
 }
 
-AZ_INLINE az_result _dps_disconnect(az_hfsm_iot_provisioning_policy* me)
+AZ_INLINE az_result _disconnect(az_iot_connection* me)
 {
-  return az_hfsm_pipeline_send_outbound_event(
-      (az_hfsm_policy*)me,
-      (az_event){ .type = AZ_HFSM_MQTT_EVENT_DISCONNECT_REQ, .data = NULL });
+  return az_mqtt_outbound_disconnect(me->_internal.mqtt_client, me->_internal.context);
 }
 
-static az_result started(az_hfsm* me, az_event event)
+static az_result started(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
-  az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
+  az_iot_connection* this_policy = (az_iot_connection*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/started"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started"));
   }
 
   switch (event.type)
@@ -189,15 +181,15 @@ static az_result started(az_hfsm* me, az_event event)
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
-      _az_RETURN_IF_FAILED(az_hfsm_transition_substate(me, started, disconnecting));
-      _az_RETURN_IF_FAILED(_dps_disconnect(this_policy));
+    case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, started, disconnecting));
+      _az_RETURN_IF_FAILED(_disconnect(this_policy));
       break;
 
-    case AZ_HFSM_MQTT_EVENT_DISCONNECT_RSP:
-      _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, started, idle));
+    case AZ_MQTT_EVENT_DISCONNECT_RSP:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, started, idle));
       _az_RETURN_IF_FAILED(
-          az_hfsm_pipeline_send_inbound_event((az_hfsm_policy*)this_policy, event));
+          az_event_policy_send_inbound_event((az_event_policy*)this_policy, event));
       break;
 
     default:
@@ -208,14 +200,14 @@ static az_result started(az_hfsm* me, az_event event)
   return ret;
 }
 
-static az_result connecting(az_hfsm* me, az_event event)
+static az_result connecting(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
-  az_hfsm_iot_provisioning_policy* this_policy = (az_hfsm_iot_provisioning_policy*)me;
+  az_iot_connection* this_policy = (az_iot_connection*)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/started/connecting"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started/connecting"));
   }
 
   switch (event.type)
@@ -225,21 +217,23 @@ static az_result connecting(az_hfsm* me, az_event event)
       // No-op.
       break;
 
-    case AZ_HFSM_MQTT_EVENT_CONNECT_RSP:
+    case AZ_MQTT_EVENT_CONNECT_RSP:
     {
-      az_hfsm_mqtt_connack_data* data = (az_hfsm_mqtt_connack_data*)event.data;
+      az_mqtt_connack_data* data = (az_mqtt_connack_data*)event.data;
       if (data->connack_reason == 0)
       {
-        _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, connecting, connected));
-        _az_RETURN_IF_FAILED(az_hfsm_transition_substate(me, connected, subscribing));
-        _az_RETURN_IF_FAILED(_dps_subscribe(this_policy));
+        _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, connecting, connected));
+        _az_RETURN_IF_FAILED(
+            az_event_policy_send_inbound_event((az_event_policy*)this_policy, event));
       }
       else
       {
-        _az_RETURN_IF_FAILED(az_hfsm_transition_superstate(me, connecting, started));
-        _az_RETURN_IF_FAILED(az_hfsm_transition_peer(me, started, idle));
+        // HFSM_TODO: Implement credential rotation & retry.
+        _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+            (_az_hfsm*)me, (az_event){ .type = AZ_HFSM_EVENT_ERROR, .data = NULL }));
+
         _az_RETURN_IF_FAILED(
-            az_hfsm_pipeline_send_outbound_event((az_hfsm_policy*)this_policy, event));
+            az_event_policy_send_inbound_event((az_event_policy*)this_policy, event));
       }
       break;
     }
@@ -252,14 +246,43 @@ static az_result connecting(az_hfsm* me, az_event event)
   return ret;
 }
 
-static az_result connected(az_hfsm* me, az_event event)
+static az_result reconnect_timeout(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/started/connected"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/reconnect_timeout"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      // TODO
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+      // TODO
+      break;
+
+    default:
+      // TODO
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
+
+  return ret;
+}
+
+static az_result connected(az_event_policy* me, az_event event)
+{
+  az_result ret = AZ_OK;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started/connected"));
   }
 
   switch (event.type)
@@ -277,21 +300,21 @@ static az_result connected(az_hfsm* me, az_event event)
   return ret;
 }
 
-static az_result disconnecting(az_hfsm* me, az_event event)
+static az_result disconnecting(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
   (void)me;
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/started/disconnecting"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started/disconnecting"));
   }
 
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
     case AZ_HFSM_EVENT_EXIT:
-    case AZ_IOT_PROVISIONING_DISCONNECT_REQ:
+    case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
       // No-op.
       break;
 
@@ -301,4 +324,13 @@ static az_result disconnecting(az_hfsm* me, az_event event)
   }
 
   return ret;
+}
+
+AZ_NODISCARD az_result
+_az_iot_connection_policy_init(_az_hfsm* hfsm, az_event_policy* outbound, az_event_policy* inbound)
+{
+  _az_RETURN_IF_FAILED(_az_hfsm_init(hfsm, root, _get_parent, outbound, inbound));
+  _az_RETURN_IF_FAILED(_az_hfsm_transition_substate(hfsm, root, idle));
+
+  return AZ_OK;
 }
