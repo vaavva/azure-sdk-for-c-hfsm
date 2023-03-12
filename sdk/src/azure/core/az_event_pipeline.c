@@ -32,7 +32,8 @@ _az_event_pipeline_post_outbound_event(_az_event_pipeline* pipeline, az_event co
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
 #endif
 
-  ret = az_event_policy_send_outbound_event(pipeline->_internal.outbound_policy, event);
+  ret = pipeline->_internal.outbound_policy->outbound_handler(
+      pipeline->_internal.outbound_policy, event);
 
 #ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));
@@ -50,7 +51,8 @@ _az_event_pipeline_post_inbound_event(_az_event_pipeline* pipeline, az_event con
   _az_RETURN_IF_FAILED(az_platform_mutex_acquire(&pipeline->_internal.mutex));
 #endif
 
-  ret = az_event_policy_send_inbound_event(pipeline->_internal.inbound_policy, event);
+  ret = pipeline->_internal.inbound_policy->inbound_handler(
+      pipeline->_internal.inbound_policy, event);
 
 #ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(az_platform_mutex_release(&pipeline->_internal.mutex));

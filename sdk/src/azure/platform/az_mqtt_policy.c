@@ -60,7 +60,8 @@ static az_result _az_mqtt_policy_process_inbound_event(
     case AZ_MQTT_EVENT_PUB_RECV_IND:
     case AZ_MQTT_EVENT_PUBACK_RSP:
     case AZ_MQTT_EVENT_SUBACK_RSP:
-    _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(policy, event));
+        _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(policy, event));
+        break;
 
     default:
       az_platform_critical_error();

@@ -107,8 +107,8 @@ void az_sdk_log_callback(az_log_classification classification, az_span message)
     case AZ_LOG_MQTT_RECEIVED_PAYLOAD:
       class_str = "AZ_LOG_MQTT_RECEIVED_PAYLOAD";
       break;
-    case AZ_IOT_PROVISIONING_REGISTER_REQ:
-      class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ:
+      class_str = "AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ";
       break;
     default:
       class_str = NULL;
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
 
     switch (evt.type)
     {
-      case AZ_IOT_PROVISIONING_REGISTER_RSP:
+      case AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP:
         break;
         break;
 

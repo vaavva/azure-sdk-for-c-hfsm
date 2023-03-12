@@ -507,21 +507,21 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
 enum az_event_type_az_iot_provisioning
 {
   /// Device Registration Request
-  AZ_IOT_PROVISIONING_REGISTER_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT, 12),
+  AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT, 12),
 
   /// Device Registration Final Response
-  AZ_IOT_PROVISIONING_REGISTER_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT, 13),
+  AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT, 13),
 
   /// Device Registration Final Response
-  AZ_IOT_PROVISIONING_REGISTER_IND = _az_MAKE_EVENT(_az_FACILITY_IOT, 14),
+  AZ_IOT_PROVISIONING_EVENT_REGISTER_IND = _az_MAKE_EVENT(_az_FACILITY_IOT, 14),
 };
 
 /// @brief
 /// @param client
 /// @param context
-/// @param data Must be available until a AZ_IOT_PROVISIONING_REGISTER_RSP event is received..
+/// @param data Must be available until a AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP event is received..
 /// @details Registration will generate AZ_IOT_PROVISIONING_REGISTER_STATUS and
-///          AZ_IOT_PROVISIONING_REGISTER_RSP events.
+///          AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP events.
 /// @return
 AZ_NODISCARD az_result az_iot_provisioning_client_register(
     az_iot_provisioning_client* client,

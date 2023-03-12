@@ -156,7 +156,7 @@ AZ_INLINE az_result _register(PROV_INSTANCE_INFO* client)
 
   return az_hfsm_pipeline_send_outbound_event(
       (az_hfsm_policy*)client,
-      (az_hfsm_event){ AZ_IOT_PROVISIONING_REGISTER_REQ,
+      (az_hfsm_event){ AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ,
                        &client->register_request_data.register_data });
 }
 
@@ -274,7 +274,7 @@ static az_result running(az_hfsm* me, az_hfsm_event event)
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_REGISTER_RSP:
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP:
     {
       az_hfsm_iot_provisioning_register_response_data* data
           = (az_hfsm_iot_provisioning_register_response_data*)event.data;

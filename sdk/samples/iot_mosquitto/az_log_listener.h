@@ -10,6 +10,7 @@
 // For HFSM ENTER/EXIT events.
 #include <azure/core/internal/az_hfsm.h>
 #include <azure/iot/az_iot_connection.h>
+#include <azure/iot/az_iot_provisioning_client.h>
 
 #include <stdio.h>
 
@@ -143,6 +144,14 @@ AZ_INLINE void az_sdk_log_callback(az_log_classification classification, az_span
       break;
     case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
       class_str = "AZ_EVENT_IOT_CONNECTION_CLOSE_REQ";
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ:
+      class_str = "AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ";
+      break;
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP:
+      class_str = "AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP";
+      break;
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_IND:
+      class_str = "AZ_IOT_PROVISIONING_EVENT_REGISTER_IND";
       break;
     default:
       class_str = NULL;

@@ -95,7 +95,11 @@ AZ_NODISCARD az_result az_platform_timer_destroy(az_platform_timer* timer)
 
 AZ_NODISCARD az_result az_platform_mutex_init(az_platform_mutex* mutex_handle)
 {
-  if (0 != pthread_mutex_init(mutex_handle, NULL))
+  pthread_mutexattr_t attr;
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+
+  if (0 != pthread_mutex_init(mutex_handle, &attr))
   {
     return AZ_ERROR_ARG;
   }

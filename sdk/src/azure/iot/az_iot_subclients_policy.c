@@ -24,6 +24,8 @@ static az_result _az_iot_subclients_process_outbound_event(
     last = last->next;
   }
 
+  // HFSM_TODO: Filter events that have been processed;
+
   // Pass-through to the next outbound policy.
   _az_RETURN_IF_FAILED(az_event_policy_send_outbound_event(policy, event));
 
@@ -43,6 +45,8 @@ static az_result _az_iot_subclients_process_inbound_event(
     _az_RETURN_IF_FAILED(last->policy->inbound_handler(last->policy, event));
     last = last->next;
   }
+
+  // HFSM_TODO: Filter events that have been processed;
 
   // Pass-through to the next inbound policy if it exists.
   if (policy->inbound_policy != NULL)

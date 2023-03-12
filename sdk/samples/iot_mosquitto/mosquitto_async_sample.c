@@ -33,8 +33,16 @@ static char username_buffer[128];
 
 static char topic_buffer[128];
 static char payload_buffer[256];
+static char operation_id_buffer[64];
+
+static az_iot_connection iot_connection;
+static az_context connection_context;
+static az_iot_provisioning_client prov_client;
 
 volatile bool connected = false;
+
+static az_context register_context;
+static az_iot_provisioning_register_data register_data;
 
 void az_platform_critical_error()
 {
@@ -53,6 +61,16 @@ az_result iot_callback(az_iot_connection* client, az_event event)
       connected = true;
       az_mqtt_connack_data* connack_data = (az_mqtt_connack_data*)event.data;
       printf(LOG_APP "[%p] CONNACK: %d\n", client, connack_data->connack_reason);
+
+      register_context = az_context_create_with_expiration(&connection_context, 30 * 1000);
+      register_data = (az_iot_provisioning_register_data){
+        .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
+        .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
+        .operation_id_buffer = AZ_SPAN_FROM_BUFFER(operation_id_buffer),
+      };
+
+      LOG_AND_EXIT_IF_FAILED(
+          az_iot_provisioning_client_register(&prov_client, &register_context, &register_data));
       break;
     }
 
@@ -60,6 +78,33 @@ az_result iot_callback(az_iot_connection* client, az_event event)
     {
       connected = false;
       printf(LOG_APP "[%p] DISCONNECTED\n", client);
+      break;
+    }
+
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_IND:
+    {
+      az_iot_provisioning_client_register_response* response
+          = (az_iot_provisioning_client_register_response*)event.data;
+      printf(LOG_APP "[%p] REGISTER_STATUS: %d\n", client, response->operation_status);
+      break;
+    }
+
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP:
+    {
+      az_iot_provisioning_client_register_response* response
+          = (az_iot_provisioning_client_register_response*)event.data;
+
+      if (response->operation_status == AZ_IOT_PROVISIONING_STATUS_ASSIGNED)
+      {
+        printf(
+            LOG_APP "[%p] REGISTERED: %.*s ; %.*s\n",
+            client,
+            az_span_size(response->registration_state.assigned_hub_hostname),
+            az_span_ptr(response->registration_state.assigned_hub_hostname),
+            az_span_size(response->registration_state.device_id),
+            az_span_ptr(response->registration_state.device_id));
+      }
+
       break;
     }
 
@@ -88,13 +133,14 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
+  connection_context = az_context_create_with_expiration(
+      &az_context_application, az_context_get_expiration(&az_context_application));
+
   az_mqtt mqtt;
   az_mqtt_options mqtt_options = az_mqtt_options_default();
   mqtt_options.platform_options.certificate_authority_trusted_roots = ca_path;
 
   LOG_AND_EXIT_IF_FAILED(az_mqtt_init(&mqtt, &mqtt_options));
-
-  az_iot_connection iot_connection;
 
   az_credential_x509 primary_credential = (az_credential_x509){
     .cert = cert_path1,
@@ -116,27 +162,13 @@ int main(int argc, char* argv[])
   connection_options.primary_credential = &primary_credential;
   connection_options.secondary_credential = &secondary_credential;
 
-  az_context connection_context = az_context_create_with_expiration(
-      &az_context_application, az_context_get_expiration(&az_context_application));
-
   LOG_AND_EXIT_IF_FAILED(az_iot_connection_init(
       &iot_connection, &connection_context, &mqtt, iot_callback, &connection_options));
 
-  az_iot_provisioning_client prov_client;
   LOG_AND_EXIT_IF_FAILED(az_iot_provisioning_client_init(
       &prov_client, &iot_connection, dps_endpoint, id_scope, device_id, NULL));
 
   LOG_AND_EXIT_IF_FAILED(az_iot_connection_open(&iot_connection));
-
-  az_context register_context = az_context_create_with_expiration(&connection_context, 30 * 1000);
-
-  az_iot_provisioning_register_data register_data = {
-    .topic_buffer = AZ_SPAN_FROM_BUFFER(topic_buffer),
-    .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
-  };
-
-  LOG_AND_EXIT_IF_FAILED(
-      az_iot_provisioning_client_register(&prov_client, &register_context, &register_data));
 
   for (int i = 15; i > 0; i--)
   {

@@ -72,13 +72,16 @@ static az_result root(az_event_policy* me, az_event event)
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-    default:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
         _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_connection: PANIC!"));
       }
 
       az_platform_critical_error();
+      break;
+    
+    default:
+      // HFSM_TODO: event filtering. We should not ignore events.
       break;
   }
 
@@ -234,13 +237,6 @@ static az_result connecting(az_event_policy* me, az_event event)
     {
       az_mqtt_connack_data* data = (az_mqtt_connack_data*)event.data;
 
-      if(az_result_failed(_az_iot_connection_api_callback(this_policy, event)))
-      {
-        // Callback failed: fault the connection object.
-        _az_RETURN_IF_FAILED(_az_hfsm_send_event(
-            (_az_hfsm*)me, (az_event){ .type = AZ_HFSM_EVENT_ERROR, .data = NULL }));
-      }
-
       if (data->connack_reason == 0)
       {
         _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, connecting, connected));
@@ -255,6 +251,13 @@ static az_result connecting(az_event_policy* me, az_event event)
 
         _az_RETURN_IF_FAILED(
             az_event_policy_send_inbound_event((az_event_policy*)this_policy, event));
+      }
+
+      if(az_result_failed(_az_iot_connection_api_callback(this_policy, event)))
+      {
+        // Callback failed: fault the connection object.
+        _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+            (_az_hfsm*)me, (az_event){ .type = AZ_HFSM_EVENT_ERROR, .data = NULL }));
       }
       break;
     }
@@ -325,6 +328,19 @@ static az_result connected(az_event_policy* me, az_event event)
     case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
       _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, connected, disconnecting));
       _az_RETURN_IF_FAILED(_disconnect((az_iot_connection*)me));
+      break;
+
+    case AZ_MQTT_EVENT_PUB_RECV_IND:
+    case AZ_MQTT_EVENT_PUBACK_RSP:
+    case AZ_MQTT_EVENT_SUBACK_RSP:
+      _az_RETURN_IF_FAILED(
+          az_event_policy_send_inbound_event((az_event_policy*)me, event));
+      break;
+
+    case AZ_MQTT_EVENT_PUB_REQ:
+    case AZ_MQTT_EVENT_SUB_REQ:
+      _az_RETURN_IF_FAILED(
+          az_event_policy_send_outbound_event((az_event_policy*)me, event));
       break;
 
     default:

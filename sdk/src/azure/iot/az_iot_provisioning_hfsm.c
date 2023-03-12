@@ -75,10 +75,6 @@ static az_result root(az_event_policy* me, az_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-    case AZ_MQTT_EVENT_CONNECT_REQ:
-    case AZ_MQTT_EVENT_CONNECT_RSP:
-    case AZ_MQTT_EVENT_DISCONNECT_REQ:
-    case AZ_MQTT_EVENT_DISCONNECT_RSP:
       // No-op.
       break;
 
@@ -92,13 +88,16 @@ static az_result root(az_event_policy* me, az_event event)
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-    default:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
         _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_provisioning: PANIC!"));
       }
 
       az_platform_critical_error();
+      break;
+
+    default:
+      // HFSM_TODO: Event filtering. Ignoring unknown events for now.
       break;
   }
 
@@ -172,10 +171,11 @@ static az_result idle(az_event_policy* me, az_event event)
       // No-op.
       break;
 
-    case AZ_IOT_PROVISIONING_REGISTER_REQ:
+    case AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ:
       _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, idle, started));
       _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, started, subscribing));
       _az_RETURN_IF_FAILED(_dps_subscribe(client));
+      client->_internal.register_data = event.data;
       break;
 
     default:
@@ -314,8 +314,13 @@ AZ_INLINE az_result _dps_is_registration_complete(
     if (!(*out_complete))
     {
       // Cache pending operation information require for next actions.
-      me->_internal.register_data->_internal.operation_id = az_span_copy(
+      az_span_copy(
           me->_internal.register_data->operation_id_buffer, register_response->operation_id);
+      me->_internal.register_data->_internal.operation_id = az_span_slice(
+          me->_internal.register_data->operation_id_buffer,
+          0,
+          az_span_size(me->_internal.register_data->operation_id_buffer));
+
       me->_internal.register_data->_internal.retry_after_seconds
           = register_response->retry_after_seconds;
     }
@@ -354,23 +359,29 @@ static az_result wait_register(az_event_policy* me, az_event event)
 
       if (provisioning_complete)
       {
-        _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(
-            (az_event_policy*)client,
-            (az_event){ .type = AZ_IOT_PROVISIONING_REGISTER_RSP, .data = &response }));
+        if (me->inbound_policy != NULL)
+        {
+          _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(
+              (az_event_policy*)client,
+              (az_event){ .type = AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP, .data = &response }));
+        }
 
         _az_RETURN_IF_FAILED(_az_iot_connection_api_callback(
             client->_internal.connection,
-            (az_event){ .type = AZ_IOT_PROVISIONING_REGISTER_RSP, .data = &response }));
+            (az_event){ .type = AZ_IOT_PROVISIONING_EVENT_REGISTER_RSP, .data = &response }));
       }
       else
       {
-        _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(
-            (az_event_policy*)client,
-            (az_event){ .type = AZ_IOT_PROVISIONING_REGISTER_IND, .data = &response }));
+        if (me->inbound_policy != NULL)
+        {
+          _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(
+              (az_event_policy*)client,
+              (az_event){ .type = AZ_IOT_PROVISIONING_EVENT_REGISTER_IND, .data = &response }));
+        }
 
         _az_RETURN_IF_FAILED(_az_iot_connection_api_callback(
             client->_internal.connection,
-            (az_event){ .type = AZ_IOT_PROVISIONING_REGISTER_IND, .data = &response }));
+            (az_event){ .type = AZ_IOT_PROVISIONING_EVENT_REGISTER_IND, .data = &response }));
 
         _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, wait_register, delay));
       }
@@ -530,5 +541,5 @@ AZ_NODISCARD az_result az_iot_provisioning_client_register(
 
   return _az_event_pipeline_post_outbound_event(
       &client->_internal.connection->_internal.event_pipeline,
-      (az_event){ .type = AZ_IOT_PROVISIONING_REGISTER_REQ, .data = data });
+      (az_event){ .type = AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ, .data = data });
 }
