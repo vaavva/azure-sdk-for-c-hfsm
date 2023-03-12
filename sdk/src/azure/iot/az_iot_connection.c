@@ -37,7 +37,6 @@ AZ_NODISCARD az_result az_iot_connection_init(
 
   client->_internal.options = options == NULL ? az_iot_connection_options_default() : *options;
   client->_internal.event_callback = event_callback;
-  client->_internal.context = context;
 
   if (client->_internal.options.connection_management)
   {
@@ -48,6 +47,7 @@ AZ_NODISCARD az_result az_iot_connection_init(
     _az_RETURN_IF_FAILED(_az_mqtt_policy_init(
         &client->_internal.mqtt_policy,
         mqtt_client,
+        context,
         NULL,
         (az_event_policy*)&client->_internal.connection_policy));
 
@@ -67,6 +67,7 @@ AZ_NODISCARD az_result az_iot_connection_init(
     _az_RETURN_IF_FAILED(_az_mqtt_policy_init(
         &client->_internal.mqtt_policy,
         mqtt_client,
+        context,
         NULL,
         (az_event_policy*)&client->_internal.subclient_policy));
 
@@ -83,6 +84,9 @@ AZ_NODISCARD az_result az_iot_connection_init(
       &client->_internal.event_pipeline,
       (az_event_policy*)&client->_internal.subclient_policy,
       (az_event_policy*)&client->_internal.mqtt_policy));
+
+  // Attach the az_mqtt client to this pipeline.
+  mqtt_client->_internal.platform_mqtt.pipeline = &client->_internal.event_pipeline;
 
   return AZ_OK;
 }

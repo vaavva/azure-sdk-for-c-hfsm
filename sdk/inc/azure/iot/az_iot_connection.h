@@ -71,7 +71,6 @@ struct az_iot_connection
 
     _az_event_pipeline event_pipeline;
 
-    az_context* context;
     az_iot_connection_callback event_callback;
 
     az_iot_connection_options options;

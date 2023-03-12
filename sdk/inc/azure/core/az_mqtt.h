@@ -36,25 +36,24 @@
 #include <azure/core/az_config.h>
 #include <azure/core/az_context.h>
 #include <azure/core/az_credentials_x509.h>
+#include <azure/core/az_event.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
-#include <azure/core/az_event.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #if defined(TRANSPORT_PAHO)
-    #include <azure/platform/az_mqtt_paho.h>
+#include <azure/platform/az_mqtt_paho.h>
 #elif defined(TRANSPORT_MOSQUITTO)
-    #include <azure/platform/az_mqtt_mosquitto.h>
+#include <azure/platform/az_mqtt_mosquitto.h>
 #else
-    #include <azure/platform/az_mqtt_notransport.h>
+#include <azure/platform/az_mqtt_notransport.h>
 #endif
 
 #include <azure/core/_az_cfg_prefix.h>
 
 // HFSM_TODO: we may want to add enums for the various MQTT status codes. These could be used to
 //            simplify logging.
-
 
 typedef struct
 {
@@ -146,66 +145,66 @@ enum az_event_type_mqtt
 
 AZ_NODISCARD AZ_INLINE az_result az_mqtt_inbound_recv(az_mqtt* mqtt, az_mqtt_recv_data* recv_data)
 {
-  if (!mqtt->_internal.platform_mqtt._inbound_handler)
+  _az_event_pipeline* pipeline = mqtt->_internal.platform_mqtt.pipeline;
+  if (!pipeline)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal.platform_mqtt._inbound_handler(
-      mqtt, (az_event){ .type = AZ_MQTT_EVENT_PUB_RECV_IND, .data = recv_data });
-  return AZ_OK;
+  return _az_event_pipeline_post_inbound_event(
+      pipeline, (az_event){ .type = AZ_MQTT_EVENT_PUB_RECV_IND, .data = recv_data });
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_connack(az_mqtt* mqtt, az_mqtt_connack_data* connack_data)
 {
-  if (!mqtt->_internal.platform_mqtt._inbound_handler)
+  _az_event_pipeline* pipeline = mqtt->_internal.platform_mqtt.pipeline;
+  if (!pipeline)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal.platform_mqtt._inbound_handler(
-      mqtt, (az_event){ .type = AZ_MQTT_EVENT_CONNECT_RSP, .data = connack_data });
-  return AZ_OK;
+  return _az_event_pipeline_post_inbound_event(
+      pipeline, (az_event){ .type = AZ_MQTT_EVENT_CONNECT_RSP, .data = connack_data });
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_suback(az_mqtt* mqtt, az_mqtt_suback_data* suback_data)
 {
-  if (!mqtt->_internal.platform_mqtt._inbound_handler)
+  _az_event_pipeline* pipeline = mqtt->_internal.platform_mqtt.pipeline;
+  if (!pipeline)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal.platform_mqtt._inbound_handler(
-      mqtt, (az_event){ .type = AZ_MQTT_EVENT_SUBACK_RSP, .data = suback_data });
-  return AZ_OK;
+  return _az_event_pipeline_post_inbound_event(
+      pipeline, (az_event){ .type = AZ_MQTT_EVENT_SUBACK_RSP, .data = suback_data });
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_puback(az_mqtt* mqtt, az_mqtt_puback_data* puback_data)
 {
-  if (!mqtt->_internal.platform_mqtt._inbound_handler)
+  _az_event_pipeline* pipeline = mqtt->_internal.platform_mqtt.pipeline;
+  if (!pipeline)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal.platform_mqtt._inbound_handler(
-      mqtt, (az_event){ .type = AZ_MQTT_EVENT_PUBACK_RSP, .data = puback_data });
-  return AZ_OK;
+  return _az_event_pipeline_post_inbound_event(
+      pipeline, (az_event){ .type = AZ_MQTT_EVENT_PUBACK_RSP, .data = puback_data });
 }
 
 AZ_NODISCARD AZ_INLINE az_result
 az_mqtt_inbound_disconnect(az_mqtt* mqtt, az_mqtt_disconnect_data* disconnect_data)
 {
-  if (!mqtt->_internal.platform_mqtt._inbound_handler)
+  _az_event_pipeline* pipeline = mqtt->_internal.platform_mqtt.pipeline;
+  if (!pipeline)
   {
     return AZ_ERROR_NOT_IMPLEMENTED;
   }
 
-  mqtt->_internal.platform_mqtt._inbound_handler(
-      mqtt, (az_event){ .type = AZ_MQTT_EVENT_DISCONNECT_RSP, .data = disconnect_data });
-  return AZ_OK;
+  return _az_event_pipeline_post_inbound_event(
+      pipeline, (az_event){ .type = AZ_MQTT_EVENT_DISCONNECT_RSP, .data = disconnect_data });
 }
 
 // Porting 2. The following functions must be implemented and will be called by the SDK to

@@ -6,11 +6,10 @@
 
 #include <azure/core/az_span.h>
 #include <azure/core/az_event.h>
+#include <azure/core/internal/az_event_pipeline.h>
 
 // MQTT library handle (type defined by implementation)
 typedef struct az_mqtt az_mqtt;
-
-typedef void (*az_mqtt_inbound_handler)(az_mqtt* mqtt, az_event event);
 
 typedef struct
 {
@@ -23,7 +22,7 @@ typedef struct
 
 typedef struct
 {
-  az_mqtt_inbound_handler _inbound_handler;
+  _az_event_pipeline* pipeline;
 } az_mqtt_common;
 
 #endif // _az_MQTT_INTERNAL_H

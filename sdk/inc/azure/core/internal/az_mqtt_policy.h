@@ -21,18 +21,21 @@
 #include <azure/core/az_span.h>
 #include <azure/core/az_event_policy.h>
 #include <azure/core/az_mqtt.h>
+#include <azure/core/az_context.h>
 
 #include <azure/core/_az_cfg_prefix.h>
 
 typedef struct
 {
   az_event_policy policy;
+  az_context* context;
   az_mqtt* mqtt;
 } _az_mqtt_policy;
 
 AZ_NODISCARD az_result _az_mqtt_policy_init(
-    _az_mqtt_policy* policy,
+    _az_mqtt_policy* mqtt_policy,
     az_mqtt* mqtt,
+    az_context* context,
     az_event_policy* outbound_policy,
     az_event_policy* inbound_policy);
 
