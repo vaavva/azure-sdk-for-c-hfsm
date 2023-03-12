@@ -31,7 +31,7 @@ static const az_span key_path2 = AZ_SPAN_LITERAL_FROM_STR("/home/crispop/test/de
 static char client_id_buffer[64];
 static char username_buffer[128];
 
-static char topic_buffer[128];
+static char topic_buffer[256];
 static char payload_buffer[256];
 static char operation_id_buffer[64];
 
