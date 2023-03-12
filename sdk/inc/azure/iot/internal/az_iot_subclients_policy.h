@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * @file az_iot_connection.h
+ * @file
  *
- * @brief Definition for the Azure Device Provisioning client state machine.
- * @remark The Device Provisioning MQTT protocol is described at
- * https://docs.microsoft.com/azure/iot-dps/iot-dps-mqtt-support
+ * @brief Implements a variant of the Hierarchical State Machine Orthogonal Regions pattern.
  *
  * @note You MUST NOT use any symbols (macros, functions, structures, enums, etc.)
  * prefixed with an underscore ('_') directly in your application code. These symbols
@@ -30,23 +28,23 @@ typedef struct _az_iot_subclients_policy _az_iot_subclients_policy;
 struct _az_iot_subclient
 {
   az_event_policy* policy;
-  _az_iot_subclient const* next;
+  _az_iot_subclient* next;
 };
 
 struct _az_iot_subclients_policy
 {
   az_event_policy policy;
-  _az_iot_subclient const* subclients;
+  _az_iot_subclient* subclients;
 };
 
 AZ_NODISCARD az_result _az_iot_subclients_policy_init(
-    _az_iot_subclients_policy* policy,
+    _az_iot_subclients_policy* subclients_policy,
     az_event_policy* outbound_policy,
     az_event_policy* inbound_policy);
 
 AZ_NODISCARD az_result _az_iot_subclients_policy_add_client(
-    _az_iot_subclients_policy* policy,
-    _az_iot_subclient const* subclient);
+    _az_iot_subclients_policy* subclients_policy,
+    _az_iot_subclient* subclient);
 
 #include <azure/core/_az_cfg_suffix.h>
 

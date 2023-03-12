@@ -13,27 +13,56 @@ static az_result _az_iot_subclients_process_outbound_event(
     az_event_policy* policy,
     az_event const event)
 {
-    return AZ_ERROR_NOT_IMPLEMENTED;
+  _az_iot_subclients_policy* subclients_policy = (_az_iot_subclients_policy*)policy;
+  _az_iot_subclient* last = subclients_policy->subclients;
+  while (last->next != NULL)
+  {
+    az_event_policy_send_outbound_event(last->policy, event);
+    last = last->next;
+  }
 }
 
 static az_result _az_iot_subclients_process_inbound_event(
     az_event_policy* policy,
     az_event const event)
 {
-    return AZ_ERROR_NOT_IMPLEMENTED;
+  _az_iot_subclients_policy* subclients_policy = (_az_iot_subclients_policy*)policy;
+  _az_iot_subclient* last = subclients_policy->subclients;
+  while (last->next != NULL)
+  {
+    az_event_policy_send_inbound_event(last->policy, event);
+    last = last->next;
+  }
 }
 
 AZ_NODISCARD az_result _az_iot_subclients_policy_init(
-    _az_iot_subclients_policy* policy,
+    _az_iot_subclients_policy* subclients_policy,
     az_event_policy* outbound_policy,
     az_event_policy* inbound_policy)
 {
-  return AZ_ERROR_NOT_IMPLEMENTED;
+    subclients_policy->policy.outbound_policy = outbound_policy;
+    subclients_policy->policy.inbound_policy = inbound_policy;
+    subclients_policy->policy.outbound_handler = _az_iot_subclients_process_outbound_event;
+    subclients_policy->policy.inbound_handler = _az_iot_subclients_process_inbound_event;
+
+    subclients_policy->subclients = NULL;
 }
 
 AZ_NODISCARD az_result _az_iot_subclients_policy_add_client(
-    _az_iot_subclients_policy* policy,
-    _az_iot_subclient const* subclient)
+    _az_iot_subclients_policy* subclients_policy,
+    _az_iot_subclient* subclient)
 {
-  return AZ_ERROR_NOT_IMPLEMENTED;
+    _az_PRECONDITION_NOT_NULL(subclients_policy);
+    _az_PRECONDITION_NOT_NULL(subclient);
+
+    subclient->next = NULL;
+    _az_iot_subclient* last = subclients_policy->subclients;
+    while (last->next != NULL)
+    {
+      last = last->next;
+    }
+
+    last->next = subclient;
+
+    return AZ_OK;
 }
