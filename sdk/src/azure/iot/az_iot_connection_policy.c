@@ -120,9 +120,12 @@ AZ_INLINE az_result _connect(az_iot_connection* me)
     .certificate.key = me->_internal.options.primary_credential->key,
   };
 
-  _az_RETURN_IF_FAILED(
-      az_mqtt_outbound_connect(me->_internal.mqtt_client, me->_internal.context, &connect_data));
-
+  _az_RETURN_IF_FAILED(az_event_policy_send_outbound_event(
+      (az_event_policy*)me,
+      (az_event){
+          .type = AZ_MQTT_EVENT_CONNECT_REQ,
+          .data = &connect_data,
+      }));
   return AZ_OK;
 }
 
@@ -160,7 +163,12 @@ static az_result idle(az_event_policy* me, az_event event)
 
 AZ_INLINE az_result _disconnect(az_iot_connection* me)
 {
-  return az_mqtt_outbound_disconnect(me->_internal.mqtt_client, me->_internal.context);
+  return az_event_policy_send_outbound_event(
+      (az_event_policy*)me,
+      (az_event){
+          .type = AZ_MQTT_EVENT_DISCONNECT_REQ,
+          .data = NULL,
+      });
 }
 
 static az_result started(az_event_policy* me, az_event event)

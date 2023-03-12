@@ -14,6 +14,7 @@ add_library (az_iot_common
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_common.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_connection.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_connection_policy.c
+  ${CMAKE_CURRENT_LIST_DIR}/az_iot_subclients_policy.c
 )
 
 target_include_directories (az_iot_common

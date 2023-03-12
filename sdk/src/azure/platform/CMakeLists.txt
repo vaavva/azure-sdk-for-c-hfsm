@@ -105,6 +105,7 @@ endif()
     az_mosquitto
       STATIC
       ${CMAKE_CURRENT_LIST_DIR}/az_mosquitto.c
+      ${CMAKE_CURRENT_LIST_DIR}/az_mqtt_policy.c
   )
 
   add_compile_definitions(az_mosquitto
@@ -153,6 +154,7 @@ if (TRANSPORT_PAHO)
     az_paho
       STATIC
       ${CMAKE_CURRENT_LIST_DIR}/az_paho.c
+      ${CMAKE_CURRENT_LIST_DIR}/az_mqtt_policy.c
   )
 
   target_link_libraries(az_paho PRIVATE az_core)
