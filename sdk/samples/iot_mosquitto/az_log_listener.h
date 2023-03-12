@@ -144,6 +144,7 @@ AZ_INLINE void az_sdk_log_callback(az_log_classification classification, az_span
       break;
     case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
       class_str = "AZ_EVENT_IOT_CONNECTION_CLOSE_REQ";
+      break;
     case AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ:
       class_str = "AZ_IOT_PROVISIONING_EVENT_REGISTER_REQ";
       break;
