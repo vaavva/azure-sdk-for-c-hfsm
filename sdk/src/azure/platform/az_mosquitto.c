@@ -173,13 +173,15 @@ static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, co
 AZ_NODISCARD az_mqtt_options az_mqtt_options_default()
 {
   return (az_mqtt_options){ .platform_options.certificate_authority_trusted_roots = NULL,
-                            .openssl_engine = NULL };
+                            .openssl_engine = NULL,
+                            .mosquitto_handle = NULL };
 }
 
 AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* options)
 {
   _az_PRECONDITION_NOT_NULL(mqtt);
   mqtt->_internal.options = options == NULL ? az_mqtt_options_default() : *options;
+  mqtt->mosquitto_handle = options->mosquitto_handle;
 
   return AZ_OK;
 }

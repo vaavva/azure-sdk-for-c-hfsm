@@ -80,7 +80,7 @@ az_event_policy_send_inbound_event(az_event_policy* policy, az_event const event
 AZ_INLINE az_result
 az_event_policy_send_outbound_event(az_event_policy* policy, az_event const event)
 {
-  az_event_policy* outbound = policy->inbound_policy;
+  az_event_policy* outbound = policy->outbound_policy;
   _az_PRECONDITION_NOT_NULL(outbound);
   _az_PRECONDITION_NOT_NULL(outbound->outbound_handler);
 

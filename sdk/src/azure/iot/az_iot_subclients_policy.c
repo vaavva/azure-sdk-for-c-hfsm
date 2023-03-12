@@ -4,6 +4,7 @@
 #include <azure/core/az_mqtt.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
+#include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_log_internal.h>
 #include <azure/iot/internal/az_iot_subclients_policy.h>
 
@@ -14,12 +15,19 @@ static az_result _az_iot_subclients_process_outbound_event(
     az_event const event)
 {
   _az_iot_subclients_policy* subclients_policy = (_az_iot_subclients_policy*)policy;
+
+  // Broadcast to all orthogonal regions.
   _az_iot_subclient* last = subclients_policy->subclients;
-  while (last->next != NULL)
+  while (last != NULL)
   {
-    az_event_policy_send_outbound_event(last->policy, event);
+    _az_RETURN_IF_FAILED(last->policy->outbound_handler(last->policy, event));
     last = last->next;
   }
+
+  // Pass-through to the next outbound policy.
+  _az_RETURN_IF_FAILED(az_event_policy_send_outbound_event(policy, event));
+
+  return AZ_OK;
 }
 
 static az_result _az_iot_subclients_process_inbound_event(
@@ -27,12 +35,22 @@ static az_result _az_iot_subclients_process_inbound_event(
     az_event const event)
 {
   _az_iot_subclients_policy* subclients_policy = (_az_iot_subclients_policy*)policy;
+
+  // Broadcast to all orthogonal regions.
   _az_iot_subclient* last = subclients_policy->subclients;
-  while (last->next != NULL)
+  while (last != NULL)
   {
-    az_event_policy_send_inbound_event(last->policy, event);
+    _az_RETURN_IF_FAILED(last->policy->inbound_handler(last->policy, event));
     last = last->next;
   }
+
+  // Pass-through to the next inbound policy if it exists.
+  if (policy->inbound_policy != NULL)
+  {
+    _az_RETURN_IF_FAILED(az_event_policy_send_inbound_event(policy, event));
+  }
+
+  return AZ_OK;
 }
 
 AZ_NODISCARD az_result _az_iot_subclients_policy_init(
@@ -46,6 +64,8 @@ AZ_NODISCARD az_result _az_iot_subclients_policy_init(
     subclients_policy->policy.inbound_handler = _az_iot_subclients_process_inbound_event;
 
     subclients_policy->subclients = NULL;
+
+    return AZ_OK;
 }
 
 AZ_NODISCARD az_result _az_iot_subclients_policy_add_client(

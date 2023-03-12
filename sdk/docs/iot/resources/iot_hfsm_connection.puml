@@ -11,8 +11,8 @@ state AzureIoTConnection {
         Connecting : \t else ^ERROR
         Connecting :
         Connecting : <b>MQTT_CONNECT_RSP(success)/</b> 
-        Connecting : \t connect_counter=0;
-        Connecting : \t callback(MQTT_CONNECT_RSP(success));
+        Connecting : \t connect_counter=0
+        Connecting : \t callback(MQTT_CONNECT_RSP(success))
         Connecting : \t pipeline_send_inbound(MQTT_CONNECT_RSP(success))
 
         state Connected
@@ -26,13 +26,13 @@ state AzureIoTConnection {
 
         state ReconnectTimeout
         ReconnectTimeout : <b>entry/</b> 
-        ReconnectTimeout : \t start timer;
-        ReconnectTimeout : \t connect_counter++;
+        ReconnectTimeout : \t start timer
+        ReconnectTimeout : \t connect_counter++
         ReconnectTimeout : <b>exit/</b> stop timer
         ReconnectTimeout : <b>TIMEOUT/</b> if (connect_counter > MAX) ^ERROR
 
         state Disconnecting
-        Disconnecting : <b>entry/</b> start timer; 
+        Disconnecting : <b>entry/</b> start timer 
         Disconnecting : <b>exit/</b> stop timer
 
         [*] -> Connecting : / ^MQTT_CONNECT_REQ
@@ -42,7 +42,8 @@ state AzureIoTConnection {
         Connected --> Disconnecting : AZ_IOT_CONNECTION_CLOSE / ^MQTT_DISCONNECT_REQ
         ReconnectTimeout -> Connecting : TIMEOUT (connect_counter <= MAX)
     }
-    Started : <b>entry/</b> connect_counter=0;
+    Started : <b>entry/</b> connect_counter=0
+    Started : <b>MQTT_DISCONNECT_RSP/</b> : callback(MQTT_DISCONNECT_RSP)
 
     [*] --> Idle
     Idle -> Started : AZ_IOT_CONNECTION_OPEN

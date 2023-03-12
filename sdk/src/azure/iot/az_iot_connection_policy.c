@@ -105,7 +105,7 @@ AZ_INLINE az_result _connect(az_iot_connection* me)
   _az_PRECONDITION_VALID_SPAN(me->_internal.options.hostname, 1, false);
   _az_PRECONDITION_VALID_SPAN(me->_internal.options.client_id_buffer, 1, false);
   _az_PRECONDITION_VALID_SPAN(me->_internal.options.username_buffer, 1, false);
-  _az_PRECONDITION_VALID_SPAN(me->_internal.options.password_buffer, 1, false);
+  _az_PRECONDITION_VALID_SPAN(me->_internal.options.password_buffer, 0, true);
   _az_PRECONDITION_VALID_SPAN(me->_internal.options.primary_credential->cert, 1, false);
   _az_PRECONDITION_VALID_SPAN(me->_internal.options.primary_credential->key, 1, false);
 
@@ -193,6 +193,13 @@ static az_result started(az_event_policy* me, az_event event)
       break;
 
     case AZ_MQTT_EVENT_DISCONNECT_RSP:
+      if(az_result_failed(_az_iot_connection_api_callback(this_policy, event)))
+      {
+        // Callback failed: fault the connection object.
+        _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+            (_az_hfsm*)me, (az_event){ .type = AZ_HFSM_EVENT_ERROR, .data = NULL }));
+      }
+
       _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, started, idle));
       _az_RETURN_IF_FAILED(
           az_event_policy_send_inbound_event((az_event_policy*)this_policy, event));
@@ -226,6 +233,14 @@ static az_result connecting(az_event_policy* me, az_event event)
     case AZ_MQTT_EVENT_CONNECT_RSP:
     {
       az_mqtt_connack_data* data = (az_mqtt_connack_data*)event.data;
+
+      if(az_result_failed(_az_iot_connection_api_callback(this_policy, event)))
+      {
+        // Callback failed: fault the connection object.
+        _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+            (_az_hfsm*)me, (az_event){ .type = AZ_HFSM_EVENT_ERROR, .data = NULL }));
+      }
+
       if (data->connack_reason == 0)
       {
         _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, connecting, connected));

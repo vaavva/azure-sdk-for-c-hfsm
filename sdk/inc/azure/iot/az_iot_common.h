@@ -36,15 +36,6 @@ enum az_result_iot
 
   /// While iterating, there are no more properties to return.
   AZ_ERROR_IOT_END_OF_PROPERTIES = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT, 2),
-
-  /// Service returned an error. (Also see #az_iot_status.)
-  AZ_ERROR_IOT_SERVICE = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT, 3),
-
-  /// Error caused by network operations
-  AZ_ERROR_IOT_NETWORK = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT, 4),
-
-  /// Error caused by a security check (e.g. TLS error, authentication error).
-  AZ_ERROR_IOT_SECURITY = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT, 5),
 };
 
 /**

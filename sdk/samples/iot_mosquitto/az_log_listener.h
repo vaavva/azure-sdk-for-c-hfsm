@@ -9,6 +9,7 @@
 #include <azure/core/az_log.h>
 // For HFSM ENTER/EXIT events.
 #include <azure/core/internal/az_hfsm.h>
+#include <azure/iot/az_iot_connection.h>
 
 #include <stdio.h>
 
@@ -137,9 +138,12 @@ AZ_INLINE void az_sdk_log_callback(az_log_classification classification, az_span
     case AZ_LOG_MQTT_RECEIVED_PAYLOAD:
       class_str = "AZ_LOG_MQTT_RECEIVED_PAYLOAD";
       break;
-    // TODO: case AZ_IOT_PROVISIONING_REGISTER_REQ:
-    //   class_str = "AZ_IOT_PROVISIONING_REGISTER_REQ";
-    //   break;
+    case AZ_EVENT_IOT_CONNECTION_OPEN_REQ:
+      class_str = "AZ_EVENT_IOT_CONNECTION_OPEN_REQ";
+      break;
+    case AZ_EVENT_IOT_CONNECTION_CLOSE_REQ:
+      class_str = "AZ_EVENT_IOT_CONNECTION_CLOSE_REQ";
+      break;
     default:
       class_str = NULL;
   }

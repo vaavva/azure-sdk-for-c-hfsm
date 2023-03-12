@@ -34,6 +34,8 @@ static char username_buffer[128];
 static char topic_buffer[128];
 static char payload_buffer[256];
 
+volatile bool connected = false;
+
 void az_platform_critical_error()
 {
   printf(LOG_APP "\x1B[31mPANIC!\x1B[0m\n");
@@ -48,8 +50,16 @@ az_result iot_callback(az_iot_connection* client, az_event event)
   {
     case AZ_MQTT_EVENT_CONNECT_RSP:
     {
+      connected = true;
       az_mqtt_connack_data* connack_data = (az_mqtt_connack_data*)event.data;
-      printf(LOG_APP "[%p] CONNACK: %d", client, connack_data->connack_reason);
+      printf(LOG_APP "[%p] CONNACK: %d\n", client, connack_data->connack_reason);
+      break;
+    }
+
+    case AZ_MQTT_EVENT_DISCONNECT_RSP:
+    {
+      connected = false;
+      printf(LOG_APP "[%p] DISCONNECTED\n", client);
       break;
     }
 
@@ -125,8 +135,9 @@ int main(int argc, char* argv[])
     .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
   };
 
-  LOG_AND_EXIT_IF_FAILED(
-      az_iot_provisioning_client_register(&prov_client, &register_context, &register_data));
+  // TODO : LOG_AND_EXIT_IF_FAILED(
+  // TODO :     az_iot_provisioning_client_register(&prov_client, &register_context,
+  // &register_data));
 
   for (int i = 15; i > 0; i--)
   {
@@ -137,12 +148,19 @@ int main(int argc, char* argv[])
 
   LOG_AND_EXIT_IF_FAILED(az_iot_connection_close(&iot_connection));
 
+  for (int i = 15; connected && i > 0; i--)
+  {
+    LOG_AND_EXIT_IF_FAILED(az_platform_sleep_msec(1000));
+    printf(LOG_APP "Waiting for disconnect %ds        \r", i);
+    fflush(stdout);
+  }
+
   if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
   {
     printf(LOG_APP "Failed to cleanup MosquittoLib\n");
     return -1;
   }
 
-  printf(LOG_APP "Done.\n");
+  printf(LOG_APP "Done.                              \n");
   return 0;
 }
