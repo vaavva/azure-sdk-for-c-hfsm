@@ -5,6 +5,7 @@
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 #include <azure/core/internal/az_log_internal.h>
+#include <azure/core/internal/az_mqtt_policy.h>
 #include <azure/iot/az_iot_common.h>
 #include <azure/iot/az_iot_connection.h>
 
@@ -35,36 +36,53 @@ AZ_NODISCARD az_result az_iot_connection_init(
   _az_PRECONDITION_NOT_NULL(event_callback);
 
   client->_internal.options = options == NULL ? az_iot_connection_options_default() : *options;
-  client->_internal.mqtt_client = mqtt_client;
   client->_internal.event_callback = event_callback;
   client->_internal.context = context;
 
-  az_event_policy* outbound_event_policy = (az_event_policy*)&client->_internal.subclient_policy;
-  az_event_policy* inbound_event_policy;
-
   if (client->_internal.options.connection_management)
   {
-    // subclients_policy --> connection_policy --> az_mqtt
-    inbound_event_policy = (az_event_policy*)&client->_internal.connection_policy;
+    // The pipeline contains the connection_policy.
+    // subclients_policy --> connection_policy --> az_mqtt_policy
+    //    outbound                                   inbound
+
+    _az_RETURN_IF_FAILED(_az_mqtt_policy_init(
+        &client->_internal.mqtt_policy,
+        mqtt_client,
+        NULL,
+        (az_event_policy*)&client->_internal.connection_policy));
 
     _az_RETURN_IF_FAILED(_az_iot_connection_policy_init(
-        (_az_hfsm*)client, NULL, (az_event_policy*)&client->_internal.subclient_policy));
+        (_az_hfsm*)client,
+        (az_event_policy*)&client->_internal.mqtt_policy,
+        (az_event_policy*)&client->_internal.subclient_policy));
 
-    // TODO    _az_RETURN_IF_FAILED(_az_iot_subclients_policy_init(
-    //        &client->_internal.subclient_policy, NULL, inbound_event_policy));
+    _az_RETURN_IF_FAILED(_az_iot_subclients_policy_init(
+        &client->_internal.subclient_policy, (az_event_policy*)client, NULL));
   }
   else
   {
-    // subclients_policy --> az_mqtt
-    inbound_event_policy = (az_event_policy*)&client->_internal.subclient_policy;
+    // The pipeline does not contain the connection_policy.
+    // subclients_policy --> az_mqtt_policy
+    //    outbound              inbound
+    _az_RETURN_IF_FAILED(_az_mqtt_policy_init(
+        &client->_internal.mqtt_policy,
+        mqtt_client,
+        NULL,
+        (az_event_policy*)&client->_internal.subclient_policy));
 
-    // TODO:    _az_RETURN_IF_FAILED(
-    // TODO:        _az_iot_subclients_policy_init(&client->_internal.subclient_policy, NULL,
-    // NULL));
+    // Unused. Initialize to NULL.
+    client->_internal.connection_policy = (_az_hfsm){ 0 };
+
+    _az_RETURN_IF_FAILED(_az_iot_subclients_policy_init(
+        &client->_internal.subclient_policy,
+        (az_event_policy*)&client->_internal.mqtt_policy,
+        NULL));
   }
 
   _az_RETURN_IF_FAILED(_az_event_pipeline_init(
-      &client->_internal.event_pipeline, outbound_event_policy, inbound_event_policy));
+      &client->_internal.event_pipeline,
+      (az_event_policy*)&client->_internal.subclient_policy,
+      (az_event_policy*)&client->_internal.mqtt_policy));
 
   return AZ_OK;
 }

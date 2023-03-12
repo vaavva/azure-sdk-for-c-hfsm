@@ -19,11 +19,11 @@
 
 #include <azure/core/az_context.h>
 #include <azure/core/az_credentials_x509.h>
-#include <azure/core/az_mqtt.h>
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_event_pipeline.h>
+#include <azure/core/internal/az_mqtt_policy.h>
 #include <azure/iot/internal/az_iot_subclients_policy.h>
 
 #include <stdbool.h>
@@ -67,10 +67,10 @@ struct az_iot_connection
   {
     _az_hfsm connection_policy;
     _az_iot_subclients_policy subclient_policy;
+    _az_mqtt_policy mqtt_policy;
 
     _az_event_pipeline event_pipeline;
 
-    az_mqtt* mqtt_client;
     az_context* context;
     az_iot_connection_callback event_callback;
 
