@@ -105,6 +105,7 @@ az_result iot_callback(az_iot_connection* client, az_event event)
             az_span_ptr(response->registration_state.device_id));
       }
 
+      // HFSM_DESIGN : disconnect request can be moved here instead of polling for connected.
       break;
     }
 
