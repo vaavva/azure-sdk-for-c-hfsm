@@ -55,7 +55,7 @@ static az_result root(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/root"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection"));
   }
 
   switch (event.type)
@@ -75,7 +75,7 @@ static az_result root(az_event_policy* me, az_event event)
     default:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
-        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_connection/root: PANIC!"));
+        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_connection: PANIC!"));
       }
 
       az_platform_critical_error();
@@ -279,7 +279,7 @@ static az_result reconnect_timeout(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/reconnect_timeout"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/started/reconnect_timeout"));
   }
 
   switch (event.type)

@@ -53,8 +53,10 @@ typedef struct
   
   struct 
   {
-    az_context* register_context;
+    az_context* context;
+    az_span operation_id;
     _az_event_pipeline_timer register_timer;
+    uint32_t retry_after_seconds;
   } _internal;
 } az_iot_provisioning_register_data;
 

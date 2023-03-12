@@ -81,13 +81,20 @@ AZ_NODISCARD az_result _az_iot_subclients_policy_add_client(
 
     // The client is added to the end of the list.
     subclient->next = NULL;
-    _az_iot_subclient* last = subclients_policy->subclients;
-    while (last->next != NULL)
-    {
-      last = last->next;
-    }
 
-    last->next = subclient;
+    _az_iot_subclient* last = subclients_policy->subclients;
+    if (last == NULL)
+    {
+      subclients_policy->subclients = subclient;
+    }
+    else {
+      while (last->next != NULL)
+      {
+        last = last->next;
+      }
+
+      last->next = subclient;
+    }
 
     return AZ_OK;
 }

@@ -135,9 +135,8 @@ int main(int argc, char* argv[])
     .payload_buffer = AZ_SPAN_FROM_BUFFER(payload_buffer),
   };
 
-  // TODO : LOG_AND_EXIT_IF_FAILED(
-  // TODO :     az_iot_provisioning_client_register(&prov_client, &register_context,
-  // &register_data));
+  LOG_AND_EXIT_IF_FAILED(
+      az_iot_provisioning_client_register(&prov_client, &register_context, &register_data));
 
   for (int i = 15; i > 0; i--)
   {
@@ -161,6 +160,6 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  printf(LOG_APP "Done.                              \n");
+  printf(LOG_APP "Done.                                \n");
   return 0;
 }

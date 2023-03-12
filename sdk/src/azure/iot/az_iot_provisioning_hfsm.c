@@ -20,6 +20,7 @@ static az_result root(az_event_policy* me, az_event event);
 
 static az_result idle(az_event_policy* me, az_event event);
 static az_result started(az_event_policy* me, az_event event);
+static az_result faulted(az_event_policy* me, az_event event);
 
 static az_result subscribing(az_event_policy* me, az_event event);
 static az_result subscribed(az_event_policy* me, az_event event);
@@ -37,7 +38,7 @@ static az_event_policy_handler _get_parent(az_event_policy_handler child_state)
   {
     parent_state = NULL;
   }
-  else if (child_state == idle || child_state == started)
+  else if (child_state == idle || child_state == started || child_state == faulted)
   {
     parent_state = root;
   }
@@ -68,12 +69,16 @@ static az_result root(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/root"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning"));
   }
 
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
+    case AZ_MQTT_EVENT_CONNECT_REQ:
+    case AZ_MQTT_EVENT_CONNECT_RSP:
+    case AZ_MQTT_EVENT_DISCONNECT_REQ:
+    case AZ_MQTT_EVENT_DISCONNECT_RSP:
       // No-op.
       break;
 
@@ -82,16 +87,56 @@ static az_result root(az_event_policy* me, az_event event)
       {
         az_platform_critical_error();
       }
+
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, root, faulted));
       break;
 
     case AZ_HFSM_EVENT_EXIT:
     default:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
-        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_provisioning/root: PANIC!"));
+        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_provisioning: PANIC!"));
       }
 
       az_platform_critical_error();
+      break;
+  }
+
+  return ret;
+}
+
+static az_result faulted(az_event_policy* me, az_event event)
+{
+  az_result ret = AZ_ERROR_HFSM_INVALID_STATE;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/faulted"));
+  }
+
+  return ret;
+}
+
+static az_result started(az_event_policy* me, az_event event)
+{
+  az_result ret = AZ_OK;
+  az_iot_provisioning_client* client = (az_iot_provisioning_client*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/started"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
+      break;
+
+    default:
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
 
@@ -108,6 +153,37 @@ AZ_INLINE az_result _dps_subscribe(az_iot_provisioning_client* me)
 
   return az_event_policy_send_outbound_event(
       (az_event_policy*)me, (az_event){ .type = AZ_MQTT_EVENT_SUB_REQ, &data });
+}
+
+static az_result idle(az_event_policy* me, az_event event)
+{
+  az_result ret = AZ_OK;
+  az_iot_provisioning_client* client = (az_iot_provisioning_client*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_provisioning/idle"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+    case AZ_HFSM_EVENT_EXIT:
+      // No-op.
+      break;
+
+    case AZ_IOT_PROVISIONING_REGISTER_REQ:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, idle, started));
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, started, subscribing));
+      _az_RETURN_IF_FAILED(_dps_subscribe(client));
+      break;
+
+    default:
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
+
+  return ret;
 }
 
 AZ_INLINE az_result _dps_register(az_iot_provisioning_client* me)
@@ -235,6 +311,15 @@ AZ_INLINE az_result _dps_is_registration_complete(
     *out_complete
         = az_iot_provisioning_client_operation_complete(register_response->operation_status);
 
+    if (!(*out_complete))
+    {
+      // Cache pending operation information require for next actions.
+      me->_internal.register_data->_internal.operation_id = az_span_copy(
+          me->_internal.register_data->operation_id_buffer, register_response->operation_id);
+      me->_internal.register_data->_internal.retry_after_seconds
+          = register_response->retry_after_seconds;
+    }
+
     ret = AZ_OK;
   }
 
@@ -306,7 +391,7 @@ AZ_INLINE az_result _dps_send_query(az_iot_provisioning_client* me)
 
   _az_RETURN_IF_FAILED(az_iot_provisioning_client_query_status_get_publish_topic(
       me,
-      me->_internal.register_response.operation_id,
+      me->_internal.register_data->_internal.operation_id,
       (char*)az_span_ptr(me->_internal.register_data->topic_buffer),
       (size_t)az_span_size(me->_internal.register_data->topic_buffer),
       &buffer_size));
@@ -324,22 +409,25 @@ AZ_INLINE az_result _dps_send_query(az_iot_provisioning_client* me)
 
 AZ_INLINE az_result _dps_start_timer(az_iot_provisioning_client* me)
 {
-  _az_RETURN_IF_FAILED(_az_event_pipeline_timer_create(
-      me->_internal.connection->_internal.event_pipeline, &me->_internal.timer));
+  _az_event_pipeline* pipeline = &me->_internal.connection->_internal.event_pipeline;
+  _az_event_pipeline_timer* timer = &me->_internal.register_data->_internal.register_timer;
 
-  int32_t delay_milliseconds = (int32_t)me->_internal.register_response.retry_after_seconds * 1000;
+  _az_RETURN_IF_FAILED(_az_event_pipeline_timer_create(pipeline, timer));
+
+  int32_t delay_milliseconds
+      = (int32_t)me->_internal.register_data->_internal.retry_after_seconds * 1000;
   if (delay_milliseconds <= 0)
   {
     delay_milliseconds = AZ_IOT_PROVISIONING_RETRY_MINIMUM_TIMEOUT_SECONDS * 1000;
   }
 
-  _az_RETURN_IF_FAILED(
-      az_platform_timer_start(&me->_internal.timer.platform_timer, delay_milliseconds));
+  _az_RETURN_IF_FAILED(az_platform_timer_start(&timer->platform_timer, delay_milliseconds));
 }
 
 AZ_INLINE az_result _dps_stop_timer(az_iot_provisioning_client* me)
 {
-  return az_platform_timer_destroy(&me->_internal.timer.platform_timer);
+  _az_event_pipeline_timer* timer = &me->_internal.register_data->_internal.register_timer;
+  return az_platform_timer_destroy(&timer->platform_timer);
 }
 
 static az_result delay(az_event_policy* me, az_event event)
@@ -363,8 +451,11 @@ static az_result delay(az_event_policy* me, az_event event)
       break;
 
     case AZ_HFSM_EVENT_TIMEOUT:
-      _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, delay, query));
-      _az_RETURN_IF_FAILED(_dps_send_query(client));
+      if (event.data == &client->_internal.register_data->_internal.register_timer)
+      {
+        _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, delay, query));
+        _az_RETURN_IF_FAILED(_dps_send_query(client));
+      }
       break;
 
     default:
@@ -429,7 +520,13 @@ AZ_NODISCARD az_result az_iot_provisioning_client_register(
     return AZ_ERROR_NOT_SUPPORTED;
   }
 
-  client->_internal.register_context = context;
+  _az_PRECONDITION_VALID_SPAN(data->operation_id_buffer, 1, false);
+  _az_PRECONDITION_VALID_SPAN(data->topic_buffer, 1, false);
+  _az_PRECONDITION_VALID_SPAN(data->payload_buffer, 1, false);
+
+  data->_internal.retry_after_seconds = 0;
+  data->_internal.operation_id = AZ_SPAN_EMPTY;
+  data->_internal.context = context;
 
   return _az_event_pipeline_post_outbound_event(
       &client->_internal.connection->_internal.event_pipeline,
