@@ -72,6 +72,9 @@ AZ_NODISCARD az_result az_iot_provisioning_client_init(
   client->_internal.options
       = options == NULL ? az_iot_provisioning_client_options_default() : *options;
 
+  client->_internal.connection = connection;
+
+  // Initialize the stateful sub-client.
   if ((connection != NULL) && (az_span_size(connection->_internal.options.hostname) == 0))
   {
     connection->_internal.options.hostname = client->_internal.global_device_endpoint;
@@ -95,6 +98,11 @@ AZ_NODISCARD az_result az_iot_provisioning_client_init(
         = az_span_slice(connection->_internal.options.username_buffer, 0, (int32_t)buffer_size);
 
     // HFSM_TODO: SAS token is not implemented. password is always AZ_SPAN_EMTPY.
+    connection->_internal.options.password_buffer = AZ_SPAN_EMPTY;
+
+    _az_RETURN_IF_FAILED(_az_iot_provisioning_subclient_init(
+        (_az_hfsm*)client, &client->_internal.subclient, connection));
+
   }
 
   return AZ_OK;
@@ -638,5 +646,11 @@ AZ_NODISCARD az_result az_iot_provisioning_client_register(
     az_context* context,
     az_iot_provisioning_register_data* data)
 {
+  if (client->_internal.connection == NULL)
+  {
+    // This API can be called only when the client is attached to a connection object.
+    return AZ_ERROR_NOT_SUPPORTED;
+  }
+
   return AZ_ERROR_NOT_IMPLEMENTED;
 }

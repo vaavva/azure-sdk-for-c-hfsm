@@ -21,6 +21,7 @@
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_common.h>
 #include <azure/iot/az_iot_connection.h>
+#include <azure/iot/internal/az_iot_subclients_policy.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -52,9 +53,15 @@ typedef struct
 {
   struct
   {
+    // Stateful extension. HFSM must be the first element in the struct.
+    _az_hfsm hfsm;
+    _az_iot_subclient subclient;
+    az_iot_connection* connection;
+
     az_span global_device_endpoint;
     az_span id_scope;
     az_span registration_id;
+
     az_iot_provisioning_client_options options;
   } _internal;
 } az_iot_provisioning_client;
@@ -479,6 +486,18 @@ AZ_NODISCARD az_result az_iot_provisioning_client_get_request_payload(
 
 // HFSM_DESIGN: the following is the stateful portion of the client:
 
+enum az_event_type_az_iot_provisioning
+{
+  /// Device Registration Request
+  AZ_IOT_PROVISIONING_REGISTER_REQ = _az_MAKE_EVENT(_az_FACILITY_IOT, 12),
+
+  /// Device Registration Final Response
+  AZ_IOT_PROVISIONING_REGISTER_RSP = _az_MAKE_EVENT(_az_FACILITY_IOT, 13),
+
+  /// Device Registration Final Response
+  AZ_IOT_PROVISIONING_REGISTER_IND = _az_MAKE_EVENT(_az_FACILITY_IOT, 14),
+};
+
 typedef struct
 {
   az_span topic_buffer;
@@ -496,6 +515,20 @@ AZ_NODISCARD az_result az_iot_provisioning_client_register(
     az_iot_provisioning_client const* client,
     az_context* context,
     az_iot_provisioning_register_data* data);
+
+AZ_NODISCARD az_result _az_iot_provisioning_subclient_init(
+    _az_hfsm* hfsm,
+    _az_iot_subclient* subclient,
+    az_iot_connection* connection)
+
+    {
+      // TODO: move in C.
+    client->_internal.subclient.policy = (az_event_policy*)&client;
+    _az_RETURN_IF_FAILED(_az_iot_subclients_policy_add_client(
+        &connection->_internal.subclient_policy, &client->_internal.subclient));
+
+
+    }
 
 #include <azure/core/_az_cfg_suffix.h>
 
