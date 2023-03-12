@@ -45,6 +45,19 @@ typedef struct
   az_span user_agent;
 } az_iot_provisioning_client_options;
 
+typedef struct
+{
+  az_span operation_id_buffer;
+  az_span topic_buffer;
+  az_span payload_buffer;
+  
+  struct 
+  {
+    az_context* register_context;
+    _az_event_pipeline_timer register_timer;
+  } _internal;
+} az_iot_provisioning_register_data;
+
 /**
  * @brief Azure IoT Provisioning Client.
  *
@@ -57,6 +70,9 @@ typedef struct
     _az_hfsm hfsm;
     _az_iot_subclient subclient;
     az_iot_connection* connection;
+
+    // Pending register operation object.
+    az_iot_provisioning_register_data* register_data;
 
     az_span global_device_endpoint;
     az_span id_scope;
@@ -498,12 +514,6 @@ enum az_event_type_az_iot_provisioning
   AZ_IOT_PROVISIONING_REGISTER_IND = _az_MAKE_EVENT(_az_FACILITY_IOT, 14),
 };
 
-typedef struct
-{
-  az_span topic_buffer;
-  az_span payload_buffer;
-} az_iot_provisioning_register_data;
-
 /// @brief
 /// @param client
 /// @param context
@@ -512,23 +522,14 @@ typedef struct
 ///          AZ_IOT_PROVISIONING_REGISTER_RSP events.
 /// @return
 AZ_NODISCARD az_result az_iot_provisioning_client_register(
-    az_iot_provisioning_client const* client,
+    az_iot_provisioning_client* client,
     az_context* context,
     az_iot_provisioning_register_data* data);
 
 AZ_NODISCARD az_result _az_iot_provisioning_subclient_init(
     _az_hfsm* hfsm,
     _az_iot_subclient* subclient,
-    az_iot_connection* connection)
-
-    {
-      // TODO: move in C.
-    client->_internal.subclient.policy = (az_event_policy*)&client;
-    _az_RETURN_IF_FAILED(_az_iot_subclients_policy_add_client(
-        &connection->_internal.subclient_policy, &client->_internal.subclient));
-
-
-    }
+    az_iot_connection* connection);
 
 #include <azure/core/_az_cfg_suffix.h>
 

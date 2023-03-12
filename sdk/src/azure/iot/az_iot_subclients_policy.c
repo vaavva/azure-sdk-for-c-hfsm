@@ -75,6 +75,11 @@ AZ_NODISCARD az_result _az_iot_subclients_policy_add_client(
     _az_PRECONDITION_NOT_NULL(subclients_policy);
     _az_PRECONDITION_NOT_NULL(subclient);
 
+    // Connect the subclient to the pipeline.
+    subclient->policy->outbound_policy = subclients_policy->policy.outbound_policy;
+    subclient->policy->inbound_policy = subclients_policy->policy.inbound_policy;
+
+    // The client is added to the end of the list.
     subclient->next = NULL;
     _az_iot_subclient* last = subclients_policy->subclients;
     while (last->next != NULL)

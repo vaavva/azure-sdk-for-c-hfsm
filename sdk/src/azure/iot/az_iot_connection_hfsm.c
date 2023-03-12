@@ -55,7 +55,7 @@ static az_result root(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/root"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/root"));
   }
 
   switch (event.type)
@@ -75,7 +75,7 @@ static az_result root(az_event_policy* me, az_event event)
     default:
       if (_az_LOG_SHOULD_WRITE(AZ_HFSM_EVENT_EXIT))
       {
-        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("iot_conn/root: PANIC!"));
+        _az_LOG_WRITE(AZ_HFSM_EVENT_EXIT, AZ_SPAN_FROM_STR("az_iot_connection/root: PANIC!"));
       }
 
       az_platform_critical_error();
@@ -92,7 +92,7 @@ static az_result faulted(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/faulted"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/faulted"));
   }
 
   return ret;
@@ -136,7 +136,7 @@ static az_result idle(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/idle"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/idle"));
   }
 
   switch (event.type)
@@ -178,7 +178,7 @@ static az_result started(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/started"));
   }
 
   switch (event.type)
@@ -220,7 +220,7 @@ static az_result connecting(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started/connecting"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/started/connecting"));
   }
 
   switch (event.type)
@@ -279,7 +279,7 @@ static az_result reconnect_timeout(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/reconnect_timeout"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/reconnect_timeout"));
   }
 
   switch (event.type)
@@ -312,7 +312,7 @@ static az_result connected(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started/connected"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/started/connected"));
   }
 
   switch (event.type)
@@ -342,7 +342,7 @@ static az_result disconnecting(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
-    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("iot_conn/started/disconnecting"));
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_iot_connection/started/disconnecting"));
   }
 
   switch (event.type)
