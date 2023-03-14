@@ -85,7 +85,10 @@ az_result iot_callback(az_iot_connection* client, az_event event)
     {
       az_iot_provisioning_client_register_response* response
           = (az_iot_provisioning_client_register_response*)event.data;
-      printf(LOG_APP "[%p] REGISTER_STATUS: %d\n", client, response->operation_status);
+      printf(
+          LOG_APP "[%p] REGISTER_STATUS: %s\n",
+          client,
+          az_iot_provisioning_client_operation_status_to_string(response->operation_status));
       break;
     }
 

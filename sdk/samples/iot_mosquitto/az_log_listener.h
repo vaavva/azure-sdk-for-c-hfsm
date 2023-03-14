@@ -26,8 +26,8 @@ White:   \x1B[37m
 Reset:   \x1B[0m
 */
 
-#define LOG_APP "\x1B[34mAPP: \x1B[0m"
-#define LOG_APP_ERROR "\x1B[31mAPP: \x1B[0m"
+#define LOG_APP "\x1B[34mAPP: \x1b[37;1m"
+#define LOG_APP_ERROR "\x1B[31mAPP: \x1b[37;1m"
 
 #define LOG_SDK "\x1B[33mSDK: \x1B[0m"
 
@@ -65,6 +65,25 @@ AZ_INLINE char* az_result_to_string(az_result result)
       return "AZ_ERROR_JSON_NESTING_OVERFLOW";
     case AZ_ERROR_JSON_READER_DONE:
       return "AZ_ERROR_JSON_READER_DONE";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+AZ_INLINE char* az_iot_provisioning_client_operation_status_to_string(az_iot_provisioning_client_operation_status status)
+{
+  switch (status)
+  {
+    case AZ_IOT_PROVISIONING_STATUS_UNASSIGNED:
+      return "AZ_IOT_PROVISIONING_STATUS_UNASSIGNED";
+    case AZ_IOT_PROVISIONING_STATUS_ASSIGNING:
+      return "AZ_IOT_PROVISIONING_STATUS_ASSIGNING";
+    case AZ_IOT_PROVISIONING_STATUS_ASSIGNED:
+      return "AZ_IOT_PROVISIONING_STATUS_ASSIGNED";
+    case AZ_IOT_PROVISIONING_STATUS_FAILED:
+      return "AZ_IOT_PROVISIONING_STATUS_FAILED";
+    case AZ_IOT_PROVISIONING_STATUS_DISABLED:
+      return "AZ_IOT_PROVISIONING_STATUS_DISABLED";
     default:
       return "UNKNOWN";
   }
