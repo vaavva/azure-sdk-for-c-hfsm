@@ -78,10 +78,10 @@ Note that this requirement does not imply that the callbacks cannot be re-entran
 
 #### No memory allocation and no buffer copies
 
-Events must rely only on references to buffers pre-allocated by either the application or the network stack (e.g. from a pool). To reference larger memory locations, the az_span construct must be leveraged within the event data structure.
+Events must rely only on references to buffers pre-allocated by either the application or the network stack (e.g. from a pool). To reference larger memory locations, the `az_span` construct must be leveraged within the event data structure.
 Event data structures must be maintained relatively small compared with the actual data. E.g., data such as `username_buffer`, `topic_buffer`, `payload_buffer`, etc is only passed as reference.
 
-#### Send vs Post
+### Send vs Post
 
 The Async Pipeline has similar semantics with hierarchical state machines present within the Windows GUI subsystem (SendMessage vs PostMessage):
 
@@ -92,11 +92,11 @@ The expectation is that the Send API (either inbound or outbound) will not retur
 
 Posted events may be either implicitly (through chains of blocking mutexes) or explicitly queued. The application or network stack must be aware of this and ensure proper event lifetime.
 
-#### Interval Timers
+### Interval Timers
 
-`az_platform.h` interval timers are created and associated with the pipeline using the az_hfsm_pipeline_timer_create API. The timers can then be configured using non-pipeline specific az_platform APIs (see dependencies below).
-When the timer expires, an outbound AZ_HFSM_EVENT_TIMEOUT is posted. The event_data is a pointer to the az_hfsm_pipeline_timer. This enables pipelines to own more than one timer.
-Unless the AZ_HFSM_EVENT_TIMEOUT event is consumed in the current policy, it is important that it is passed through (using send) towards other outbound policies that need to receive the event.
+`az_platform.h` interval timers are created and associated with the pipeline using the `_az_event_pipeline_timer` API. The timers can then be configured using non-pipeline specific `az_platform` APIs (see dependencies below).
+When the timer expires, an outbound AZ_HFSM_EVENT_TIMEOUT is posted. The event_data is a pointer to the `_az_event_pipeline_timer`. This enables pipelines to own more than one timer.
+Unless the `AZ_HFSM_EVENT_TIMEOUT` event is consumed in the current policy, it is important that it is passed through (using send) towards other outbound policies that need to receive the event.
 
 ### Pipelines enforce Run-To-Completion
 
@@ -121,11 +121,11 @@ Because the asynchronous mode of operation, the pipeline supports two types of e
 - Synchronous (I/O setup) path errors are immediately returned to the caller of either post or send event APIs.
 - Asynchronous (I/O completion) path errors are returned when operations complete, through the standardized AZ_HFSM_EVENT_ERROR event.
 
-In both cases, the error code is stored in a well-defined Azure SDK az_result. Asynchronous AZ_HFSM_EVENT_ERROR event contains more information such as the sender HFSM and event that triggered the error.
+In both cases, the error code is stored in a well-defined Azure SDK `az_result`. Asynchronous AZ_HFSM_EVENT_ERROR event contains more information such as the sender HFSM and event that triggered the error.
 
 ### Platform Dependencies
 
-The Async Pipeline depends on the following two new az_platform PAL constructs:
+The Async Pipeline depends on the following two new `az_platform` PAL constructs:
 
 ```C
 // Interval Timer Support
@@ -146,3 +146,4 @@ AZ_NODISCARD az_result az_platform_mutex_destroy(az_platform_mutex* mutex_handle
 ```
 
 At the time of writing, for the async operation mode, we have a proof-of-concept implementation relying on POSIX (adding to the existing SDK `az_posix.c` implementation).
+

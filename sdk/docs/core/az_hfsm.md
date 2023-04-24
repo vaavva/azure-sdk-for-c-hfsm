@@ -1,6 +1,6 @@
 # Hierarchical Finite State Machine
 
-This design document describes an implementation for Hierarchical (Finite) State Machines or Statechart execution engine. Statecharts have been introduced by [D. Harel in A visual formalism for complex systems](https://www.wisdom.weizmann.ac.il/~dharel/SCANNED.PAPERS/Statecharts.pdf) and is documented in detail within the [Practical UML Statecharts in C/C++, 2nd Ed by M. Samek].
+This design document describes an implementation for Hierarchical (Finite) State Machines or Statechart execution engine. Statecharts have been introduced by [D. Harel in A visual formalism for complex systems](https://www.wisdom.weizmann.ac.il/~dharel/SCANNED.PAPERS/Statecharts.pdf) and is documented in detail within the [Practical UML Statecharts in C/C++, 2nd Ed by M. Samek](https://www.state-machine.com/psicc2).
 
 Hierarchical Finite State Machines (HFSM) are extending the traditional state machine concept by adding the notion of hierarchy (composite) states. This document also introduces a coding technique that promotes cleaner and easier to understand source code and reduces the risk of overlooking exceptional situations.
 
@@ -21,7 +21,8 @@ The main goal of using a type of state machine is to allow support of both synch
 5. Reliable and self-healing: detecting failures and always required to react due to the hierarchical aspect, logging is built in.
 6. The programming model makes it mandatory for the developer to think of and implement all possible state-machine states.
 
-HFSMs support a limited subset of transitions covered by the following example: 
+HFSMs support a limited subset of transitions covered by the following example:
+
 ![core_hfsm_example.puml](https://www.plantuml.com/plantuml/png/ZL9HIyCm47xFhxZ7JLZxFaQPT2aKfTMqp0ULqBL10bsgsmqKyR_RD8RUN0NpqlHottVtVNVh8rO7FErRrbzGWUWwX4y6_N61j6cL_Hqki8JLBb863n_XAjn5i7z3bDfedCqP0HMML3K_H6CyxenHDMhpClbW8So_U9ABchTy8_DiPZyPBnzoSIElupBTylaVq7UD19aa_uTkqYBEiup7fUHRdfLIy7iYlD77sZKk1nkz2VOyNZt38ffGJ4Am63E6ah-A5NS3w8jQcrIdja-s4N-VdagZo5nyEsVJjEM9tWkb43gcSur14CmPSSgo-EKWVX49D3VoJI_1PN0XSa7LK3xVIi5BrhjWbzE99TX1CdaQn-s3JmYlbT5rxyLQcSOk-pS0)
 
 ## Design Details
@@ -35,7 +36,7 @@ Developers creating applications which use the new HFSMs framework must be famil
 - Hierarchy description: a get_parent function able to return the parent (State Handler) of a given State Handler. get_parent will return NULL for the root state.
 - Enter / Exit events are events that are guaranteed to be executed by the framework.
 
-The az_hfsm class diagram (note that class in this context would translate to a struct):
+The `az_hfsm` class diagram (note that class in this context would translate to a struct):
 
 ![core_hfsm_architecture.puml](https://www.plantuml.com/plantuml/png/fLFDQlCm4BphAGIvEFa-vm5C3-aXfJca0JSj_Q48LTuq0aSsAocGjddtIfQL7-Fsq0Q2sPdPdM7NdcZ3qTXDIOWekTQKlxFrIcye-I3K_L9X4K4PvdG6Ca_3rjTrLKgnOskkYX8mQD_0uRoHhwmI6MNjD7PaWl90I2LDWbNL6loddHd3ZjuWLreQMIbM0s2YAui2OdC1saZ5FHsW7zgrVMqaVnfH0_vgY0PLX4KcSQEj94sRvu1zi-daH3pesMyYrh8iWcli6P8z8Q3ivdW-iwl1TIb0ATfJNpwnwwlREPlUJs-MpFtpnpxyORRiW_DyaVVWozbykhWB7S_ZyVY5xEER5hEqzlzyfEmyOI0ARdX6jvKiHhwRkxiX5uQUZs5UHaWFo02nmcZJ5EnWXg1jQGBbhm8OhKwWCEmOpiSWiQ2ZDEt4xgT2mBEINdns534j8HDdxJ_CBm00)
 
@@ -125,9 +126,11 @@ Root : \t panic()
 ### Describing the hierarchy
 
 The hierarchy is described using a function that returns the parent of any given state handler:
-static az_hfsm_state_handleraz_event_policy_handler _get_parent(az_hfsm_state_handleraz_event_policy_handler child_state)
+
+```C
+static az_event_policy_handler _get_parent(az_event_policy_handler child_state)
 {
-  az_hfsm_state_handleraz_event_policy_handler parent_state;
+  az_event_policy_handler parent_state;
 
   if (child_state == root)
   {
@@ -142,6 +145,7 @@ static az_hfsm_state_handleraz_event_policy_handler _get_parent(az_hfsm_state_ha
 
   return parent_state;
 }
+```
 
 ### State Handler
 
@@ -249,6 +253,6 @@ The HFSM framework defines the event-data corresponding to the `AZ_HFSM_EVENT_ER
 
 ### Event Object Lifetime
 
-Events are always passed by value (on the stack). It is recommended that event data are modeled as C structs that avoid double-buffering of large data items (i.e. by relying on az_span).
+Events are always passed by value (on the stack). It is recommended that event data are modeled as C structs that avoid double-buffering of large data items (i.e. by relying on `az_span`).
 
 The application is responsible withfor maintaining run-to-completion semantics while the HFSM handler is running: any event-data must be available and remain unchanged throughout handler execution.
