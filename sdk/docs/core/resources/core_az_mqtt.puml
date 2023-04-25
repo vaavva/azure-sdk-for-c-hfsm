@@ -1,0 +1,46 @@
+@startuml
+
+abstract class az_mqtt_common
+{
+    -_az_event_pipeline* pipeline;
+    ---
+    +{abstract}az_mqtt_outbound_connect(cancellation_context, connect_data)
+    +{abstract}az_mqtt_outbound_sub(cancellation_context, connect_data)
+    +{abstract}az_mqtt_outbound_pub(cancellation_context, connect_data)
+    +{abstract}az_mqtt_outbound_disconnect(cancellation_context, connect_data)
+    ---
+    +az_mqtt_inbound_recv(recv_data)
+    +az_mqtt_inbound_connack(connack_data)
+    +az_mqtt_inbound_suback(suback_data)
+    +az_mqtt_inbound_puback(puback_data)
+    +az_mqtt_inbound_disconnect(disconn_data)
+}
+
+class az_mqtt_mosquitto
+{
+    - az_mqtt_options options;
+    - struct mosquitto* mosquitto_handle;
+    ---
+    +az_mqtt_outbound_connect(cancellation_context, connect_data)
+    +az_mqtt_outbound_sub(cancellation_context, connect_data)
+    +az_mqtt_outbound_pub(cancellation_context, connect_data)
+    +az_mqtt_outbound_disconnect(cancellation_context, connect_data)
+}
+
+enum az_event_type_mqtt
+{
+  AZ_MQTT_EVENT_CONNECT_REQ
+  AZ_MQTT_EVENT_CONNECT_RSP
+  AZ_MQTT_EVENT_DISCONNECT_REQ
+  AZ_MQTT_EVENT_DISCONNECT_RSP
+  AZ_MQTT_EVENT_PUB_RECV_IND
+  AZ_MQTT_EVENT_PUB_REQ
+  AZ_MQTT_EVENT_PUBACK_RSP
+  AZ_MQTT_EVENT_SUB_REQ
+  AZ_MQTT_EVENT_SUBACK_RSP
+}
+
+az_mqtt_common <|-- az_mqtt_mosquitto
+az_mqtt_common <- az_event_type_mqtt
+
+@enduml
