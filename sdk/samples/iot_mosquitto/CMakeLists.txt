@@ -24,9 +24,6 @@ if (WIN32)
   if(NOT pthread_FOUND)
     find_package(pthread REQUIRED)
   endif()
-  # HFSM_TODO: From https://github.com/microsoft/vcpkg/issues/23705 and associated PR:
-  #find_package(PThreads4W REQUIRED)
-  #target_link_libraries(main PRIVATE PThreads4W::PThreads4W)
 endif()
 
 # Azure IoT Samples Executables

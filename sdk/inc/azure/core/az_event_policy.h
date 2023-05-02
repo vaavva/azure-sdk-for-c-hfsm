@@ -11,7 +11,6 @@
 #define _az_EVENT_POLICY_H
 
 #include <azure/core/az_event.h>
-#include <azure/core/internal/az_hfsm_internal.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
 #include <azure/core/internal/az_precondition_internal.h>
@@ -50,18 +49,22 @@ AZ_INLINE az_result az_event_policy_send_inbound_event(
     az_event_policy* policy,
     az_event const event)
 {
-  _az_PRECONDITION_NOT_NULL(policy->inbound_handler);
-  az_result ret = policy->inbound_handler(policy, event);
+  az_event_policy* inbound = policy->inbound_policy;
+
+  _az_PRECONDITION_NOT_NULL(inbound);
+  _az_PRECONDITION_NOT_NULL(inbound->inbound_handler);
+
+  az_result ret = inbound->inbound_handler(inbound, event);
   
   if (az_result_failed(ret))
   {
     // Replace the original event with an error event that is flowed to the application.
-    ret = policy->inbound_handler(
+    ret = inbound->inbound_handler(
         policy,
         (az_event){ AZ_HFSM_EVENT_ERROR,
-                         &(_az_hfsm_event_data_error){
+                         &(az_hfsm_event_data_error){
                              .error_type = ret,
-                             .sender = (void*)policy->inbound_policy,
+                             .sender = policy,
                              .sender_event = event,
                          } });
   }
@@ -83,8 +86,12 @@ AZ_INLINE az_result az_event_policy_send_outbound_event(
     az_event_policy* policy,
     az_event const event)
 {
+  az_event_policy* outbound = policy->outbound_policy;
+  _az_PRECONDITION_NOT_NULL(outbound);
+  _az_PRECONDITION_NOT_NULL(outbound->outbound_handler);
+
   // The error is flowed back to the application.
-  return _az_hfsm_send_event((_az_hfsm*)policy->outbound_policy, event);  
+  return outbound->outbound_handler(outbound, event);
 }
 
 #include <azure/core/_az_cfg_suffix.h>

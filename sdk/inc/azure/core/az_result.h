@@ -26,8 +26,9 @@ enum
   _az_FACILITY_CORE_PLATFORM = 0x2,
   _az_FACILITY_CORE_JSON = 0x3,
   _az_FACILITY_CORE_HTTP = 0x4,
-  _az_FACILITY_IOT = 0x5,
-  _az_FACILITY_IOT_MQTT = 0x6,
+  _az_FACILITY_CORE_MQTT = 0x5,
+  _az_FACILITY_IOT = 0x6,
+  _az_FACILITY_IOT_MQTT = 0x7,
   _az_FACILITY_HFSM = 0x8,
 };
 
@@ -141,12 +142,17 @@ enum az_result_core
   /// Generic error in the HTTP transport adapter implementation.
   AZ_ERROR_HTTP_ADAPTER = _az_RESULT_MAKE_ERROR(_az_FACILITY_CORE_HTTP, 9),
 
-  /// The state is invalid for this signal.
-  AZ_ERROR_HFSM_INVALID_STATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
-
   /// MQTT initialization error.
-  AZ_ERROR_MQTT = _az_RESULT_MAKE_ERROR(_az_FACILITY_IOT_MQTT, 0),
+  AZ_ERROR_MQTT = _az_RESULT_MAKE_ERROR(_az_FACILITY_CORE_MQTT, 0),
 
+  /**
+   * @brief Indicates to the HFSM engine that the superstate should handle the event.
+   * @details This event should not be leaked out of the HFSM system (i.e. the root state should
+   * never return this az_result type). The event indicates normal operation but was constructed as
+   * an error to detect this case.
+   *
+   */
+  AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE = _az_RESULT_MAKE_ERROR(_az_FACILITY_HFSM, 0),
 };
 
 /**

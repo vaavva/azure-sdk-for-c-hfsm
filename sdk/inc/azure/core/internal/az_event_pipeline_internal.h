@@ -6,10 +6,6 @@
  * @brief Definition of #_az_event_pipeline and related types describing a bi-directional HFSM
  *        pipeline.
  *
- * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
- * available. To enable the blocking mode, set TRANSPORT_MQTT_SYNC.
- *
- * @note The blocking I/O model (when TRANSPORT_MQTT_SYNC is defined) is not thread-safe.
  */
 
 #ifndef _az_EVENT_PIPELINE_INTERNAL_H
@@ -37,9 +33,7 @@ struct _az_event_pipeline
   {
     az_event_policy* outbound_policy;
     az_event_policy* inbound_policy;
-#ifndef TRANSPORT_MQTT_SYNC
     az_platform_mutex mutex;
-#endif
   } _internal;
 };
 
@@ -93,59 +87,6 @@ AZ_NODISCARD az_result _az_event_pipeline_post_outbound_event(
     az_event const event);
 
 /**
- * @brief Sends an inbound event from the current policy.
- *
- * @note This function should be used during pipeline processing. The event is processed on the
- * current thread (stack).
- *
- * @param policy The current policy trying to send the event.
- * @param event The event being sent.
- * @return An #az_result value indicating the result of the operation.
- */
-AZ_NODISCARD az_result _az_event_pipeline_send_inbound_event(
-    az_event_policy* policy,
-    az_event const event);
-
-/**
- * @brief Sends an outbound event from the current policy.
- *
- * @note This function should be used during pipeline processing. The event is processed on the
- * current thread (stack).
- *
- * @param[in] policy The current policy trying to send the event.
- * @param[in] event The event being sent.
- * 
- * @return An #az_result value indicating the result of the operation.
- * @retval #AZ_OK Success.
- */
-AZ_NODISCARD az_result _az_event_pipeline_send_outbound_event(
-    az_event_policy* policy,
-    az_event const event);
-
-#ifdef TRANSPORT_MQTT_SYNC
-enum az_hfsm_event_type_pipeline
-{
-  /**
-   * @brief The event type posted by #_az_event_pipeline_sync_process_loop to allow syncrhonous
-   * pipeline event processing.
-   *
-   */
-  _az_event_pipeline_EVENT_PROCESS_LOOP = _az_HFSM_MAKE_EVENT(_az_FACILITY_IOT_MQTT, 9),
-};
-
-/**
- * @brief Blocking processing loop.
- * @note Application should call this only when TRANSPORT_MQTT_SYNC is defined.
- * @details This call will allow the MQTT stack to perform synchonous I/O. The current thread is
- * blocked until I/O is complete.
- *
- * @param pipeline The #_az_event_pipeline.
- * @return The #az_result error code.
- */
-AZ_NODISCARD az_result _az_event_pipeline_sync_process_loop(_az_event_pipeline* pipeline);
-#endif // TRANSPORT_MQTT_SYNC
-
-/**
  * @brief Pipeline interval timer interface
  */
 typedef struct
@@ -173,4 +114,4 @@ AZ_NODISCARD az_result _az_event_pipeline_timer_create(
 
 #include <azure/core/_az_cfg_suffix.h>
 
-#endif //_az_EVENT_PIPELINE_H
+#endif //_az_EVENT_PIPELINE_INTERNAL_H

@@ -184,9 +184,10 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));
     return 1;
   }
-
-  // HFSM_TODO : Mosquitto BUG: sleep required when connect async used on Windows.
-  //Sleep(500);
+  
+#ifdef PLATFORM_WIN32
+  Sleep(500);
+#endif
 
   /* Run the network loop in a background thread, this call returns quickly. */
   rc = mosquitto_loop_start(mosq);

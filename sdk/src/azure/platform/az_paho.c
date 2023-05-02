@@ -7,9 +7,6 @@
  * @brief Contains the az_mqtt.h interface implementation with Mosquitto MQTT
  * (https://github.com/eclipse/mosquitto).
  *
- * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
- * available. To enable the blocking mode, set TRANSPORT_MQTT_SYNC.
- *
  * @note The Mosquitto Lib documentation is available at:
  * https://mosquitto.org/api/files/mosquitto-h.html
  */
@@ -21,8 +18,7 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
-// HFSM_TODO: Following include for AZ_IOT_DEFAULT_MQTT_CONNECT_KEEPALIVE_SECONDS only.
-#include <azure/iot/az_iot_common.h>
+#include <azure/core/az_mqtt.h>
 
 #include <stdlib.h>
 #ifdef _MSC_VER

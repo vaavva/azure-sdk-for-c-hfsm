@@ -7,9 +7,6 @@
  * @brief Contains the az_mqtt.h interface implementation with Mosquitto MQTT
  * (https://github.com/eclipse/mosquitto).
  *
- * @remarks Both a non-blocking I/O (default) as well as a blocking I/O implementations are
- * available. To enable the blocking mode, set TRANSPORT_MQTT_SYNC.
- *
  * @note The Mosquitto Lib documentation is available at:
  * https://mosquitto.org/api/files/mosquitto-h.html
  */
@@ -21,8 +18,7 @@
 #include <azure/core/internal/az_precondition_internal.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
-// HFSM_TODO: Following include for AZ_LOG_HFSM_MQTT_STACK only.
-#include <azure/iot/az_iot_common.h>
+#include <azure/core/az_mqtt.h>
 
 #include <mosquitto.h>
 #include <pthread.h>
@@ -30,7 +26,7 @@
 
 #include <azure/core/_az_cfg.h>
 
-void _az_mosquitto_critical_error() { _az_mosquitto_critical_error(); }
+static void _az_mosquitto_critical_error() { az_platform_critical_error(); }
 
 AZ_INLINE az_result _az_result_from_mosq(int mosquitto_ret)
 {
@@ -48,7 +44,7 @@ AZ_INLINE az_result _az_result_from_mosq(int mosquitto_ret)
   return ret;
 }
 
-static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
+static void _az_mosquitto_on_connect(struct mosquitto* mosq, void* obj, int reason_code)
 {
   az_result ret;
   az_mqtt* me = (az_mqtt*)obj;
@@ -63,7 +59,10 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
     mosquitto_disconnect(mosq);
   }
 
-  ret = az_mqtt_inbound_connack(me, &(az_mqtt_connack_data){ reason_code });
+  ret = az_mqtt_inbound_connack(me, &(az_mqtt_connack_data){
+    .connack_reason = reason_code,
+    .tls_authentication_error = false
+  });
 
   if (az_result_failed(ret))
   {
@@ -71,7 +70,7 @@ static void _az_mosqitto_on_connect(struct mosquitto* mosq, void* obj, int reaso
   }
 }
 
-static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
+static void _az_mosquitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc)
 {
   (void)mosq;
   az_mqtt* me = (az_mqtt*)obj;
@@ -92,7 +91,7 @@ static void _az_mosqitto_on_disconnect(struct mosquitto* mosq, void* obj, int rc
  * been completely written to the operating system. For QoS 1 this means we
  * have received a PUBACK from the broker. For QoS 2 this means we have
  * received a PUBCOMP from the broker. */
-static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
+static void _az_mosquitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
 {
   (void)mosq;
   az_mqtt* me = (az_mqtt*)obj;
@@ -105,7 +104,7 @@ static void _az_mosqitto_on_publish(struct mosquitto* mosq, void* obj, int mid)
   }
 }
 
-static void _az_mosqitto_on_subscribe(
+static void _az_mosquitto_on_subscribe(
     struct mosquitto* mosq,
     void* obj,
     int mid,
@@ -126,7 +125,7 @@ static void _az_mosqitto_on_subscribe(
   }
 }
 
-static void _az_mosqitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int mid)
+static void _az_mosquitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int mid)
 {
   (void)mosq;
   (void)obj;
@@ -157,16 +156,14 @@ static void _az_mosquitto_on_message(
   }
 }
 
-static void _az_mosqitto_on_log(struct mosquitto* mosq, void* obj, int level, const char* str)
+static void _az_mosquitto_on_log(struct mosquitto* mosq, void* obj, int level, const char* str)
 {
   (void)mosq;
   (void)obj;
   (void)level;
-
-  if (_az_LOG_SHOULD_WRITE(AZ_LOG_HFSM_MQTT_STACK))
+  if (_az_LOG_SHOULD_WRITE(AZ_LOG_MQTT_STACK))
   {
-    // HFSM_TODO: add compiler supression macro instead of this workaround
-    _az_LOG_WRITE(AZ_LOG_HFSM_MQTT_STACK, az_span_create_from_str((char*)(uintptr_t)str));
+    _az_LOG_WRITE(AZ_LOG_MQTT_STACK, az_span_create_from_str((char*)(uintptr_t)str));
   }
 }
 
@@ -186,10 +183,13 @@ AZ_NODISCARD az_result az_mqtt_init(az_mqtt* mqtt, az_mqtt_options const* option
   return AZ_OK;
 }
 
-AZ_NODISCARD az_result
-az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_data* connect_data)
+AZ_NODISCARD az_result az_mqtt_outbound_connect(
+    az_mqtt* mqtt,
+    az_context* context,
+    az_mqtt_connect_data* connect_data)
 {
-  az_result ret;
+  (void)context;
+  az_result ret = AZ_OK;
   az_mqtt* me = (az_mqtt*)mqtt;
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
@@ -204,16 +204,17 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
 
   if (me->mosquitto_handle == NULL)
   {
-    return AZ_ERROR_OUT_OF_MEMORY;
+    ret = AZ_ERROR_OUT_OF_MEMORY;
+    return ret;
   }
 
   /* Configure callbacks. This should be done before connecting ideally. */
-  mosquitto_log_callback_set(me->mosquitto_handle, _az_mosqitto_on_log);
-  mosquitto_connect_callback_set(me->mosquitto_handle, _az_mosqitto_on_connect);
-  mosquitto_disconnect_callback_set(me->mosquitto_handle, _az_mosqitto_on_disconnect);
-  mosquitto_publish_callback_set(me->mosquitto_handle, _az_mosqitto_on_publish);
-  mosquitto_subscribe_callback_set(me->mosquitto_handle, _az_mosqitto_on_subscribe);
-  mosquitto_unsubscribe_callback_set(me->mosquitto_handle, _az_mosqitto_on_unsubscribe);
+  mosquitto_log_callback_set(me->mosquitto_handle, _az_mosquitto_on_log);
+  mosquitto_connect_callback_set(me->mosquitto_handle, _az_mosquitto_on_connect);
+  mosquitto_disconnect_callback_set(me->mosquitto_handle, _az_mosquitto_on_disconnect);
+  mosquitto_publish_callback_set(me->mosquitto_handle, _az_mosquitto_on_publish);
+  mosquitto_subscribe_callback_set(me->mosquitto_handle, _az_mosquitto_on_subscribe);
+  mosquitto_unsubscribe_callback_set(me->mosquitto_handle, _az_mosquitto_on_unsubscribe);
   mosquitto_message_callback_set(me->mosquitto_handle, _az_mosquitto_on_message);
 
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_tls_set(
@@ -223,14 +224,13 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
       NULL,
       (const char*)az_span_ptr(connect_data->certificate.cert),
       (const char*)az_span_ptr(connect_data->certificate.key),
-      NULL))); // HFSM_TODO: Key callback for cases where the PEM files are encrypted at rest.
+      NULL)));
 
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_username_pw_set(
       me->mosquitto_handle,
       (const char*)az_span_ptr(connect_data->username),
       (const char*)az_span_ptr(connect_data->password))));
 
-#ifndef TRANSPORT_MQTT_SYNC
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_connect_async(
       (struct mosquitto*)me->mosquitto_handle,
       (char*)az_span_ptr(connect_data->host),
@@ -239,20 +239,13 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
 
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_loop_start(me->mosquitto_handle)));
 
-#else
-  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_connect(
-      (struct mosquitto*)me->mosquitto_handle,
-      (char*)az_span_ptr(connect_data->host),
-      connect_data->port,
-      AZ_MQTT_KEEPALIVE_SECONDS)));
-#endif
-
-  return AZ_OK;
+  return ret;
 }
 
 AZ_NODISCARD az_result
 az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_data)
 {
+  (void)context;
   return _az_result_from_mosq(mosquitto_subscribe(
       mqtt->mosquitto_handle,
       &sub_data->out_id,
@@ -263,6 +256,7 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 AZ_NODISCARD az_result
 az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_data)
 {
+  (void)context;
   return _az_result_from_mosq(mosquitto_publish(
       mqtt->mosquitto_handle,
       &pub_data->out_id,
@@ -275,7 +269,7 @@ az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_d
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context)
 {
-
+  (void)context;
   return _az_result_from_mosq(mosquitto_disconnect(mqtt->mosquitto_handle));
 }
 

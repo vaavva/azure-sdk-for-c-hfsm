@@ -15,14 +15,22 @@
 
 void _timer_callback_handler(union sigval sv);
 
-// TODO #2364 : Implement runtime detection of the POSIX high-res timer if available 
-// (fallback to time(NULL) low res if not).
 AZ_NODISCARD az_result az_platform_clock_msec(int64_t* out_clock_msec)
 {
   _az_PRECONDITION_NOT_NULL(out_clock_msec);
+  struct timespec curr_time;
 
-  // NOLINTNEXTLINE(bugprone-misplaced-widening-cast)
-  *out_clock_msec = (int64_t)((time(NULL)) * _az_TIME_MILLISECONDS_PER_SECOND);
+  if (clock_getres(CLOCK_MONOTONIC, &curr_time) == 0) // Check if high-res timer is available
+  {
+    clock_gettime(CLOCK_MONOTONIC, &curr_time);
+    *out_clock_msec = ((int64_t)curr_time.tv_sec * _az_TIME_MILLISECONDS_PER_SECOND) +
+        ((int64_t)curr_time.tv_nsec / _az_TIME_NANOSECONDS_PER_MILLISECOND);
+  }
+  else
+  {
+    // NOLINTNEXTLINE(bugprone-misplaced-widening-cast)
+    *out_clock_msec = (int64_t)((time(NULL)) * _az_TIME_MILLISECONDS_PER_SECOND);
+  }
 
   return AZ_OK;
 }

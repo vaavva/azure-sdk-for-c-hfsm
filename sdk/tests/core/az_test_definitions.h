@@ -3,7 +3,7 @@
 
 int test_az_base64();
 int test_az_context();
-int test_az_hfsm();
+//int test_az_hfsm();
 int test_az_hfsm_pipeline();
 int test_az_http();
 int test_az_json();

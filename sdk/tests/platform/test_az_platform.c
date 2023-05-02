@@ -15,6 +15,7 @@
 #include <cmocka.h>
 
 #define RANDOM_TRIES 100
+#define TEST_MILLISECOND_TIME 10
 
 static int test_timer_callback_counter = 0;
 
@@ -116,21 +117,20 @@ static void test_az_platform_clock_msec_once(void** state)
   assert_true(test_clock >= 0);
 }
 
-static void test_az_platform_sleep_msec_one_second(void** state)
+static void test_az_platform_sleep_msec(void** state)
 {
   (void)state;
 
   int64_t test_clock_one = 0; // Time before sleep.
   int64_t test_clock_two = 0; // Time after sleep.
-  int64_t test_expected_time = _az_TIME_MILLISECONDS_PER_SECOND;
 
   assert_int_equal(az_platform_clock_msec(&test_clock_one), AZ_OK);
-  assert_int_equal(az_platform_sleep_msec(_az_TIME_MILLISECONDS_PER_SECOND), AZ_OK);
+  assert_int_equal(az_platform_sleep_msec(TEST_MILLISECOND_TIME), AZ_OK);
   assert_int_equal(az_platform_clock_msec(&test_clock_two), AZ_OK);
   
   assert_int_not_equal(test_clock_one, 0);
   assert_int_not_equal(test_clock_two, 0);
-  assert_true((test_clock_two - test_clock_one) >= test_expected_time);
+  assert_true((test_clock_two - test_clock_one) >= TEST_MILLISECOND_TIME);
 }
 
 static void test_az_platform_get_random(void** state)
@@ -154,7 +154,7 @@ static void test_az_platform_get_random(void** state)
   assert_true(test_random_2 != test_random_1);
 }
 
-static void test_az_platform_timer_one_sec(void** state)
+static void test_az_platform_timer_single(void** state)
 {
   (void)state;
 
@@ -162,7 +162,6 @@ static void test_az_platform_timer_one_sec(void** state)
   int64_t test_clock_one = 0; // Time before timer start.
   int64_t test_clock_two = 0; // Time after timer callback.
   test_timer_callback_counter = 0;
-  int64_t test_expected_time = _az_TIME_MILLISECONDS_PER_SECOND;
 
   // Create a one second timer.
   assert_int_equal(az_platform_timer_create(
@@ -172,15 +171,15 @@ static void test_az_platform_timer_one_sec(void** state)
         AZ_OK);
   assert_int_equal(az_platform_clock_msec(&test_clock_one), AZ_OK);
   assert_int_equal(az_platform_timer_start(
-        &test_timer_handle, _az_TIME_MILLISECONDS_PER_SECOND), AZ_OK);
+        &test_timer_handle, TEST_MILLISECOND_TIME), AZ_OK);
 
-  // Sleep for two seconds until after timer callback is triggered.
-  assert_int_equal(az_platform_sleep_msec(2 * _az_TIME_MILLISECONDS_PER_SECOND), AZ_OK);
+  // Sleep until callback is triggered
+  assert_int_equal(az_platform_sleep_msec(2 * TEST_MILLISECOND_TIME), AZ_OK);
 
   assert_int_equal(test_timer_callback_counter, 1);
   assert_int_not_equal(test_clock_one, 0);
   assert_int_not_equal(test_clock_two, 0);
-  assert_true((test_clock_two - test_clock_one) >= test_expected_time);
+  assert_true((test_clock_two - test_clock_one) >= TEST_MILLISECOND_TIME);
 
   assert_int_equal(az_platform_timer_destroy(&test_timer_handle), AZ_OK);
 }
@@ -206,11 +205,11 @@ static void test_az_platform_timer_double(void** state)
         AZ_OK);
 
   assert_int_equal(az_platform_timer_start(
-        &test_timer_handle_1, _az_TIME_MILLISECONDS_PER_SECOND), AZ_OK);
+        &test_timer_handle_1, TEST_MILLISECOND_TIME), AZ_OK);
   assert_int_equal(az_platform_timer_start(
-        &test_timer_handle_2, 2 * _az_TIME_MILLISECONDS_PER_SECOND), AZ_OK);
+        &test_timer_handle_2, 2 * TEST_MILLISECOND_TIME), AZ_OK);
 
-  assert_int_equal(az_platform_sleep_msec(3 * _az_TIME_MILLISECONDS_PER_SECOND), AZ_OK);
+  assert_int_equal(az_platform_sleep_msec(3 * TEST_MILLISECOND_TIME), AZ_OK);
 
   assert_int_equal(test_timer_callback_counter, 2);
   assert_int_not_equal(test_clock_one, 0);
@@ -265,9 +264,9 @@ int test_az_platform()
     cmocka_unit_test(test_az_platform_mutex_destroy_null),
 #endif
     cmocka_unit_test(test_az_platform_clock_msec_once),
-    cmocka_unit_test(test_az_platform_sleep_msec_one_second),
+    cmocka_unit_test(test_az_platform_sleep_msec),
     cmocka_unit_test(test_az_platform_get_random),
-    cmocka_unit_test(test_az_platform_timer_one_sec),
+    cmocka_unit_test(test_az_platform_timer_single),
     cmocka_unit_test(test_az_platform_timer_double),
     cmocka_unit_test(test_az_platform_mutex),
     cmocka_unit_test(test_az_platform_mutex_double)

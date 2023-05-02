@@ -17,18 +17,14 @@
 
 #include <azure/core/az_span.h>
 #include <azure/core/az_event.h>
+#include <azure/core/internal/az_event_pipeline_internal.h>
 
 #include <azure/core/_az_cfg_prefix.h>
 
 /**
- * @brief MQTT Library handle (defined by implementation)
+ * @brief MQTT Library handle (type defined by implementation)
  */
 typedef struct az_mqtt az_mqtt;
-
-/**
- * @brief MQTT Inbound handler.
- */
-typedef void (*az_mqtt_inbound_handler)(az_mqtt* mqtt, az_event event);
 
 /**
  * @brief MQTT common options that span across implementations.
@@ -39,6 +35,7 @@ typedef struct
    * The CA Trusted Roots span interpretable by the underlying MQTT implementation.
    */
   az_span certificate_authority_trusted_roots;
+  bool clean_session;
 } az_mqtt_options_common;
 
 /**
@@ -46,7 +43,7 @@ typedef struct
 */
 typedef struct
 {
-  az_mqtt_inbound_handler _inbound_handler;
+  _az_event_pipeline* pipeline;
 } az_mqtt_common;
 
 #include <azure/core/_az_cfg_suffix.h>

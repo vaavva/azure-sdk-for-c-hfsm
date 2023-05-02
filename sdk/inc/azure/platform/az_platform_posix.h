@@ -18,7 +18,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <time.h>
-#include <azure/core/internal/az_platform_internal.h>
+#include <azure/platform/internal/az_platform_internal.h>
 
 #include <azure/core/_az_cfg_prefix.h>
 

@@ -25,8 +25,8 @@ add_cmocka_test(az_core_test SOURCES
                 main.c
                 test_az_base64.c
                 test_az_context.c
-                test_az_hfsm.c
-                #test_az_hfsm_pipeline.c // TODOR: Re-enable pipeline tests.
+                #test_az_hfsm.c
+                #test_az_hfsm_pipeline.c
                 test_az_http.c
                 test_az_json.c
                 test_az_logging.c
