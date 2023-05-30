@@ -8,13 +8,13 @@ map Application {
     Connection => Callback
 }
 
-map DPS_API {
+map DPSv2_API {
 }
 
-map ADU_API {
+map ADUv2_API {
 }
 
-map CSR_API {
+map E4K_KV_API {
 }
 
 package Event_Pipeline
@@ -23,11 +23,11 @@ package Event_Pipeline
     }
 
     package SubClients {
-        map DPS {
+        map DPSv2 {
         }
-        map ADU {
+        map ADUv2 {
         }
-        map CSR {
+        map E4K_KV {
         }
     }
 
@@ -42,21 +42,21 @@ package Event_Pipeline
     }
 }
 
-Application --> DPS_API
-Application --> ADU_API
-Application --> CSR_API
+Application --> DPSv2_API
+Application --> ADUv2_API
+Application --> E4K_KV_API
 
-DPS_API --> Optional_Policy1
-ADU_API --> Optional_Policy1
-CSR_API --> Optional_Policy1
+DPSv2_API --> Optional_Policy1
+ADUv2_API --> Optional_Policy1
+E4K_KV_API --> Optional_Policy1
 
-Optional_Policy1 <--> DPS
-Optional_Policy1 <--> ADU 
-Optional_Policy1 <--> CSR 
+Optional_Policy1 <--> DPSv2
+Optional_Policy1 <--> ADUv2 
+Optional_Policy1 <--> E4K_KV 
 
-DPS <--> Connection
-ADU <--> Connection
-CSR <--> Connection
+DPSv2 <--> Connection
+ADUv2 <--> Connection
+E4K_KV <--> Connection
 Connection <--> Optional_Policy2 
 Optional_Policy2 <--> MQTT
 @enduml

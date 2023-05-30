@@ -14,6 +14,7 @@ typedef struct
   az_mqtt_options_common platform_options;
   az_span openssl_engine;
   struct mosquitto* mosquitto_handle;
+  //
 } az_mqtt_options;
 
 struct az_mqtt
@@ -23,7 +24,7 @@ struct az_mqtt
     az_mqtt_options options;
   } _internal;
 
-  struct mosquitto* mosquitto_handle;
+  struct mosquitto* mosquitto_handle; // TODO: internal
 };
 
 #include <azure/core/_az_cfg_suffix.h>
