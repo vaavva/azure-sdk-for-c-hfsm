@@ -82,7 +82,7 @@ typedef struct
 {
   az_span topic_filter;
   int8_t qos;
-  int32_t out_id;
+  int32_t *out_id;
 } az_mqtt_sub_data;
 
 typedef struct

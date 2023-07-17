@@ -217,11 +217,11 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
   mosquitto_unsubscribe_callback_set(me->mosquitto_handle, _az_mosqitto_on_unsubscribe);
   mosquitto_message_callback_set(me->mosquitto_handle, _az_mosquitto_on_message);
 
+_az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_int_option(me->mosquitto_handle, MOSQ_OPT_TLS_USE_OS_CERTS, true)));
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_tls_set(
       me->mosquitto_handle,
-      (const char*)az_span_ptr(
-          me->_internal.options.platform_options.certificate_authority_trusted_roots),
       NULL,
+      "t",
       (const char*)az_span_ptr(connect_data->certificate.cert),
       (const char*)az_span_ptr(connect_data->certificate.key),
       NULL))); // HFSM_TODO: Key callback for cases where the PEM files are encrypted at rest.
@@ -256,7 +256,7 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 {
   return _az_result_from_mosq(mosquitto_subscribe(
       mqtt->mosquitto_handle,
-      &sub_data->out_id,
+      sub_data->out_id,
       (char*)az_span_ptr(sub_data->topic_filter),
       sub_data->qos));
 }
