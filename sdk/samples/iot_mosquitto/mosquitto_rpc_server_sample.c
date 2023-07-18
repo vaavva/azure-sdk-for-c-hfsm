@@ -15,7 +15,6 @@
 #include <azure/az_core.h>
 #include <azure/az_iot.h>
 #include <azure/core/az_log.h>
-#include <azure/iot/az_mqtt_rpc_server.h>
 
 static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/vaavva/repos/MqttApplicationSamples/scenarios/command/vehicle03.pem");
 static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/vaavva/repos/MqttApplicationSamples/scenarios/command/vehicle03.key");
@@ -23,11 +22,7 @@ static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/vaavva/repos/Mq
 static char client_id_buffer[64];
 static char username_buffer[128];
 
-static char topic_buffer[256];
-static char payload_buffer[256];
-static char operation_id_buffer[64];
-
-static char correlation_id_buffer[64];
+static char correlation_id_buffer[37];
 static char response_topic_buffer[256];
 static char sub_topic_buffer[256];
 
@@ -47,6 +42,14 @@ void az_platform_critical_error()
 
   while (1)
     ;
+}
+
+az_iot_status execute_command(az_mqtt_rpc_server_pending_command* command_data)
+{
+  // for now, just print details from the command
+  printf(LOG_APP "Executing command to return to: %s\n", az_span_ptr(command_data->response_topic));
+
+  return AZ_IOT_STATUS_OK;
 }
 
 az_result iot_callback(az_iot_connection* client, az_event event)
@@ -82,15 +85,14 @@ az_result iot_callback(az_iot_connection* client, az_event event)
 
     case AZ_EVENT_RPC_SERVER_EXECUTE_COMMAND:
     {
-      // az_mqtt_recv_data* recv_data = (az_mqtt_recv_data*)event.data;
       az_mqtt_rpc_server_pending_command* command_data = (az_mqtt_rpc_server_pending_command*)event.data;
       // function to actually handle command execution
-      printf(LOG_APP "Executing command to return to: %s\n", az_span_ptr(command_data->response_topic));
+      az_iot_status rc = execute_command(command_data);
       az_mqtt_rpc_server_execution_data return_data = {
         .correlation_id = command_data->correlation_id,
         .response = AZ_SPAN_FROM_STR("dummy payload"),
         .response_topic = command_data->response_topic,
-        .status = AZ_IOT_STATUS_OK
+        .status = rc
       };
       LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_execution_finish(&rpc_server, &rpc_server_context, &return_data));
       break;

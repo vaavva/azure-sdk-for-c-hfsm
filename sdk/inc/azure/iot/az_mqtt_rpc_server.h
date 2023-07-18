@@ -19,11 +19,6 @@
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_common.h>
 #include <azure/iot/az_iot_connection.h>
-#include <azure/iot/internal/az_iot_subclients_policy.h>
-
-
-#include <stdbool.h>
-#include <stdint.h>
 
 #include <azure/core/_az_cfg_prefix.h>
 
@@ -70,6 +65,7 @@ typedef struct
 
   az_mqtt_rpc_server_pending_command pending_command;
 
+  // name/type of command handled by this subclient (needed?)
   az_span command_handled;
 
   /**
@@ -82,7 +78,7 @@ typedef struct
    * false.
    *
    */
-  az_span client_id_buffer;
+  // az_span client_id_buffer;
 
 
 } az_mqtt_rpc_server_options;
@@ -121,7 +117,7 @@ struct az_mqtt_rpc_server
      * @brief Event pipeline for the MQTT connection.
      *
      */
-    _az_event_pipeline event_pipeline;
+    // _az_event_pipeline event_pipeline;
 
     /**
      * @brief Options for the MQTT RPC Server.

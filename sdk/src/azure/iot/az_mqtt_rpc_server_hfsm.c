@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 #include <azure/core/az_mqtt.h>
-// #include <azure/core/az_mqtt_rpc_server.h>
 #include <azure/iot/az_mqtt_rpc_server.h>
 #include <azure/core/az_platform.h>
 #include <azure/core/az_result.h>
@@ -11,9 +10,9 @@
 #include <azure/core/_az_cfg.h>
 
 static az_result root(az_event_policy* me, az_event event);
-// static az_result idle(az_event_policy* me, az_event event);
 static az_result subscribing(az_event_policy* me, az_event event);
 static az_result waiting(az_event_policy* me, az_event event);
+
 AZ_INLINE az_result _handle_request(az_mqtt_rpc_server* me, az_mqtt_recv_data* data);
 
 static az_event_policy_handler _get_parent(az_event_policy_handler child_state)
@@ -74,6 +73,8 @@ static az_result root(az_event_policy* me, az_event event)
       break;
 
     case AZ_MQTT_EVENT_PUBACK_RSP:
+    case AZ_EVENT_IOT_CONNECTION_OPEN_REQ:
+    case AZ_MQTT_EVENT_CONNECT_RSP:
       break;
 
     default:
@@ -98,11 +99,11 @@ static az_result subscribing(az_event_policy* me, az_event event)
   switch (event.type)
   {
     case AZ_HFSM_EVENT_ENTRY:
-      // start timer
+      // TODO: start timer
       break;
 
     case AZ_HFSM_EVENT_EXIT:
-      // stop timer
+      // TODO: stop timer
       break;
 
     case AZ_MQTT_EVENT_SUBACK_RSP:
@@ -124,13 +125,11 @@ static az_result subscribing(az_event_policy* me, az_event event)
       {
         _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, subscribing, waiting));
         _az_RETURN_IF_FAILED(_handle_request(this_policy, recv_data));
-        // _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, subscribing, waiting));
       }
       break;
 
     case AZ_HFSM_EVENT_TIMEOUT:
       // resend sub request
-      // this_policy->_internal.options._az_mqtt_rpc_server_pending_sub_id = 234; //TODO: generate
       _az_RETURN_IF_FAILED(az_event_policy_send_outbound_event((az_event_policy*)me, (az_event)
             { .type = AZ_MQTT_EVENT_SUB_REQ,
               .data = &(az_mqtt_sub_data)
@@ -141,84 +140,51 @@ static az_result subscribing(az_event_policy* me, az_event event)
             }));
       break;
 
+    case AZ_MQTT_EVENT_PUBACK_RSP:
+    case AZ_EVENT_IOT_CONNECTION_OPEN_REQ:
+    case AZ_MQTT_EVENT_CONNECT_RSP:
+      break;
+
     default:
       // TODO 
-      // ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
       break;
   }
 
   return ret;
 }
 
-AZ_INLINE az_result _build_response(az_mqtt_rpc_server* me, az_mqtt_pub_data *out_data, int32_t status, az_span payload)
+AZ_INLINE az_result _build_response(az_mqtt_rpc_server* me, az_mqtt_pub_data *out_data, az_iot_status status, az_span payload)
 {
   az_mqtt_rpc_server* this_policy = (az_mqtt_rpc_server*)me;
   out_data->topic = this_policy->_internal.options.pending_command.response_topic;
   out_data->payload = payload;
   out_data->qos = this_policy->_internal.options.response_qos;
-  // az_mqtt_pub_data data = {
-  //   .topic = this_policy->_internal.options.pending_command.response_topic,
-  //   .payload = payload,
-  //   .qos = this_policy->_internal.options.response_qos,
-  //   //.status = status
-  // };
+  // out_data->status = status;
   return AZ_OK;
 
 }
 
 AZ_INLINE az_result _build_finished_response(az_mqtt_rpc_server* me, az_event event, az_mqtt_pub_data *out_data)
 {
-  // add validation and payload building
+  // add validation
   az_mqtt_rpc_server_execution_data* data = (az_mqtt_rpc_server_execution_data*)event.data;
-  return _build_response(me, out_data, 200, data->response);
+  return _build_response(me, out_data, data->status, data->response);
 }
 
 AZ_INLINE az_result _build_error_response(az_mqtt_rpc_server* me, az_span error_message, az_mqtt_pub_data *out_data)
 {
-  return _build_response(me, out_data, 500, error_message);
+  // add handling for different error types
+  return _build_response(me, out_data, AZ_IOT_STATUS_SERVER_ERROR, error_message);
 }
 
-// AZ_INLINE az_result _rpc_start_timer(az_mqtt_rpc_server* me)
-// {
-//   _az_event_pipeline* pipeline = &me->_internal.connection->_internal.event_pipeline;
-//   _az_event_pipeline_timer* timer = &me->_internal.register_data->_internal.register_timer;
-
-//   _az_RETURN_IF_FAILED(_az_event_pipeline_timer_create(pipeline, timer));
-
-//   int32_t delay_milliseconds
-//       = (int32_t)me->_internal.register_data->_internal.retry_after_seconds * 1000;
-//   if (delay_milliseconds <= 0)
-//   {
-//     delay_milliseconds = AZ_IOT_PROVISIONING_RETRY_MINIMUM_TIMEOUT_SECONDS * 1000;
-//   }
-
-//   _az_RETURN_IF_FAILED(az_platform_timer_start(&timer->platform_timer, delay_milliseconds));
-// }
-
-// AZ_INLINE az_result _rpc_stop_timer(az_mqtt_rpc_server* me)
-// {
-//   _az_event_pipeline_timer* timer = &me->_internal.register_data->_internal.register_timer;
-//   return az_platform_timer_destroy(&timer->platform_timer);
-// }
-
-// ' state handle_request
-// ' handle_request : parse MQTT5 properties
-// ' handle_request : if (!correlationId) ^ERROR and go back to Waiting
-// ' handle_request : start timer: creates cancellation token based on $expiresIn user property and saves in pending_command
-// ' handle_request : if (not expired)
-// ' handle_request : \tdeserialize request payload
-// ' handle_request : \t^pipeline_send_inbound(request) for execution of the command
-// ' handle_request : \t\tcorrelation id
-// ' handle_request : \t\tclient id (command requestor)
-// ' handle_request : \t\ttopic
-// ' handle_request : \t\trequest payload
 AZ_INLINE az_result _handle_request(az_mqtt_rpc_server* this_policy, az_mqtt_recv_data* data)
 {
   // parse MQTT5 properties
   this_policy->_internal.options.pending_command.correlation_id = AZ_SPAN_FROM_STR("1234"); //TODO: parse from properties
   this_policy->_internal.options.pending_command.response_topic = AZ_SPAN_FROM_STR("vehicles/vehicle03/command/unlock/response"); //TODO: parse from properties
 
-  //error validation on presence of properties
+  //error validation on presence of properties (correlation id, response topic)
 
   //validate request isn't expired?
 
@@ -259,8 +225,6 @@ static az_result waiting(az_event_policy* me, az_event event)
       {
         _az_RETURN_IF_FAILED(_handle_request(this_policy, recv_data));
       }
-      // handle request
-      // _az_RETURN_IF_FAILED(_handle_request(this_policy, event));
       // start timer
       break;
 
@@ -269,11 +233,9 @@ static az_result waiting(az_event_policy* me, az_event event)
       // stop timer
       // clear pending correlation id
       // create response message/payload
-      // az_mqtt_rpc_server_execution_data* data = (az_mqtt_rpc_server_execution_data*)event.data;
-      // if (this)
-
       az_mqtt_pub_data data;
       _az_RETURN_IF_FAILED(_build_finished_response(this_policy, event, &data));
+      
       // send publish
       _az_RETURN_IF_FAILED(az_event_policy_send_outbound_event((az_event_policy*)me, (az_event){.type = AZ_MQTT_EVENT_PUB_REQ, .data = &data}));
       // else log and ignore
@@ -288,7 +250,9 @@ static az_result waiting(az_event_policy* me, az_event event)
       break;
 
     case AZ_MQTT_EVENT_SUBACK_RSP:
-      // ignore
+    case AZ_MQTT_EVENT_PUBACK_RSP:
+    case AZ_EVENT_IOT_CONNECTION_OPEN_REQ:
+    case AZ_MQTT_EVENT_CONNECT_RSP:
       break;
 
     case AZ_HFSM_EVENT_EXIT:
@@ -303,9 +267,6 @@ static az_result waiting(az_event_policy* me, az_event event)
 
   return ret;
 }
-
-
-
 
 AZ_NODISCARD az_result
 _az_rpc_server_policy_init(_az_hfsm* hfsm,
@@ -335,22 +296,16 @@ AZ_NODISCARD az_result az_mqtt_rpc_server_register(
 
   _az_PRECONDITION_VALID_SPAN(options->sub_topic, 1, false);
   // _az_PRECONDITION_VALID_SPAN(options->command_handled, 1, false);
-  // _az_PRECONDITION_VALID_SPAN(options->client_id_buffer, 1, false);
   _az_PRECONDITION_VALID_SPAN(options->pending_command.correlation_id, 1, false);
   _az_PRECONDITION_VALID_SPAN(options->pending_command.response_topic, 1, false);
 
   // client->_internal.options.command_handled = options->command_handled;
   client->_internal.options.pending_command.correlation_id = options->pending_command.correlation_id;
   client->_internal.options.pending_command.response_topic = options->pending_command.response_topic;
-  // client->_internal.options.client_id_buffer = options->client_id_buffer;
-
 
   client->_internal.options.sub_qos = 1;
   client->_internal.options.response_qos = 1;
   client->_internal.options.sub_topic = AZ_SPAN_FROM_STR("vehicles/map-app/vehicle03/commands/unlock");
-  // client->_internal.options._az_mqtt_rpc_server_pending_sub_id = 234; //TODO: generate
-
-  // printf("1\n");
 
   return az_event_policy_send_outbound_event((az_event_policy*)client, (az_event)
     { .type = AZ_MQTT_EVENT_SUB_REQ,
@@ -368,17 +323,12 @@ AZ_NODISCARD az_result az_rpc_server_init(
 {
   _az_PRECONDITION_NOT_NULL(client);
 
-
-  // client->_internal.options = *options;
-
   client->_internal.connection = connection;
 
   // Initialize the stateful sub-client.
   if ((connection != NULL) && (az_span_size(connection->_internal.options.hostname) == 0))
   {
-    // connection->_internal.options.hostname = client->_internal.global_device_endpoint;
-
-    connection->_internal.options.hostname = AZ_SPAN_FROM_STR("hostname");
+    // connection->_internal.options.hostname = AZ_SPAN_FROM_STR("hostname");
     connection->_internal.options.client_id_buffer = AZ_SPAN_FROM_STR("vehicle03");
     connection->_internal.options.username_buffer = AZ_SPAN_FROM_STR("vehicle03");
     connection->_internal.options.password_buffer = AZ_SPAN_EMPTY;
