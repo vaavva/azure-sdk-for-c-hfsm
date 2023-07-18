@@ -61,6 +61,7 @@ add_library (az_iot_provisioning
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_provisioning_client.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_provisioning_client_sas.c
   ${CMAKE_CURRENT_LIST_DIR}/az_iot_provisioning_hfsm.c
+  ${CMAKE_CURRENT_LIST_DIR}/az_mqtt_rpc_server_hfsm.c
 )
 
 target_include_directories (az_iot_provisioning

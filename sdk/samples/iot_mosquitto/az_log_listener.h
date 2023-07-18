@@ -173,6 +173,12 @@ AZ_INLINE void az_sdk_log_callback(az_log_classification classification, az_span
     case AZ_IOT_PROVISIONING_EVENT_REGISTER_IND:
       class_str = "AZ_IOT_PROVISIONING_EVENT_REGISTER_IND";
       break;
+    case AZ_EVENT_MQTT_RPC_SERVER_EXECUTION_FINISH:
+      class_str = "AZ_EVENT_MQTT_RPC_SERVER_EXECUTION_FINISH";
+      break;
+    case AZ_EVENT_RPC_SERVER_EXECUTE_COMMAND:
+      class_str = "AZ_EVENT_RPC_SERVER_EXECUTE_COMMAND";
+      break;
     default:
       class_str = NULL;
   }

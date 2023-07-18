@@ -170,4 +170,41 @@ endif()
 
 create_map_file(mosquitto_async_sample mosquitto_async_sample.map)
 
+
+# Azure IoT State Machine RPC Server Sample
+add_executable (mosquitto_rpc_server_sample
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_rpc_server_sample.c
+)
+add_compile_definitions(mosquitto_rpc_server_sample
+  LIBMOSQUITTO_STATIC
+)
+
+target_include_directories(mosquitto_rpc_server_sample
+  PRIVATE
+    ${MOSQUITTO_INCLUDE_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_link_libraries(mosquitto_rpc_server_sample
+  PRIVATE
+    ${MOSQUITTO_LIBRARIES}
+    ${PTHREAD_LIBRARIES}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
+    az::mqtt_impl
+    az::iot::hub
+    az::iot::provisioning
+    rt  #HFSM_TODO: Test only: -lrt (Posix) should be included to az_platform, not here.
+)
+
+if(WIN32)
+target_link_libraries(mosquitto_rpc_server_sample
+  PRIVATE
+  crypt32
+  Ws2_32
+)
+endif()
+
+create_map_file(mosquitto_rpc_server_sample mosquitto_rpc_server_sample.map)
+
 endif() # TRANSPORT_MOSQUITTO
