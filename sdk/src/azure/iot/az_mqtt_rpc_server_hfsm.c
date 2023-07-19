@@ -88,6 +88,19 @@ static az_result root(az_event_policy* me, az_event event)
   return ret;
 }
 
+AZ_NODISCARD AZ_INLINE bool az_span_topic_matches_sub(az_span sub, az_span topic)
+{
+  bool ret;
+  int mosq_ret;
+  mosq_ret = mosquitto_topic_matches_sub(az_span_ptr(sub), az_span_ptr(topic), &ret);
+  if (MOSQ_ERR_SUCCESS != mosq_ret)
+  {
+    printf("Error comparing topic and subscription topic\n");
+    ret = false;
+  }
+  return ret;
+}
+
 static az_result subscribing(az_event_policy* me, az_event event)
 {
   az_result ret = AZ_OK;
@@ -122,8 +135,7 @@ static az_result subscribing(az_event_policy* me, az_event event)
       // TODO: az_mqtt_recv_data or az_mqtt_pub_data?
       az_mqtt_recv_data* recv_data = (az_mqtt_recv_data*)event.data;
       // Ensure pub is of the right topic
-      // TODO: use proper topic compare function that handles wildcards
-      if (az_span_is_content_equal(recv_data->topic, this_policy->_internal.options.sub_topic))
+      if (az_span_topic_matches_sub(this_policy->_internal.options.sub_topic, recv_data->topic))
       {
         _az_RETURN_IF_FAILED(_az_hfsm_transition_peer((_az_hfsm*)me, subscribing, waiting));
         _az_RETURN_IF_FAILED(_handle_request(this_policy, recv_data));
@@ -259,8 +271,7 @@ static az_result waiting(az_event_policy* me, az_event event)
     case AZ_MQTT_EVENT_PUB_RECV_IND:
       az_mqtt_recv_data* recv_data = (az_mqtt_recv_data*)event.data;
       // Ensure pub is of the right topic
-      // TODO: use proper topic compare function that handles wildcards
-      if (az_span_is_content_equal(recv_data->topic, this_policy->_internal.options.sub_topic))
+      if (az_span_topic_matches_sub(this_policy->_internal.options.sub_topic, recv_data->topic))
       {
         _az_RETURN_IF_FAILED(_handle_request(this_policy, recv_data));
       }
@@ -324,27 +335,13 @@ _az_rpc_server_policy_init(_az_hfsm* hfsm,
 
 AZ_NODISCARD az_result az_mqtt_rpc_server_register(
     az_mqtt_rpc_server* client,
-    az_context* context,
-    az_mqtt_rpc_server_options* options)
+    az_context* context)
 {
-  // if (client->_internal.connection == NULL)
-  // {
-  //   // This API can be called only when the client is attached to a connection object.
-  //   return AZ_ERROR_NOT_SUPPORTED;
-  // }
-
-  _az_PRECONDITION_VALID_SPAN(options->sub_topic, 1, false);
-  // _az_PRECONDITION_VALID_SPAN(options->command_handled, 1, false);
-  _az_PRECONDITION_VALID_SPAN(options->pending_command.correlation_id, 1, false);
-  _az_PRECONDITION_VALID_SPAN(options->pending_command.response_topic, 1, false);
-
-  // client->_internal.options.command_handled = options->command_handled;
-  client->_internal.options.pending_command.correlation_id = options->pending_command.correlation_id;
-  client->_internal.options.pending_command.response_topic = options->pending_command.response_topic;
-
-  client->_internal.options.sub_qos = 1;
-  client->_internal.options.response_qos = 1;
-  client->_internal.options.sub_topic = AZ_SPAN_FROM_STR("vehicles/dtmi:rpc:samples:vehicle;1/commands/vehicle03/unlock");
+  if (client->_internal.connection == NULL)
+  {
+    // This API can be called only when the client is attached to a connection object.
+    return AZ_ERROR_NOT_SUPPORTED;
+  }
 
   return az_event_policy_send_outbound_event((az_event_policy*)client, (az_event)
     { .type = AZ_MQTT_EVENT_SUB_REQ,
@@ -358,14 +355,28 @@ AZ_NODISCARD az_result az_mqtt_rpc_server_register(
 
 AZ_NODISCARD az_result az_rpc_server_init(
     az_mqtt_rpc_server* client,
-    az_iot_connection* connection)
+    az_iot_connection* connection,
+    az_mqtt_rpc_server_options* options)
 {
   _az_PRECONDITION_NOT_NULL(client);
+  _az_PRECONDITION_VALID_SPAN(options->sub_topic, 1, false);
+  // _az_PRECONDITION_VALID_SPAN(options->command_handled, 1, false);
+  _az_PRECONDITION_VALID_SPAN(options->pending_command.correlation_id, 1, false);
+  _az_PRECONDITION_VALID_SPAN(options->pending_command.response_topic, 1, false);
+
+   // client->_internal.options.command_handled = options->command_handled;
+  client->_internal.options.pending_command.correlation_id = options->pending_command.correlation_id;
+  client->_internal.options.pending_command.response_topic = options->pending_command.response_topic;
+
+  client->_internal.options.sub_qos = 1;
+  client->_internal.options.response_qos = 1;
+  client->_internal.options.sub_topic = AZ_SPAN_FROM_STR("vehicles/dtmi:rpc:samples:vehicle;1/commands/vehicle03/unlock"); //TODO: generate
 
   client->_internal.connection = connection;
 
   // Initialize the stateful sub-client.
-  if ((connection != NULL) && (az_span_size(connection->_internal.options.hostname) == 0))
+  // if ((connection != NULL) && (az_span_size(connection->_internal.options.hostname) == 0))
+  if (connection != NULL)
   {
     // connection->_internal.options.hostname = AZ_SPAN_FROM_STR("hostname");
     connection->_internal.options.client_id_buffer = AZ_SPAN_FROM_STR("vehicle03");
@@ -374,7 +385,6 @@ AZ_NODISCARD az_result az_rpc_server_init(
 
     _az_RETURN_IF_FAILED(_az_rpc_server_policy_init(
         (_az_hfsm*)client, &client->_internal.subclient, connection));
-
   }
 
   return AZ_OK;

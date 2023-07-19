@@ -64,15 +64,8 @@ az_result iot_callback(az_iot_connection* client, az_event event)
       printf(LOG_APP "[%p] CONNACK: %d\n", client, connack_data->connack_reason);
 
       rpc_server_context = az_context_create_with_expiration(&connection_context, 30 * 1000);
-      rpc_server_options = (az_mqtt_rpc_server_options){
-        .sub_topic = AZ_SPAN_FROM_BUFFER(sub_topic_buffer),
-        .pending_command = (az_mqtt_rpc_server_pending_command){
-          .correlation_id = AZ_SPAN_FROM_BUFFER(correlation_id_buffer),
-          .response_topic = AZ_SPAN_FROM_BUFFER(response_topic_buffer),
-        }
-      };
 
-      LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_register(&rpc_server, &rpc_server_context, &rpc_server_options));
+      LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_register(&rpc_server, &rpc_server_context));
       break;
     }
 
@@ -147,7 +140,15 @@ int main(int argc, char* argv[])
   LOG_AND_EXIT_IF_FAILED(az_iot_connection_init(
       &iot_connection, &connection_context, &mqtt, iot_callback, &connection_options));
 
-  LOG_AND_EXIT_IF_FAILED(az_rpc_server_init(&rpc_server, &iot_connection));
+  rpc_server_options = (az_mqtt_rpc_server_options){
+      .sub_topic = AZ_SPAN_FROM_BUFFER(sub_topic_buffer),
+      .pending_command = (az_mqtt_rpc_server_pending_command){
+        .correlation_id = AZ_SPAN_FROM_BUFFER(correlation_id_buffer),
+        .response_topic = AZ_SPAN_FROM_BUFFER(response_topic_buffer),
+      }
+    };
+
+  LOG_AND_EXIT_IF_FAILED(az_rpc_server_init(&rpc_server, &iot_connection, &rpc_server_options));
   
 
   LOG_AND_EXIT_IF_FAILED(az_iot_connection_open(&iot_connection));
