@@ -33,7 +33,6 @@ static az_mqtt_rpc_server rpc_server;
 
 volatile bool connected = false;
 
-static az_context rpc_server_context;
 static az_mqtt_rpc_server_options rpc_server_options;
 
 void az_platform_critical_error()
@@ -63,9 +62,7 @@ az_result iot_callback(az_iot_connection* client, az_event event)
       az_mqtt_connack_data* connack_data = (az_mqtt_connack_data*)event.data;
       printf(LOG_APP "[%p] CONNACK: %d\n", client, connack_data->connack_reason);
 
-      rpc_server_context = az_context_create_with_expiration(&connection_context, 30 * 1000);
-
-      LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_register(&rpc_server, &rpc_server_context));
+      LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_register(&rpc_server));
       break;
     }
 
@@ -87,7 +84,7 @@ az_result iot_callback(az_iot_connection* client, az_event event)
         .response_topic = command_data->response_topic,
         .status = rc
       };
-      LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_execution_finish(&rpc_server, &rpc_server_context, &return_data));
+      LOG_AND_EXIT_IF_FAILED(az_mqtt_rpc_server_execution_finish(&rpc_server, &return_data));
       break;
     }
 

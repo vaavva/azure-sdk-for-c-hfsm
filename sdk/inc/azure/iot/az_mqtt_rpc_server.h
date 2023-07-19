@@ -138,8 +138,7 @@ typedef struct az_mqtt_rpc_server_execution_data
 } az_mqtt_rpc_server_execution_data;
 
 AZ_NODISCARD az_result az_mqtt_rpc_server_register(
-    az_mqtt_rpc_server* client,
-    az_context* context);
+    az_mqtt_rpc_server* client);
 
 AZ_NODISCARD az_result _az_rpc_server_policy_init(_az_hfsm* hfsm,
     _az_iot_subclient* subclient,
@@ -152,7 +151,6 @@ AZ_NODISCARD az_result az_rpc_server_init(
 
 AZ_NODISCARD az_result az_mqtt_rpc_server_execution_finish(
     az_mqtt_rpc_server* client,
-    az_context* context,
     az_mqtt_rpc_server_execution_data* data);
 
 #include <azure/core/_az_cfg_suffix.h>
