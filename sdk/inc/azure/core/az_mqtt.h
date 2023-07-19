@@ -60,6 +60,7 @@ typedef struct
   az_span topic;
   az_span payload;
   int8_t qos;
+  mosquitto_property* props;
 
   // The MQTT stack should set this ID upon returning.
   int32_t out_id;
@@ -71,6 +72,7 @@ typedef struct
   az_span payload;
   int8_t qos;
   int32_t id;
+  const mosquitto_property* props;
 } az_mqtt_recv_data;
 
 typedef struct

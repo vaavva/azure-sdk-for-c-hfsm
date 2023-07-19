@@ -7,6 +7,8 @@
 #include <azure/core/az_result.h>
 #include <azure/core/internal/az_log_internal.h>
 
+#include "mqtt_protocol.h"
+
 #include <azure/core/_az_cfg.h>
 
 static az_result root(az_event_policy* me, az_event event);
@@ -157,9 +159,18 @@ static az_result subscribing(az_event_policy* me, az_event event)
 AZ_INLINE az_result _build_response(az_mqtt_rpc_server* me, az_mqtt_pub_data *out_data, az_iot_status status, az_span payload)
 {
   az_mqtt_rpc_server* this_policy = (az_mqtt_rpc_server*)me;
+
+  out_data->props = NULL;
+
+  if (MOSQ_ERR_SUCCESS != mosquitto_property_add_binary(&out_data->props, MQTT_PROP_CORRELATION_DATA, az_span_ptr(this_policy->_internal.options.pending_command.correlation_id), az_span_size(this_policy->_internal.options.pending_command.correlation_id)))
+  {
+    printf("error adding correlation id to response\n");
+  }
+
   out_data->topic = this_policy->_internal.options.pending_command.response_topic;
   out_data->payload = payload;
   out_data->qos = this_policy->_internal.options.response_qos;
+  
   // out_data->status = status;
   return AZ_OK;
 
@@ -180,9 +191,27 @@ AZ_INLINE az_result _build_error_response(az_mqtt_rpc_server* me, az_span error_
 
 AZ_INLINE az_result _handle_request(az_mqtt_rpc_server* this_policy, az_mqtt_recv_data* data)
 {
+  char* response_topic;
+  void* correlation_data;
+  uint16_t correlation_data_len;
+  
   // parse MQTT5 properties
-  this_policy->_internal.options.pending_command.correlation_id = AZ_SPAN_FROM_STR("1234"); //TODO: parse from properties
-  this_policy->_internal.options.pending_command.response_topic = AZ_SPAN_FROM_STR("vehicles/vehicle03/command/unlock/response"); //TODO: parse from properties
+  if (mosquitto_property_read_string(data->props, MQTT_PROP_RESPONSE_TOPIC, &response_topic, false)
+      == NULL)
+  {
+    printf("Message does not have a response topic property");
+    return AZ_ERROR_ITEM_NOT_FOUND;
+  }
+
+  if (mosquitto_property_read_binary(
+            data->props, MQTT_PROP_CORRELATION_DATA, &correlation_data, &correlation_data_len, false)
+      == NULL)
+  {
+    printf("Message does not have a correlation data property");
+    return AZ_ERROR_ITEM_NOT_FOUND;
+  }
+  this_policy->_internal.options.pending_command.correlation_id = az_span_create(correlation_data, correlation_data_len);
+  this_policy->_internal.options.pending_command.response_topic = az_span_create_from_str(response_topic); 
 
   //error validation on presence of properties (correlation id, response topic)
 

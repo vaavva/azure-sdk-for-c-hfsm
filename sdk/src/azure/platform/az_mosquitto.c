@@ -139,7 +139,8 @@ static void _az_mosqitto_on_unsubscribe(struct mosquitto* mosq, void* obj, int m
 static void _az_mosquitto_on_message(
     struct mosquitto* mosq,
     void* obj,
-    const struct mosquitto_message* message)
+    const struct mosquitto_message* message,
+    const mosquitto_property* props)
 {
   (void)mosq;
   az_mqtt* me = (az_mqtt*)obj;
@@ -149,7 +150,8 @@ static void _az_mosquitto_on_message(
       &(az_mqtt_recv_data){ .qos = (int8_t)message->qos,
                             .id = (int32_t)message->mid,
                             .payload = az_span_create(message->payload, message->payloadlen),
-                            .topic = az_span_create_from_str(message->topic) });
+                            .topic = az_span_create_from_str(message->topic),
+                            .props = props });
 
   if (az_result_failed(ret))
   {
@@ -215,7 +217,9 @@ az_mqtt_outbound_connect(az_mqtt* mqtt, az_context* context, az_mqtt_connect_dat
   mosquitto_publish_callback_set(me->mosquitto_handle, _az_mosqitto_on_publish);
   mosquitto_subscribe_callback_set(me->mosquitto_handle, _az_mosqitto_on_subscribe);
   mosquitto_unsubscribe_callback_set(me->mosquitto_handle, _az_mosqitto_on_unsubscribe);
-  mosquitto_message_callback_set(me->mosquitto_handle, _az_mosquitto_on_message);
+  mosquitto_message_v5_callback_set(me->mosquitto_handle, _az_mosquitto_on_message);
+
+  _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_int_option(me->mosquitto_handle, MOSQ_OPT_PROTOCOL_VERSION, MQTT_PROTOCOL_V5)));
 
 _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_int_option(me->mosquitto_handle, MOSQ_OPT_TLS_USE_OS_CERTS, true)));
   _az_RETURN_IF_FAILED(_az_result_from_mosq(mosquitto_tls_set(
@@ -264,14 +268,15 @@ az_mqtt_outbound_sub(az_mqtt* mqtt, az_context* context, az_mqtt_sub_data* sub_d
 AZ_NODISCARD az_result
 az_mqtt_outbound_pub(az_mqtt* mqtt, az_context* context, az_mqtt_pub_data* pub_data)
 {
-  return _az_result_from_mosq(mosquitto_publish(
+  return _az_result_from_mosq(mosquitto_publish_v5(
       mqtt->mosquitto_handle,
       &pub_data->out_id,
       (char*)az_span_ptr(pub_data->topic), // Assumes properly formed NULL terminated string.
       az_span_size(pub_data->payload),
       az_span_ptr(pub_data->payload),
       pub_data->qos,
-      false));
+      false,
+      pub_data->props));
 }
 
 AZ_NODISCARD az_result az_mqtt_outbound_disconnect(az_mqtt* mqtt, az_context* context)
