@@ -166,6 +166,16 @@ AZ_INLINE az_result _build_response(az_mqtt_rpc_server* me, az_mqtt_pub_data *ou
   {
     printf("error adding correlation id to response\n");
   }
+  char status_str[5];
+  sprintf(status_str, "%d", status);
+  if (MOSQ_ERR_SUCCESS != mosquitto_property_add_string_pair(&out_data->props, MQTT_PROP_USER_PROPERTY, "status", status_str))
+  {
+    printf("error adding status to response\n");
+  }
+  if (MOSQ_ERR_SUCCESS != mosquitto_property_add_string(&out_data->props, MQTT_PROP_CONTENT_TYPE, "application/json"))
+  {
+    printf("error adding content type to response\n");
+  }
 
   out_data->topic = this_policy->_internal.options.pending_command.response_topic;
   out_data->payload = payload;
@@ -334,7 +344,7 @@ AZ_NODISCARD az_result az_mqtt_rpc_server_register(
 
   client->_internal.options.sub_qos = 1;
   client->_internal.options.response_qos = 1;
-  client->_internal.options.sub_topic = AZ_SPAN_FROM_STR("vehicles/map-app/vehicle03/commands/unlock");
+  client->_internal.options.sub_topic = AZ_SPAN_FROM_STR("vehicles/dtmi:rpc:samples:vehicle;1/commands/vehicle03/unlock");
 
   return az_event_policy_send_outbound_event((az_event_policy*)client, (az_event)
     { .type = AZ_MQTT_EVENT_SUB_REQ,

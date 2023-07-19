@@ -90,7 +90,7 @@ az_result iot_callback(az_iot_connection* client, az_event event)
       az_iot_status rc = execute_command(command_data);
       az_mqtt_rpc_server_execution_data return_data = {
         .correlation_id = command_data->correlation_id,
-        .response = AZ_SPAN_FROM_STR("dummy payload"),
+        .response = AZ_SPAN_FROM_STR("{\"Succeed\":true,\"ReceivedFrom\":\"mobile-app\",\"processedMs\":5}"),
         .response_topic = command_data->response_topic,
         .status = rc
       };
