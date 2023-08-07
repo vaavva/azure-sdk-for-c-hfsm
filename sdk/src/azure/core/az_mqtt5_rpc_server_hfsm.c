@@ -144,6 +144,7 @@ static az_result subscribing(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
+    printf("%s ", az_span_ptr(this_policy->_internal.options.command_name));
     _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_rpc_server/subscribing"));
   }
 
@@ -317,6 +318,7 @@ AZ_INLINE az_result _handle_request(az_mqtt5_rpc_server* this_policy, az_mqtt5_r
     .response_topic = az_mqtt5_property_string_get(
         &this_policy->_internal.rpc_server_data._internal.pending_command.response_topic_property),
     .request_data = data->payload,
+    .command_name = this_policy->_internal.options.command_name,
   };
 
   // send to application for execution
@@ -368,6 +370,7 @@ static az_result waiting(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
+    printf("%s ", az_span_ptr(this_policy->_internal.options.command_name));
     _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_rpc_server/waiting"));
   }
 
@@ -390,6 +393,7 @@ static az_result waiting(az_event_policy* me, az_event event)
                                                       .pending_command.correlation_data_property))
             != NULL)
         {
+          printf("%s ", az_span_ptr(this_policy->_internal.options.command_name));
           printf("Already processing a command, ignoring new command\n");
           // send to app for error handling
           // if ((az_event_policy*)this_policy->inbound_policy != NULL)
@@ -433,6 +437,7 @@ static az_result waiting(az_event_policy* me, az_event event)
       else
       {
         // log and ignore (this is probably meant for a different policy)
+        printf("%s ", az_span_ptr(this_policy->_internal.options.command_name));
         printf("correlation id or topic does not match, ignoring\n");
       }
       break;
@@ -469,6 +474,7 @@ static az_result faulted(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
+    printf("%s ", az_span_ptr(((az_mqtt5_rpc_server*)me)->_internal.options.command_name));
     _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_rpc_server/faulted"));
   }
 
