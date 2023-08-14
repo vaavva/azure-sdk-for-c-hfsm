@@ -28,4 +28,43 @@ target_link_libraries(mosquitto_rpc_server_sample
 
 create_map_file(mosquitto_rpc_server_sample mosquitto_rpc_server_sample.map)
 
+# Azure MQTT5 State Machine Dual RPC Server Sample
+add_executable (mosquitto_dual_rpc_server_sample
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_dual_rpc_server_sample.c
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_rpc_server_sample_json_parser.c
+)
+
+target_include_directories(mosquitto_dual_rpc_server_sample
+  PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_SOURCE_DIR}/sdk/src/azure/core/
+)
+
+target_link_libraries(mosquitto_dual_rpc_server_sample
+  PRIVATE
+  az_core
+)
+
+create_map_file(mosquitto_dual_rpc_server_sample mosquitto_dual_rpc_server_sample.map)
+
+# Azure MQTT5 State Machine RPC Server Sample with two commands under the same subscription
+add_executable (mosquitto_rpc_server_two_cmds_sample
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_rpc_server_two_cmds_sample.c
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_rpc_server_sample_json_parser.c
+)
+
+target_include_directories(mosquitto_rpc_server_two_cmds_sample
+  PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_SOURCE_DIR}/sdk/src/azure/core/
+)
+
+target_link_libraries(mosquitto_rpc_server_two_cmds_sample
+  PRIVATE
+  az_core
+)
+
+create_map_file(mosquitto_rpc_server_two_cmds_sample mosquitto_rpc_server_two_cmds_sample.map)
+
+
 endif() # TRANSPORT_MOSQUITTO

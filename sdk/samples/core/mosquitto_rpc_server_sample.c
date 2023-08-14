@@ -93,6 +93,7 @@ static void timer_callback(union sigval sv)
       = { .correlation_id = pending_command.correlation_id,
           .error_message = AZ_SPAN_FROM_STR("Command Server timeout"),
           .response_topic = pending_command.response_topic,
+          .request_topic = pending_command.request_topic,
           .status = AZ_MQTT5_RPC_STATUS_TIMEOUT,
           .response = AZ_SPAN_EMPTY,
           .content_type = AZ_SPAN_EMPTY };
@@ -180,6 +181,12 @@ az_mqtt5_rpc_status execute_command(unlock_request req)
       LOG_APP "Executing command from: %s at: %ld\n",
       az_span_ptr(req.requested_from),
       req.request_timestamp);
+      for (int i = 5; i > 0; i--)
+  {
+    LOG_AND_EXIT_IF_FAILED(az_platform_sleep_msec(1000));
+    printf(LOG_APP "Executing unlock %ds        \r", i);
+    fflush(stdout);
+  }
   return AZ_MQTT5_RPC_STATUS_OK;
 }
 
@@ -241,6 +248,7 @@ az_result check_for_commands()
           = { .correlation_id = pending_command.correlation_id,
               .response = response_payload,
               .response_topic = pending_command.response_topic,
+              .request_topic = pending_command.request_topic,
               .status = rc,
               .content_type = content_type,
               .error_message = error_message };
@@ -309,6 +317,7 @@ az_result iot_callback(az_mqtt5_connection* client, az_event event)
             = { .correlation_id = data.correlation_id,
                 .error_message = AZ_SPAN_FROM_STR("Can't execute more than one command at a time"),
                 .response_topic = data.response_topic,
+                .request_topic = data.request_topic,
                 .status = AZ_MQTT5_RPC_STATUS_THROTTLED,
                 .response = AZ_SPAN_EMPTY,
                 .content_type = AZ_SPAN_EMPTY };
@@ -321,7 +330,7 @@ az_result iot_callback(az_mqtt5_connection* client, az_event event)
       {
         // Mark that there's a pending command to be executed
         LOG_AND_EXIT_IF_FAILED(copy_execution_event_data(&pending_command, data));
-        start_timer(NULL, 10000);
+        start_timer(NULL, 2000);
         printf(LOG_APP "Added command to queue\n");
       }
 
