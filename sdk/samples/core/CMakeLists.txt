@@ -28,4 +28,23 @@ target_link_libraries(mosquitto_rpc_server_sample
 
 create_map_file(mosquitto_rpc_server_sample mosquitto_rpc_server_sample.map)
 
+# Azure MQTT5 Codec RPC Server Sample
+add_executable (mosquitto_rpc_server_codec_sample
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_rpc_server_codec_sample.c
+  ${CMAKE_CURRENT_LIST_DIR}/mosquitto_rpc_server_sample_json_parser.c
+)
+
+target_include_directories(mosquitto_rpc_server_codec_sample
+  PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_SOURCE_DIR}/sdk/src/azure/core/
+)
+
+target_link_libraries(mosquitto_rpc_server_codec_sample
+  PRIVATE
+  az_core
+)
+
+create_map_file(mosquitto_rpc_server_codec_sample mosquitto_rpc_server_codec_sample.map)
+
 endif() # TRANSPORT_MOSQUITTO
