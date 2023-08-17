@@ -43,10 +43,9 @@ static char request_topic_buffer[256];
 static char request_payload_buffer[256];
 static char content_type_buffer[256];
 
-static az_mqtt5_connection mqtt_connection;
-static az_context connection_context;
-
 static az_mqtt5_rpc_server rpc_server;
+
+static struct mosquitto* mosquitto_handle;
 
 volatile bool sample_finished = false;
 
@@ -65,7 +64,12 @@ az_result check_for_commands();
 az_result copy_execution_event_data(
     az_mqtt5_rpc_server_execution_req_event_data* destination,
     az_mqtt5_rpc_server_execution_req_event_data source);
-az_result iot_callback(az_mqtt5_connection* client, az_event event);
+void on_connect(
+    struct mosquitto* mosq,
+    void* obj,
+    int reason_code,
+    int flags,
+    const mosquitto_property* props);
 
 void az_platform_critical_error()
 {
@@ -89,6 +93,7 @@ static void timer_callback(union sigval sv)
 #endif
 
   printf(LOG_APP_ERROR "Command execution timed out.\n");
+  az_mqtt5_pub_data pub_data;
   az_mqtt5_rpc_server_execution_rsp_event_data return_data
       = { .correlation_id = pending_command.correlation_id,
           .error_message = AZ_SPAN_FROM_STR("Command Server timeout"),
@@ -97,11 +102,20 @@ static void timer_callback(union sigval sv)
           .status = AZ_MQTT5_RPC_STATUS_TIMEOUT,
           .response = AZ_SPAN_EMPTY,
           .content_type = AZ_SPAN_EMPTY };
-  if (az_result_failed(az_mqtt5_rpc_server_execution_finish(&rpc_server, &return_data)))
-  {
-    printf(LOG_APP_ERROR "Failed sending execution response to HFSM\n");
-    return;
-  }
+
+  az_result ret = az_rpc_server_get_response_packet(&rpc_server, &return_data, &pub_data);
+
+  mosquitto_publish_v5(
+    mosquitto_handle,
+    NULL,
+    (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.
+    az_span_size(pub_data.payload),
+    az_span_ptr(pub_data.payload),
+    pub_data.qos,
+    false,
+    pub_data.properties ? pub_data.properties->properties : NULL);
+
+  az_rpc_server_empty_property_bag(&rpc_server);
 
   pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
   pending_command.request_topic = AZ_SPAN_FROM_BUFFER(request_topic_buffer);
@@ -169,6 +183,118 @@ AZ_INLINE az_result stop_timer()
 #endif
 
   return AZ_OK;
+}
+
+void on_connect(
+    struct mosquitto* mosq,
+    void* obj,
+    int reason_code,
+    int flags,
+    const mosquitto_property* props)
+{
+  (void)obj;
+  (void)flags;
+  (void)props;
+
+  printf(LOG_APP "CONNACK: %s\n", mosquitto_reason_string(reason_code));
+
+  if (reason_code != 0)
+  {
+    sample_finished = true;
+    /* If the connection fails for any reason, we don't want to keep on
+     * retrying in this example, so disconnect. Without this, the client
+     * will attempt to reconnect. */
+    int rc;
+    if ((rc = mosquitto_disconnect_v5(mosq, reason_code, NULL)) != MOSQ_ERR_SUCCESS)
+    {
+      printf(LOG_APP "Failure on disconnect: %s", mosquitto_strerror(rc));
+    }
+  }
+
+  // send subscribe
+  mosquitto_subscribe_v5(
+      mosq,
+      NULL,
+      (char*)az_span_ptr(rpc_server._internal.subscription_topic),
+      rpc_server._internal.options.subscribe_qos,
+      0,
+      NULL);
+}
+
+static void on_message(
+    struct mosquitto* mosq,
+    void* obj,
+    const struct mosquitto_message* message,
+    const mosquitto_property* props)
+{
+  (void)obj;
+  az_result ret;
+  az_mqtt5_property_bag property_bag;
+  az_mqtt5_property_bag_options property_bag_options;
+
+  property_bag_options = az_mqtt5_property_bag_options_default();
+  property_bag_options.properties = (mosquitto_property*)(uintptr_t)props;
+
+  ret = az_mqtt5_property_bag_init(&property_bag, NULL, &property_bag_options);
+
+  // if (az_result_failed(ret))
+  // {
+  //   _az_mosquitto_critical_error();
+  // }
+
+  az_mqtt5_recv_data recv_data = (az_mqtt5_recv_data){ .qos = (int8_t)message->qos,
+                             .id = (int32_t)message->mid,
+                             .payload = az_span_create(message->payload, message->payloadlen),
+                             .topic = az_span_create_from_str(message->topic),
+                             .properties = &property_bag };
+
+  az_mqtt5_rpc_server_execution_req_event_data command_data;
+  az_mqtt5_rpc_server_property_pointers props_to_free;
+  ret = az_rpc_server_parse_request_topic_and_properties(&rpc_server, &recv_data, &props_to_free, &command_data);
+
+  if (az_span_ptr(pending_command.correlation_id) != NULL)
+  {
+    // can add this command to a queue to be executed if the application supports executing
+    // multiple commands at once.
+    printf(LOG_APP
+            "Received command while another command is executing. Sending error response.\n");
+    az_mqtt5_pub_data pub_data;
+    az_mqtt5_rpc_server_execution_rsp_event_data return_data
+        = { .correlation_id = command_data.correlation_id,
+            .error_message = AZ_SPAN_FROM_STR("Can't execute more than one command at a time"),
+            .response_topic = command_data.response_topic,
+            .request_topic = command_data.request_topic,
+            .status = AZ_MQTT5_RPC_STATUS_THROTTLED,
+            .response = AZ_SPAN_EMPTY,
+            .content_type = AZ_SPAN_EMPTY };
+    ret = az_rpc_server_get_response_packet(&rpc_server, &return_data, &pub_data);
+
+    mosquitto_publish_v5(
+      mosq,
+      NULL,
+      (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.
+      az_span_size(pub_data.payload),
+      az_span_ptr(pub_data.payload),
+      pub_data.qos,
+      false,
+      pub_data.properties ? pub_data.properties->properties : NULL);
+
+    az_rpc_server_empty_property_bag(&rpc_server);
+  }
+  else
+  {
+    // Mark that there's a pending command to be executed
+    ret = copy_execution_event_data(&pending_command, command_data);
+    start_timer(NULL, 10000);
+    printf(LOG_APP "Added command to queue\n");
+  }
+
+  if (ret != AZ_OK)
+  {
+    printf(LOG_APP_ERROR "something failed\n");
+  }
+
+  az_rpc_server_free_properties(props_to_free);
 }
 
 /**
@@ -247,7 +373,21 @@ az_result check_for_commands()
               .status = rc,
               .content_type = content_type,
               .error_message = error_message };
-      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_server_execution_finish(&rpc_server, &return_data));
+      
+      az_mqtt5_pub_data pub_data;
+      rc = az_rpc_server_get_response_packet(&rpc_server, &return_data, &pub_data);
+
+      mosquitto_publish_v5(
+        mosquitto_handle,
+        NULL,
+        (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.
+        az_span_size(pub_data.payload),
+        az_span_ptr(pub_data.payload),
+        pub_data.qos,
+        false,
+        pub_data.properties ? pub_data.properties->properties : NULL);
+
+      az_rpc_server_empty_property_bag(&rpc_server);
 
       pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
       pending_command.request_topic = AZ_SPAN_FROM_BUFFER(request_topic_buffer);
@@ -277,74 +417,6 @@ az_result copy_execution_event_data(
   return AZ_OK;
 }
 
-/**
- * @brief Callback function for all clients
- * @note If you add other clients, you can add handling for their events here
- */
-az_result iot_callback(az_mqtt5_connection* client, az_event event)
-{
-  (void)client;
-  az_app_log_callback(event.type, AZ_SPAN_FROM_STR("APP/callback"));
-  switch (event.type)
-  {
-    case AZ_MQTT5_EVENT_CONNECT_RSP:
-    {
-      az_mqtt5_connack_data* connack_data = (az_mqtt5_connack_data*)event.data;
-      printf(LOG_APP "CONNACK: %d\n", connack_data->connack_reason);
-
-      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_server_register(&rpc_server));
-      break;
-    }
-
-    case AZ_MQTT5_EVENT_DISCONNECT_RSP:
-    {
-      printf(LOG_APP "DISCONNECTED\n");
-      sample_finished = true;
-      break;
-    }
-
-    case AZ_EVENT_RPC_SERVER_EXECUTE_COMMAND_REQ:
-    {
-      az_mqtt5_rpc_server_execution_req_event_data data
-          = *(az_mqtt5_rpc_server_execution_req_event_data*)event.data;
-      // can check here for the expected request topic to determine which command to execute
-      if (az_span_ptr(pending_command.correlation_id) != NULL)
-      {
-        // can add this command to a queue to be executed if the application supports executing
-        // multiple commands at once.
-        printf(LOG_APP
-               "Received command while another command is executing. Sending error response.\n");
-        az_mqtt5_rpc_server_execution_rsp_event_data return_data
-            = { .correlation_id = data.correlation_id,
-                .error_message = AZ_SPAN_FROM_STR("Can't execute more than one command at a time"),
-                .response_topic = data.response_topic,
-                .request_topic = data.request_topic,
-                .status = AZ_MQTT5_RPC_STATUS_THROTTLED,
-                .response = AZ_SPAN_EMPTY,
-                .content_type = AZ_SPAN_EMPTY };
-        if (az_result_failed(az_mqtt5_rpc_server_execution_finish(&rpc_server, &return_data)))
-        {
-          printf(LOG_APP_ERROR "Failed sending execution response to HFSM\n");
-        }
-      }
-      else
-      {
-        // Mark that there's a pending command to be executed
-        LOG_AND_EXIT_IF_FAILED(copy_execution_event_data(&pending_command, data));
-        start_timer(NULL, 10000);
-        printf(LOG_APP "Added command to queue\n");
-      }
-
-      break;
-    }
-
-    default:
-      // TODO:
-      break;
-  }
-
-  return AZ_OK;
-}
 
 int main(int argc, char* argv[])
 {
@@ -363,27 +435,25 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  connection_context = az_context_create_with_expiration(
-      &az_context_application, az_context_get_expiration(&az_context_application));
+  mosquitto_handle = NULL;
+  mosquitto_handle = mosquitto_new((char*)az_span_ptr(client_id), false, NULL);
+  mosquitto_int_option(mosquitto_handle, MOSQ_OPT_PROTOCOL_VERSION,MQTT_PROTOCOL_V5);
 
-  az_mqtt5 mqtt5;
+  mosquitto_connect_v5_callback_set(mosquitto_handle, on_connect);
+  // mosquitto_publish_v5_callback_set(mosq, _az_mosquitto5_on_publish);
+  // mosquitto_subscribe_v5_callback_set(mosq, _az_mosquitto5_on_subscribe); // just need for timeout later
+  mosquitto_message_v5_callback_set(mosquitto_handle, on_message);
 
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_init(&mqtt5, NULL));
 
-  az_mqtt5_x509_client_certificate primary_credential = (az_mqtt5_x509_client_certificate){
-    .cert = cert_path1,
-    .key = key_path1,
-  };
-
-  az_mqtt5_connection_options connection_options = az_mqtt5_connection_options_default();
-  connection_options.client_id_buffer = client_id;
-  connection_options.username_buffer = username;
-  connection_options.password_buffer = AZ_SPAN_EMPTY;
-  connection_options.hostname = hostname;
-  connection_options.client_certificates[0] = primary_credential;
-
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_connection_init(
-      &mqtt_connection, &connection_context, &mqtt5, iot_callback, &connection_options));
+  mosquitto_int_option(mosquitto_handle, MOSQ_OPT_TLS_USE_OS_CERTS, 1);
+  mosquitto_tls_set(
+        mosquitto_handle,
+        NULL,
+        "l",
+        (const char*)az_span_ptr(cert_path1),
+        (const char*)az_span_ptr(key_path1),
+        NULL);
+  mosquitto_username_pw_set(mosquitto_handle, (char*)az_span_ptr(username), NULL);
 
   pending_command.request_data = AZ_SPAN_FROM_BUFFER(request_payload_buffer);
   pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
@@ -392,19 +462,24 @@ int main(int argc, char* argv[])
   pending_command.request_topic = AZ_SPAN_FROM_BUFFER(request_topic_buffer);
 
   az_mqtt5_property_bag property_bag;
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&property_bag, &mqtt5, NULL));
+  LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&property_bag, NULL, NULL));
 
-  LOG_AND_EXIT_IF_FAILED(az_rpc_server_hfsm_init(
+  LOG_AND_EXIT_IF_FAILED(az_rpc_server_init(
       &rpc_server,
-      &mqtt_connection,
       property_bag,
-      AZ_SPAN_FROM_BUFFER(subscription_topic_buffer),
       model_id,
       client_id,
       command_name,
+      AZ_SPAN_FROM_BUFFER(subscription_topic_buffer),
       NULL));
 
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_connection_open(&mqtt_connection));
+  mosquitto_connect_async(
+      mosquitto_handle,
+      (char*)az_span_ptr(hostname),
+      AZ_MQTT5_DEFAULT_CONNECT_PORT,
+      AZ_MQTT5_DEFAULT_MQTT_CONNECT_KEEPALIVE_SECONDS);
+
+  mosquitto_loop_start(mosquitto_handle);
 
   // infinite execution loop
   for (int i = 45; !sample_finished && i > 0; i++)
@@ -420,12 +495,11 @@ int main(int argc, char* argv[])
   }
 
   // clean-up functions shown for completeness
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_connection_close(&mqtt_connection));
 
-  if (mqtt5._internal.mosquitto_handle != NULL)
+  if (mosquitto_handle != NULL)
   {
-    mosquitto_loop_stop(mqtt5._internal.mosquitto_handle, false);
-    mosquitto_destroy(mqtt5._internal.mosquitto_handle);
+    mosquitto_loop_stop(mosquitto_handle, false);
+    mosquitto_destroy(mosquitto_handle);
   }
 
   // mosquitto allocates the property bag for us, but we're responsible for free'ing it

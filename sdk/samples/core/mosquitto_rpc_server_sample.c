@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
   az_mqtt5_property_bag property_bag;
   LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&property_bag, &mqtt5, NULL));
 
-  LOG_AND_EXIT_IF_FAILED(az_rpc_server_init(
+  LOG_AND_EXIT_IF_FAILED(az_rpc_server_hfsm_init(
       &rpc_server,
       &mqtt_connection,
       property_bag,

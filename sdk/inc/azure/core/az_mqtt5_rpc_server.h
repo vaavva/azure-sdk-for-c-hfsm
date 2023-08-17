@@ -34,6 +34,64 @@
 #define AZ_MQTT5_RPC_QOS 1
 #endif
 
+// ~~~~~~~~~~~~~~~~~~~~ Codec Public API ~~~~~~~~~~~~~~~~~
+typedef struct
+{
+  struct {
+    az_mqtt5_property_string content_type;
+    az_mqtt5_property_binarydata correlation_data;
+    az_mqtt5_property_string response_topic;
+  } _internal;
+} az_mqtt5_rpc_server_property_pointers;
+
+az_mqtt5_rpc_server_property_pointers az_mqtt5_rpc_server_property_pointers_default();
+
+void az_rpc_server_free_properties(az_mqtt5_rpc_server_property_pointers props);
+
+AZ_NODISCARD az_result az_rpc_server_init(
+    az_mqtt5_rpc_server* client,
+    az_mqtt5_property_bag property_bag,
+    az_span model_id, az_span client_id, az_span command_name,
+    az_span subscription_topic,
+    az_mqtt5_rpc_server_options* options);
+
+/**
+ * @brief Initializes a RPC server options object with default values.
+ *
+ * @return An #az_mqtt5_rpc_server_options object with default values.
+ */
+AZ_NODISCARD az_mqtt5_rpc_server_options az_mqtt5_rpc_server_options_default();
+
+AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
+
+/**
+ * @brief Handle an incoming request
+ *
+ * @param this_policy
+ * @param data event data received from the publish
+ *
+ * @return az_result
+ */
+AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_execution_req_event_data* out_request);
+
+/**
+ * @brief Build the reponse payload given the execution finish data
+ *
+ * @param me
+ * @param event_data execution finish data
+ *    contains status code, and error message or response payload
+ * @param out_data event data for response publish
+ * @return az_result
+ */
+AZ_NODISCARD az_result az_rpc_server_get_response_packet(
+    az_mqtt5_rpc_server* client,
+    az_mqtt5_rpc_server_execution_rsp_event_data* event_data,
+    az_mqtt5_pub_data* out_data);
+
+AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
+
+az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client);
+
 /**
  * @brief The MQTT5 RPC Server.
  *
@@ -238,13 +296,6 @@ typedef struct
 AZ_NODISCARD az_result az_mqtt5_rpc_server_register(az_mqtt5_rpc_server* client);
 
 /**
- * @brief Initializes a RPC server options object with default values.
- *
- * @return An #az_mqtt5_rpc_server_options object with default values.
- */
-AZ_NODISCARD az_mqtt5_rpc_server_options az_mqtt5_rpc_server_options_default();
-
-/**
  * @brief Initializes an MQTT5 RPC Server.
  *
  * @param[out] client The az_mqtt5_rpc_server to initialize.
@@ -259,7 +310,7 @@ AZ_NODISCARD az_mqtt5_rpc_server_options az_mqtt5_rpc_server_options_default();
  *
  * @return An #az_result value indicating the result of the operation.
  */
-AZ_NODISCARD az_result az_rpc_server_init(
+AZ_NODISCARD az_result az_rpc_server_hfsm_init(
     az_mqtt5_rpc_server* client,
     az_mqtt5_connection* connection,
     az_mqtt5_property_bag property_bag,
@@ -283,6 +334,10 @@ AZ_NODISCARD az_result az_rpc_server_init(
 AZ_NODISCARD az_result az_mqtt5_rpc_server_execution_finish(
     az_mqtt5_rpc_server* client,
     az_mqtt5_rpc_server_execution_rsp_event_data* data);
+
+
+
+
 
 #include <azure/core/_az_cfg_suffix.h>
 
