@@ -447,6 +447,13 @@ AZ_NODISCARD az_mqtt5_options az_mqtt5_options_default();
 AZ_NODISCARD az_result az_mqtt5_init(az_mqtt5* mqtt5, az_mqtt5_options const* options);
 
 /**
+ * @brief The default MQTT 5 callbacks.
+ *
+ * @return An #az_mqtt5_callbacks value.
+ */
+AZ_NODISCARD az_mqtt5_callbacks az_mqtt5_callbacks_default();
+
+/**
  * @brief Sends a MQTT 5 connect data packet to broker.
  *
  * @param mqtt5 The MQTT 5 instance.
@@ -455,7 +462,7 @@ AZ_NODISCARD az_result az_mqtt5_init(az_mqtt5* mqtt5, az_mqtt5_options const* op
  * @return An #az_result value indicating the result of the operation.
  */
 AZ_NODISCARD az_result
-az_mqtt5_outbound_connect(az_mqtt5* mqtt5, az_mqtt5_connect_data* connect_data);
+az_mqtt5_outbound_connect(az_mqtt5* mqtt5, az_mqtt5_connect_data* connect_data, az_mqtt5_callbacks* callbacks);
 
 /**
  * @brief Sends a MQTT 5 subscribe data packet to broker.

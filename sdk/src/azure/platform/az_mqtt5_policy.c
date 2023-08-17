@@ -23,7 +23,7 @@ static az_result _az_mqtt5_policy_process_outbound_event(
   switch (event.type)
   {
     case AZ_MQTT5_EVENT_CONNECT_REQ:
-      _az_RETURN_IF_FAILED(az_mqtt5_outbound_connect(me->mqtt, (az_mqtt5_connect_data*)event.data));
+      _az_RETURN_IF_FAILED(az_mqtt5_outbound_connect(me->mqtt, (az_mqtt5_connect_data*)event.data, NULL));
       break;
 
     case AZ_MQTT5_EVENT_DISCONNECT_REQ:
