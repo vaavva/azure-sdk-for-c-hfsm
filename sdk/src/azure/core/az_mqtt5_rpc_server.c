@@ -19,7 +19,7 @@
  *
  * @return az_result
  */
-AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_execution_req_event_data* out_request)
+AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_command_request* out_request)
 {
   _az_PRECONDITION_NOT_NULL(data->properties);
   (void)client;
@@ -44,8 +44,13 @@ AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5
   out_request->correlation_id = az_mqtt5_property_binarydata_get(&props_to_free->_internal.correlation_data);
   out_request->response_topic = az_mqtt5_property_string_get(&props_to_free->_internal.response_topic);
   out_request->request_data = data->payload;
-  out_request->request_topic = data->topic;
+  // out_request->request_topic = data->topic;
   out_request->content_type = az_mqtt5_property_string_get(&props_to_free->_internal.content_type);
+
+  //TODO: parse properly
+  out_request->model_id = az_span_create_from_str("dtmi:rpc:samples:vehicle;1");
+  out_request->target_client_id = az_span_create_from_str("vehicle03");
+  out_request->command_name = az_span_create_from_str("unlock");
 
   return AZ_OK;
 }
@@ -59,7 +64,7 @@ void az_rpc_server_free_properties(az_mqtt5_rpc_server_property_pointers props)
 
 az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client)
 {
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_empty(&client->_internal.property_bag));
+  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_empty(&client->property_bag));
 
   return AZ_OK;
 }
@@ -75,7 +80,7 @@ az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client)
  */
 AZ_NODISCARD az_result az_rpc_server_get_response_packet(
     az_mqtt5_rpc_server* client,
-    az_mqtt5_rpc_server_execution_rsp_event_data* event_data,
+    az_mqtt5_rpc_server_response_data* event_data,
     az_mqtt5_pub_data* out_data)
 {
 
@@ -88,7 +93,7 @@ AZ_NODISCARD az_result az_rpc_server_get_response_packet(
         = { .key = AZ_SPAN_FROM_STR("statusMessage"), .value = event_data->error_message };
 
     _az_RETURN_IF_FAILED(az_mqtt5_property_bag_stringpair_append(
-        &client->_internal.property_bag,
+        &client->property_bag,
         AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
         &status_message_property));
     out_data->payload = AZ_SPAN_EMPTY;
@@ -102,7 +107,7 @@ AZ_NODISCARD az_result az_rpc_server_get_response_packet(
     az_mqtt5_property_string content_type = { .str = event_data->content_type };
 
     _az_RETURN_IF_FAILED(az_mqtt5_property_bag_string_append(
-        &client->_internal.property_bag, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, &content_type));
+        &client->property_bag, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, &content_type));
 
     out_data->payload = event_data->response;
   }
@@ -114,7 +119,7 @@ AZ_NODISCARD az_result az_rpc_server_get_response_packet(
       = { .key = AZ_SPAN_FROM_STR("status"), .value = az_span_create_from_str(status_str) };
 
   _az_RETURN_IF_FAILED(az_mqtt5_property_bag_stringpair_append(
-      &client->_internal.property_bag,
+      &client->property_bag,
       AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
       &status_property));
 
@@ -122,14 +127,14 @@ AZ_NODISCARD az_result az_rpc_server_get_response_packet(
   _az_PRECONDITION_VALID_SPAN(event_data->correlation_id, 0, true);
   az_mqtt5_property_binarydata correlation_data = { .bindata = event_data->correlation_id };
   _az_RETURN_IF_FAILED(az_mqtt5_property_bag_binary_append(
-      &client->_internal.property_bag,
+      &client->property_bag,
       AZ_MQTT5_PROPERTY_TYPE_CORRELATION_DATA,
       &correlation_data));
 
-  out_data->properties = &client->_internal.property_bag;
+  out_data->properties = &client->property_bag;
   // use the received response topic as the topic
   out_data->topic = event_data->response_topic;
-  out_data->qos = client->_internal.options.response_qos;
+  out_data->qos = client->options.response_qos;
 
   return AZ_OK;
 }
@@ -173,13 +178,13 @@ AZ_NODISCARD az_result az_rpc_server_init(
     az_mqtt5_rpc_server_options* options)
 {
   _az_PRECONDITION_NOT_NULL(client);
-  client->_internal.options = options == NULL ? az_mqtt5_rpc_server_options_default() : *options;
+  client->options = options == NULL ? az_mqtt5_rpc_server_options_default() : *options;
 
   _az_RETURN_IF_FAILED(az_rpc_server_get_subscription_topic(client, model_id, client_id, command_name, subscription_topic));
 
-  client->_internal.subscription_topic = subscription_topic;
+  client->subscription_topic = subscription_topic;
 
-  client->_internal.property_bag = property_bag;
+  client->property_bag = property_bag;
 
   return AZ_OK;
 }
