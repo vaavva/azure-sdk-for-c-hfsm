@@ -451,8 +451,10 @@ AZ_NODISCARD az_result az_rpc_server_hfsm_init(
     az_span command_name,
     az_mqtt5_rpc_server_options* options)
 {
-  _az_RETURN_IF_FAILED(az_rpc_server_init(client->_internal.rpc_server, model_id, client_id, command_name, subscription_topic, options));
-
+  az_mqtt5_rpc_server rpc_server;
+  
+  _az_RETURN_IF_FAILED(az_rpc_server_init(&rpc_server, model_id, client_id, command_name, subscription_topic, options));
+  client->_internal.rpc_server = &rpc_server;
   client->_internal.connection = connection;
 
   client->_internal.property_bag = property_bag;
