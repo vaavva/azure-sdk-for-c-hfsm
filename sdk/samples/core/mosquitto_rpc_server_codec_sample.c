@@ -48,7 +48,7 @@ static az_mqtt5_rpc_server rpc_server;
 
 volatile bool sample_finished = false;
 
-static az_mqtt5 mqtt5;
+static struct mosquitto* mosquitto_handle;
 
 static az_mqtt5_rpc_server_command_request pending_command;
 
@@ -103,8 +103,15 @@ static void timer_callback(union sigval sv)
     return;
   }
 
-  az_result ret = az_mqtt5_outbound_pub(&mqtt5, &pub_data);
-  (void)ret;
+ mosquitto_publish_v5(
+    mosquitto_handle,
+    NULL,	
+    (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.	
+    az_span_size(pub_data.payload),	
+    az_span_ptr(pub_data.payload),	
+    pub_data.qos,	
+    false,	
+    pub_data.properties ? pub_data.properties->properties : NULL);
 
   az_rpc_server_empty_property_bag(&rpc_server);
 
@@ -203,12 +210,14 @@ static void on_connect(
     }
   }
 
-  az_mqtt5_sub_data subscription_data = { .topic_filter = rpc_server.subscription_topic,
-                                          .qos = rpc_server.options.subscribe_qos,
-                                          .out_id = 0 };
-
   // send subscribe
-  rc = az_mqtt5_outbound_sub(&mqtt5, &subscription_data);
+  mosquitto_subscribe_v5(
+      mosq,	
+      NULL,	
+      (char*)az_span_ptr(rpc_server.subscription_topic),	
+      rpc_server.options.subscribe_qos,	
+      0,	
+      NULL);
 }
 
 static void on_message(
@@ -218,7 +227,6 @@ static void on_message(
     const mosquitto_property* props)
 {
   (void)obj;
-  (void)mosq;
 
   az_result ret;
   az_mqtt5_property_bag property_bag;
@@ -260,7 +268,15 @@ static void on_message(
             .content_type = AZ_SPAN_EMPTY };
     ret = az_rpc_server_get_response_packet(&rpc_server, &response_data, &pub_data);
 
-    ret = az_mqtt5_outbound_pub(&mqtt5, &pub_data);
+    mosquitto_publish_v5(
+      mosq,	
+      NULL,	
+      (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.	
+      az_span_size(pub_data.payload),	
+      az_span_ptr(pub_data.payload),	
+      pub_data.qos,	
+      false,	
+      pub_data.properties ? pub_data.properties->properties : NULL);
 
     az_rpc_server_empty_property_bag(&rpc_server);
   }
@@ -359,7 +375,15 @@ az_result check_for_commands()
       az_mqtt5_pub_data pub_data;
       rc = az_rpc_server_get_response_packet(&rpc_server, &return_data, &pub_data);
 
-      rc = az_mqtt5_outbound_pub(&mqtt5, &pub_data);
+      mosquitto_publish_v5(
+        mosquitto_handle,	
+        NULL,	
+        (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.	
+        az_span_size(pub_data.payload),	
+        az_span_ptr(pub_data.payload),	
+        pub_data.qos,	
+        false,	
+        pub_data.properties ? pub_data.properties->properties : NULL);
 
       az_rpc_server_empty_property_bag(&rpc_server);
 
@@ -416,7 +440,25 @@ int main(int argc, char* argv[])
   az_log_set_message_callback(az_sdk_log_callback);
   az_log_set_classification_filter_callback(az_sdk_log_filter_callback);
 
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_init(&mqtt5, NULL));
+  mosquitto_handle = NULL;
+  mosquitto_handle = mosquitto_new((char*)az_span_ptr(client_id), false, NULL);	
+  mosquitto_int_option(mosquitto_handle, MOSQ_OPT_PROTOCOL_VERSION,MQTT_PROTOCOL_V5);	
+
+  mosquitto_connect_v5_callback_set(mosquitto_handle, on_connect);	
+  // mosquitto_publish_v5_callback_set(mosq, _az_mosquitto5_on_publish);	
+  // mosquitto_subscribe_v5_callback_set(mosq, _az_mosquitto5_on_subscribe); // just need for timeout later	
+  mosquitto_message_v5_callback_set(mosquitto_handle, on_message);	
+
+
+  mosquitto_int_option(mosquitto_handle, MOSQ_OPT_TLS_USE_OS_CERTS, 1);	
+  mosquitto_tls_set(	
+        mosquitto_handle,	
+        NULL,	
+        "l",	
+        (const char*)az_span_ptr(cert_path1),	
+        (const char*)az_span_ptr(key_path1),	
+        NULL);	
+  mosquitto_username_pw_set(mosquitto_handle, (char*)az_span_ptr(username), NULL);
 
   pending_command.request_data = AZ_SPAN_FROM_BUFFER(request_payload_buffer);
   pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
@@ -437,26 +479,13 @@ int main(int argc, char* argv[])
       AZ_SPAN_FROM_BUFFER(subscription_topic_buffer),
       NULL));
 
-  az_mqtt5_connect_data connect_data = (az_mqtt5_connect_data){
-    .host = hostname,
-    .port = AZ_MQTT5_DEFAULT_CONNECT_PORT,
-    .client_id = client_id,
-    .username = username,
-    .password = AZ_SPAN_EMPTY,
-    .certificate.cert = cert_path1,
-    .certificate.key = key_path1,
-    .properties = NULL,
-  };
+  mosquitto_connect_async(
+      mosquitto_handle,
+      (char*)az_span_ptr(hostname),
+      AZ_MQTT5_DEFAULT_CONNECT_PORT,
+      AZ_MQTT5_DEFAULT_MQTT_CONNECT_KEEPALIVE_SECONDS);
 
-  az_mqtt5_callbacks callbacks = az_mqtt5_callbacks_default();
-  callbacks.on_connect = on_connect;
-  callbacks.on_message = on_message;
-  // These should be implemented in a full solution
-  callbacks.on_disconnect = NULL;
-  callbacks.on_publish = NULL;
-  callbacks.on_subscribe = NULL;
-
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_outbound_connect(&mqtt5, &connect_data, &callbacks));
+  mosquitto_loop_start(mosquitto_handle);
 
   // infinite execution loop
   for (int i = 45; !sample_finished && i > 0; i++)
@@ -473,10 +502,10 @@ int main(int argc, char* argv[])
 
   // clean-up functions shown for completeness
 
-  if (mqtt5._internal.mosquitto_handle != NULL)
+  if (mosquitto_handle != NULL)
   {
-    mosquitto_loop_stop(mqtt5._internal.mosquitto_handle, false);
-    mosquitto_destroy(mqtt5._internal.mosquitto_handle);
+    mosquitto_loop_stop(mosquitto_handle, false);
+    mosquitto_destroy(mosquitto_handle);
   }
 
   // mosquitto allocates the property bag for us, but we're responsible for free'ing it
