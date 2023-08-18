@@ -46,7 +46,7 @@ static char content_type_buffer[256];
 static az_mqtt5_connection mqtt_connection;
 static az_context connection_context;
 
-static az_mqtt5_rpc_server rpc_server;
+static az_mqtt5_rpc_server_hfsm rpc_server;
 
 volatile bool sample_finished = false;
 
@@ -90,9 +90,9 @@ static void timer_callback(union sigval sv)
 
   printf(LOG_APP_ERROR "Command execution timed out.\n");
   az_mqtt5_rpc_server_execution_rsp_event_data return_data
-      = { .correlation_id = pending_command.correlation_id,
+      = { .correlation_id = pending_command.request_data.correlation_id,
           .error_message = AZ_SPAN_FROM_STR("Command Server timeout"),
-          .response_topic = pending_command.response_topic,
+          .response_topic = pending_command.request_data.response_topic,
           .request_topic = pending_command.request_topic,
           .status = AZ_MQTT5_RPC_STATUS_TIMEOUT,
           .response = AZ_SPAN_EMPTY,
@@ -103,9 +103,9 @@ static void timer_callback(union sigval sv)
     return;
   }
 
-  pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
+  pending_command.request_data.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
   pending_command.request_topic = AZ_SPAN_FROM_BUFFER(request_topic_buffer);
-  pending_command.correlation_id = AZ_SPAN_EMPTY;
+  pending_command.request_data.correlation_id = AZ_SPAN_EMPTY;
 
 #ifdef _WIN32
   return AZ_ERROR_DEPENDENCY_NOT_PROVIDED;
@@ -192,22 +192,22 @@ az_mqtt5_rpc_status execute_command(unlock_request req)
  */
 az_result check_for_commands()
 {
-  if (az_span_ptr(pending_command.correlation_id) != NULL)
+  if (az_span_ptr(pending_command.request_data.correlation_id) != NULL)
   {
     // copy correlation id to a new span so we can compare it later
-    uint8_t copy_buffer[az_span_size(pending_command.correlation_id)];
+    uint8_t copy_buffer[az_span_size(pending_command.request_data.correlation_id)];
     az_span correlation_id_copy
-        = az_span_create(copy_buffer, az_span_size(pending_command.correlation_id));
-    az_span_copy(correlation_id_copy, pending_command.correlation_id);
+        = az_span_create(copy_buffer, az_span_size(pending_command.request_data.correlation_id));
+    az_span_copy(correlation_id_copy, pending_command.request_data.correlation_id);
 
-    if (!az_span_is_content_equal(content_type, pending_command.content_type))
+    if (!az_span_is_content_equal(content_type, pending_command.request_data.content_type))
     {
       // TODO: should this completely fail execution? This currently matches the C# implementation.
       // I feel like it should send an error response
       printf(
           LOG_APP_ERROR "Invalid content type. Expected: {%s} Actual: {%s}\n",
           az_span_ptr(content_type),
-          az_span_ptr(pending_command.content_type));
+          az_span_ptr(pending_command.request_data.content_type));
       return AZ_ERROR_NOT_SUPPORTED;
     }
 
@@ -215,7 +215,7 @@ az_result check_for_commands()
     az_mqtt5_rpc_status rc;
     az_span error_message = AZ_SPAN_EMPTY;
 
-    if (az_result_failed(deserialize_unlock_request(pending_command.request_data, &req)))
+    if (az_result_failed(deserialize_unlock_request(pending_command.request_data.request_data, &req)))
     {
       printf(LOG_APP_ERROR "Failed to deserialize request\n");
       rc = AZ_MQTT5_RPC_STATUS_UNSUPPORTED_TYPE;
@@ -227,7 +227,7 @@ az_result check_for_commands()
     }
 
     // if command hasn't timed out, send result back
-    if (az_span_is_content_equal(correlation_id_copy, pending_command.correlation_id))
+    if (az_span_is_content_equal(correlation_id_copy, pending_command.request_data.correlation_id))
     {
       stop_timer();
       az_span response_payload = AZ_SPAN_EMPTY;
@@ -240,18 +240,18 @@ az_result check_for_commands()
 
       /* Modify the response/error message/status as needed for your solution */
       az_mqtt5_rpc_server_execution_rsp_event_data return_data
-          = { .correlation_id = pending_command.correlation_id,
+          = { .correlation_id = pending_command.request_data.correlation_id,
               .response = response_payload,
-              .response_topic = pending_command.response_topic,
+              .response_topic = pending_command.request_data.response_topic,
               .request_topic = pending_command.request_topic,
               .status = rc,
               .content_type = content_type,
               .error_message = error_message };
       LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_server_execution_finish(&rpc_server, &return_data));
 
-      pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
+      pending_command.request_data.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
       pending_command.request_topic = AZ_SPAN_FROM_BUFFER(request_topic_buffer);
-      pending_command.correlation_id = AZ_SPAN_EMPTY;
+      pending_command.request_data.correlation_id = AZ_SPAN_EMPTY;
     }
   }
   return AZ_OK;
@@ -264,15 +264,15 @@ az_result copy_execution_event_data(
   az_span_copy(destination->request_topic, source.request_topic);
   destination->request_topic
       = az_span_slice(destination->request_topic, 0, az_span_size(source.request_topic));
-  az_span_copy(destination->response_topic, source.response_topic);
-  az_span_copy(destination->request_data, source.request_data);
-  az_span_copy(destination->content_type, source.content_type);
-  destination->content_type
-      = az_span_slice(destination->content_type, 0, az_span_size(source.content_type));
-  destination->correlation_id = AZ_SPAN_FROM_BUFFER(correlation_id_buffer);
-  az_span_copy(destination->correlation_id, source.correlation_id);
-  destination->correlation_id
-      = az_span_slice(destination->correlation_id, 0, az_span_size(source.correlation_id));
+  az_span_copy(destination->request_data.response_topic, source.request_data.response_topic);
+  az_span_copy(destination->request_data.request_data, source.request_data.request_data);
+  az_span_copy(destination->request_data.content_type, source.request_data.content_type);
+  destination->request_data.content_type
+      = az_span_slice(destination->request_data.content_type, 0, az_span_size(source.request_data.content_type));
+  destination->request_data.correlation_id = AZ_SPAN_FROM_BUFFER(correlation_id_buffer);
+  az_span_copy(destination->request_data.correlation_id, source.request_data.correlation_id);
+  destination->request_data.correlation_id
+      = az_span_slice(destination->request_data.correlation_id, 0, az_span_size(source.request_data.correlation_id));
 
   return AZ_OK;
 }
@@ -292,7 +292,7 @@ az_result iot_callback(az_mqtt5_connection* client, az_event event)
       az_mqtt5_connack_data* connack_data = (az_mqtt5_connack_data*)event.data;
       printf(LOG_APP "CONNACK: %d\n", connack_data->connack_reason);
 
-      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_server_register(&rpc_server));
+      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_server_hfsm_register(&rpc_server));
       break;
     }
 
@@ -308,16 +308,16 @@ az_result iot_callback(az_mqtt5_connection* client, az_event event)
       az_mqtt5_rpc_server_execution_req_event_data data
           = *(az_mqtt5_rpc_server_execution_req_event_data*)event.data;
       // can check here for the expected request topic to determine which command to execute
-      if (az_span_ptr(pending_command.correlation_id) != NULL)
+      if (az_span_ptr(pending_command.request_data.correlation_id) != NULL)
       {
         // can add this command to a queue to be executed if the application supports executing
         // multiple commands at once.
         printf(LOG_APP
                "Received command while another command is executing. Sending error response.\n");
         az_mqtt5_rpc_server_execution_rsp_event_data return_data
-            = { .correlation_id = data.correlation_id,
+            = { .correlation_id = data.request_data.correlation_id,
                 .error_message = AZ_SPAN_FROM_STR("Can't execute more than one command at a time"),
-                .response_topic = data.response_topic,
+                .response_topic = data.request_data.response_topic,
                 .request_topic = data.request_topic,
                 .status = AZ_MQTT5_RPC_STATUS_THROTTLED,
                 .response = AZ_SPAN_EMPTY,
@@ -385,10 +385,10 @@ int main(int argc, char* argv[])
   LOG_AND_EXIT_IF_FAILED(az_mqtt5_connection_init(
       &mqtt_connection, &connection_context, &mqtt5, iot_callback, &connection_options));
 
-  pending_command.request_data = AZ_SPAN_FROM_BUFFER(request_payload_buffer);
-  pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
-  pending_command.correlation_id = AZ_SPAN_EMPTY;
-  pending_command.response_topic = AZ_SPAN_FROM_BUFFER(response_topic_buffer);
+  pending_command.request_data.request_data = AZ_SPAN_FROM_BUFFER(request_payload_buffer);
+  pending_command.request_data.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
+  pending_command.request_data.correlation_id = AZ_SPAN_EMPTY;
+  pending_command.request_data.response_topic = AZ_SPAN_FROM_BUFFER(response_topic_buffer);
   pending_command.request_topic = AZ_SPAN_FROM_BUFFER(request_topic_buffer);
 
   az_mqtt5_property_bag property_bag;

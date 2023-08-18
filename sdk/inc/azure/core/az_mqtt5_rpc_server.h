@@ -77,6 +77,10 @@ struct az_mqtt5_rpc_server
    */
   az_span subscription_topic;
 
+  az_span model_id;
+  az_span client_id;
+  az_span command_name;
+
   /**
    * @brief Options for the MQTT5 RPC Server.
    */
@@ -114,37 +118,6 @@ typedef enum
   AZ_MQTT5_RPC_STATUS_TIMEOUT = 504,
 } az_mqtt5_rpc_status;
 
-typedef struct az_mqtt5_rpc_server_response_data
-{
-  /**
-   * @brief The correlation id of the command.
-   */
-  az_span correlation_id;
-
-  /**
-   * @brief The topic to send the response to.
-   */
-  az_span response_topic;
-  /**
-   * @brief The status code of the execution.
-   */
-  az_mqtt5_rpc_status status;
-  /**
-   * @brief The response payload.
-   * @note Will be AZ_SPAN_EMPTY when the status is an error status.
-   */
-  az_span response;
-  /**
-   * @brief The error message if the status is an error status.
-   * @note Will be AZ_SPAN_EMPTY when the status is not an error status.
-   *      Can be AZ_SPAN_EMPTY on error as well.
-   */
-  az_span error_message;
-  /**
-   * @brief The content type of the response.
-   */
-  az_span content_type;
-} az_mqtt5_rpc_server_response_data;
 
 /**
  * @brief data type for incoming parsed publish topic
@@ -209,7 +182,7 @@ AZ_NODISCARD az_result az_rpc_server_init(
  */
 AZ_NODISCARD az_mqtt5_rpc_server_options az_mqtt5_rpc_server_options_default();
 
-AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
+AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span out_subscription_topic);
 
 /**
  * @brief Parse information from an RPC request topic
@@ -231,8 +204,6 @@ AZ_INLINE az_span az_rpc_server_get_status_property_value(
   sprintf(status_str, "%d", status);
   return az_span_create_from_str(status_str);
 }
-
-AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
 
 
 // ~~~~~~~~~~~~~~~~~~~~ HFSM RPC Server API ~~~~~~~~~~~~~~~~~
@@ -315,7 +286,34 @@ typedef struct az_mqtt5_rpc_server_execution_rsp_event_data
    * @brief The request topic to make sure the right RPC server sends the response.
    */
   az_span request_topic;
-  az_mqtt5_rpc_server_response_data response_data;
+  /**
+   * @brief The correlation id of the command.
+   */
+  az_span correlation_id;
+
+  /**
+   * @brief The topic to send the response to.
+   */
+  az_span response_topic;
+  /**
+   * @brief The status code of the execution.
+   */
+  az_mqtt5_rpc_status status;
+  /**
+   * @brief The response payload.
+   * @note Will be AZ_SPAN_EMPTY when the status is an error status.
+   */
+  az_span response;
+  /**
+   * @brief The error message if the status is an error status.
+   * @note Will be AZ_SPAN_EMPTY when the status is not an error status.
+   *      Can be AZ_SPAN_EMPTY on error as well.
+   */
+  az_span error_message;
+  /**
+   * @brief The content type of the response.
+   */
+  az_span content_type;
 } az_mqtt5_rpc_server_execution_rsp_event_data;
 
 /**

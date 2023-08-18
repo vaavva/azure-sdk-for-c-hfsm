@@ -257,29 +257,11 @@ AZ_NODISCARD az_result az_mqtt5_init(az_mqtt5* mqtt5, az_mqtt5_options const* op
   return AZ_OK;
 }
 
-AZ_NODISCARD az_mqtt5_callbacks az_mqtt5_callbacks_default()
-{
-  return (az_mqtt5_callbacks){
-    .on_log = _az_mosquitto_on_log,
-    .on_connect = _az_mosquitto5_on_connect,
-    .on_disconnect = _az_mosquitto5_on_disconnect,
-    .on_publish = _az_mosquitto5_on_publish,
-    .on_subscribe = _az_mosquitto5_on_subscribe,
-    .on_unsubscribe = _az_mosquitto5_on_unsubscribe,
-    .on_message = _az_mosquitto5_on_message,
-  };
-}
-
 AZ_NODISCARD az_result
-az_mqtt5_outbound_connect(az_mqtt5* mqtt5, az_mqtt5_connect_data* connect_data, az_mqtt5_callbacks* callbacks)
+az_mqtt5_outbound_connect(az_mqtt5* mqtt5, az_mqtt5_connect_data* connect_data)
 {
   az_result ret = AZ_OK;
   az_mqtt5* me = (az_mqtt5*)mqtt5;
-
-  if(callbacks == NULL)
-  {
-    *callbacks = az_mqtt5_callbacks_default();
-  }
 
   // IMPORTANT: application must call mosquitto_lib_init() before any Mosquitto clients are created.
 
@@ -301,15 +283,15 @@ az_mqtt5_outbound_connect(az_mqtt5* mqtt5, az_mqtt5_connect_data* connect_data, 
       me->_internal.mosquitto_handle, MOSQ_OPT_PROTOCOL_VERSION, MQTT_PROTOCOL_V5)));
 
   // Configure callbacks. This should be done before connecting ideally.
-  mosquitto_log_callback_set(me->_internal.mosquitto_handle, callbacks->on_log);
-  mosquitto_connect_v5_callback_set(me->_internal.mosquitto_handle, callbacks->on_connect);
+  mosquitto_log_callback_set(me->_internal.mosquitto_handle, _az_mosquitto_on_log);
+  mosquitto_connect_v5_callback_set(me->_internal.mosquitto_handle, _az_mosquitto5_on_connect);
   mosquitto_disconnect_v5_callback_set(
-      me->_internal.mosquitto_handle, callbacks->on_disconnect);
-  mosquitto_publish_v5_callback_set(me->_internal.mosquitto_handle, callbacks->on_publish);
-  mosquitto_subscribe_v5_callback_set(me->_internal.mosquitto_handle, callbacks->on_subscribe);
+      me->_internal.mosquitto_handle, _az_mosquitto5_on_disconnect);
+  mosquitto_publish_v5_callback_set(me->_internal.mosquitto_handle, _az_mosquitto5_on_publish);
+  mosquitto_subscribe_v5_callback_set(me->_internal.mosquitto_handle, _az_mosquitto5_on_subscribe);
   mosquitto_unsubscribe_v5_callback_set(
-      me->_internal.mosquitto_handle,callbacks->on_unsubscribe);
-  mosquitto_message_v5_callback_set(me->_internal.mosquitto_handle, callbacks->on_message);
+      me->_internal.mosquitto_handle, _az_mosquitto5_on_unsubscribe);
+  mosquitto_message_v5_callback_set(me->_internal.mosquitto_handle, _az_mosquitto5_on_message);
 
   if (me->_internal.options.disable_tls == 0)
   {

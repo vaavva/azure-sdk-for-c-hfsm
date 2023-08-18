@@ -55,17 +55,6 @@ typedef struct
   bool disable_tls;
 } az_mqtt5_options;
 
-typedef struct
-{
-  void (*on_log)(struct mosquitto *mosq, void *obj, int level, const char *str);
-  void (*on_connect)(struct mosquitto *mosq, void *obj, int rc, int flags, const mosquitto_property *props);
-  void (*on_disconnect)(struct mosquitto *mosq, void *obj, int rc, const mosquitto_property *props);
-  void (*on_publish)(struct mosquitto *mosq, void *obj, int mid, int rc, const mosquitto_property *props);
-  void (*on_subscribe)(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos, const mosquitto_property *props);
-  void (*on_unsubscribe)(struct mosquitto *mosq, void *obj, int mid, const mosquitto_property *props);
-  void (*on_message)(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message, const mosquitto_property *props);
-} az_mqtt5_callbacks;
-
 /**
  * @brief MQTT 5 client for Mosquitto.
  */
