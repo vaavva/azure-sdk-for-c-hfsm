@@ -9,135 +9,20 @@
 
 #include <azure/core/_az_cfg.h>
 
-/**
- * @brief Handle an incoming request
- *
- * @param this_policy
- * @param data event data received from the publish
- * 
- * @note MUST call az_rpc_server_free_properties on props_to_free after copying what's needed from the request
- *
- * @return az_result
- */
-AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_command_request* out_request)
+AZ_NODISCARD az_result az_rpc_server_parse_request_topic(az_mqtt5_rpc_server* client, az_span request_topic, az_mqtt5_rpc_server_command_request_specification* out_request)
 {
-  _az_PRECONDITION_NOT_NULL(data->properties);
+  _az_PRECONDITION_VALID_SPAN(request_topic, 0, false);
   (void)client;
-
-  // save the response topic
-  // az_mqtt5_property_string response_topic;
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_string_read(
-      data->properties, AZ_MQTT5_PROPERTY_TYPE_RESPONSE_TOPIC, &props_to_free->_internal.response_topic));
-
-  // save the correlation data to send back with the response
-  // az_mqtt5_property_binarydata correlation_data;
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_binarydata_read(
-      data->properties, AZ_MQTT5_PROPERTY_TYPE_CORRELATION_DATA, &props_to_free->_internal.correlation_data));
-
-  // validate request isn't expired?
-
-  // read the content type so the application can properly deserialize the request
-  // az_mqtt5_property_string content_type;
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_string_read(
-      data->properties, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, &props_to_free->_internal.content_type));
-
-  out_request->correlation_id = az_mqtt5_property_binarydata_get(&props_to_free->_internal.correlation_data);
-  out_request->response_topic = az_mqtt5_property_string_get(&props_to_free->_internal.response_topic);
-  out_request->request_data = data->payload;
-  // out_request->request_topic = data->topic;
-  out_request->content_type = az_mqtt5_property_string_get(&props_to_free->_internal.content_type);
 
   //TODO: parse properly
   out_request->model_id = az_span_create_from_str("dtmi:rpc:samples:vehicle;1");
-  out_request->target_client_id = az_span_create_from_str("vehicle03");
+  out_request->executor_client_id = az_span_create_from_str("vehicle03");
   out_request->command_name = az_span_create_from_str("unlock");
+  out_request->invoker_client_id = AZ_SPAN_EMPTY;
 
   return AZ_OK;
 }
 
-void az_rpc_server_free_properties(az_mqtt5_rpc_server_property_pointers props)
-{
-  az_mqtt5_property_string_free(&props._internal.content_type);
-  az_mqtt5_property_binarydata_free(&props._internal.correlation_data);
-  az_mqtt5_property_string_free(&props._internal.response_topic);
-}
-
-az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client)
-{
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_empty(&client->property_bag));
-
-  return AZ_OK;
-}
-
-/**
- * @brief Build the reponse payload given the execution finish data
- *
- * @param me
- * @param event_data execution finish data
- *    contains status code, and error message or response payload
- * @param out_data event data for response publish
- * @return az_result
- */
-AZ_NODISCARD az_result az_rpc_server_get_response_packet(
-    az_mqtt5_rpc_server* client,
-    az_mqtt5_rpc_server_response_data* event_data,
-    az_mqtt5_pub_data* out_data)
-{
-
-  // if the status indicates failure, add the status message to the user properties
-  if (event_data->status < 200 || event_data->status >= 300)
-  {
-    // TODO: is an error message required on failure?
-    _az_PRECONDITION_VALID_SPAN(event_data->error_message, 0, true);
-    az_mqtt5_property_stringpair status_message_property
-        = { .key = AZ_SPAN_FROM_STR("statusMessage"), .value = event_data->error_message };
-
-    _az_RETURN_IF_FAILED(az_mqtt5_property_bag_stringpair_append(
-        &client->property_bag,
-        AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
-        &status_message_property));
-    out_data->payload = AZ_SPAN_EMPTY;
-  }
-  // if the status indicates success, add the response payload to the publish and set the content
-  // type property
-  else
-  {
-    // TODO: is a payload required?
-    _az_PRECONDITION_VALID_SPAN(event_data->response, 0, true);
-    az_mqtt5_property_string content_type = { .str = event_data->content_type };
-
-    _az_RETURN_IF_FAILED(az_mqtt5_property_bag_string_append(
-        &client->property_bag, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, &content_type));
-
-    out_data->payload = event_data->response;
-  }
-
-  // Set the status user property
-  char status_str[5];
-  sprintf(status_str, "%d", event_data->status);
-  az_mqtt5_property_stringpair status_property
-      = { .key = AZ_SPAN_FROM_STR("status"), .value = az_span_create_from_str(status_str) };
-
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_stringpair_append(
-      &client->property_bag,
-      AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
-      &status_property));
-
-  // Set the correlation data property
-  _az_PRECONDITION_VALID_SPAN(event_data->correlation_id, 0, true);
-  az_mqtt5_property_binarydata correlation_data = { .bindata = event_data->correlation_id };
-  _az_RETURN_IF_FAILED(az_mqtt5_property_bag_binary_append(
-      &client->property_bag,
-      AZ_MQTT5_PROPERTY_TYPE_CORRELATION_DATA,
-      &correlation_data));
-
-  out_data->properties = &client->property_bag;
-  // use the received response topic as the topic
-  out_data->topic = event_data->response_topic;
-  out_data->qos = client->options.response_qos;
-
-  return AZ_OK;
-}
 
 AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic)
 {
@@ -172,7 +57,6 @@ AZ_NODISCARD az_mqtt5_rpc_server_options az_mqtt5_rpc_server_options_default()
 
 AZ_NODISCARD az_result az_rpc_server_init(
     az_mqtt5_rpc_server* client,
-    az_mqtt5_property_bag property_bag,
     az_span model_id, az_span client_id, az_span command_name,
     az_span subscription_topic,
     az_mqtt5_rpc_server_options* options)
@@ -183,8 +67,6 @@ AZ_NODISCARD az_result az_rpc_server_init(
   _az_RETURN_IF_FAILED(az_rpc_server_get_subscription_topic(client, model_id, client_id, command_name, subscription_topic));
 
   client->subscription_topic = subscription_topic;
-
-  client->property_bag = property_bag;
 
   return AZ_OK;
 }

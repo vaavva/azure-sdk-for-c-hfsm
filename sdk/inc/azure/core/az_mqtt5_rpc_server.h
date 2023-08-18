@@ -35,6 +35,10 @@
 #endif
 
 // ~~~~~~~~~~~~~~~~~~~~ Codec Public API ~~~~~~~~~~~~~~~~~
+
+#define AZ_MQTT5_RPC_STATUS_PROPERTY_NAME "status"
+#define AZ_MQTT5_RPC_STATUS_MESSAGE_PROPERTY_NAME "statusMessage"
+
 /**
  * @brief The MQTT5 RPC Server.
  *
@@ -68,11 +72,6 @@ typedef struct
  */
 struct az_mqtt5_rpc_server
 {
-  /**
-   * @brief The property bag used by the RPC server policy for sending response messages
-   */
-  az_mqtt5_property_bag property_bag;
-
   /**
    * @brief The topic to subscribe to for commands
    */
@@ -148,6 +147,30 @@ typedef struct az_mqtt5_rpc_server_response_data
 } az_mqtt5_rpc_server_response_data;
 
 /**
+ * @brief data type for incoming parsed publish topic
+ */
+typedef struct
+{
+  /**
+   * @brief The command name.
+   */
+  az_span command_name;
+  /**
+   * @brief The model id.
+   */
+  az_span model_id;
+  /**
+   * @brief The target client id.
+   */
+  az_span executor_client_id;
+  /**
+   * @brief The invoker client id.
+   */
+  az_span invoker_client_id;
+
+} az_mqtt5_rpc_server_command_request_specification;
+
+/**
  * @brief data type for incoming parsed publish
  */
 typedef struct
@@ -168,38 +191,28 @@ typedef struct
    * @brief The content type of the request.
    */
   az_span content_type;
-  // Topic information
-  /**
-   * @brief The command name.
-   */
-  az_span command_name;
-  /**
-   * @brief The model id.
-   */
-  az_span model_id;
-  /**
-   * @brief The target client id.
-   */
-  az_span target_client_id;
+
+  az_mqtt5_rpc_server_command_request_specification specification;
 
 } az_mqtt5_rpc_server_command_request;
 
-typedef struct
-{
-  struct {
-    az_mqtt5_property_string content_type;
-    az_mqtt5_property_binarydata correlation_data;
-    az_mqtt5_property_string response_topic;
-  } _internal;
-} az_mqtt5_rpc_server_property_pointers;
 
-az_mqtt5_rpc_server_property_pointers az_mqtt5_rpc_server_property_pointers_default();
 
-void az_rpc_server_free_properties(az_mqtt5_rpc_server_property_pointers props);
+// typedef struct
+// {
+//   struct {
+//     az_mqtt5_property_string content_type;
+//     az_mqtt5_property_binarydata correlation_data;
+//     az_mqtt5_property_string response_topic;
+//   } _internal;
+// } az_mqtt5_rpc_server_property_pointers;
+
+// az_mqtt5_rpc_server_property_pointers az_mqtt5_rpc_server_property_pointers_default();
+
+// void az_rpc_server_free_properties(az_mqtt5_rpc_server_property_pointers props);
 
 AZ_NODISCARD az_result az_rpc_server_init(
     az_mqtt5_rpc_server* client,
-    az_mqtt5_property_bag property_bag,
     az_span model_id, az_span client_id, az_span command_name,
     az_span subscription_topic,
     az_mqtt5_rpc_server_options* options);
@@ -221,7 +234,10 @@ AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server*
  *
  * @return az_result
  */
-AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_command_request* out_request);
+// AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_command_request* out_request);
+// AZ_NODISCARD az_result az_rpc_server_parse_request_topic(az_mqtt5_rpc_server* client, az_span request_topic, az_mqtt5_rpc_server_command_request* out_request);
+AZ_NODISCARD az_result az_rpc_server_parse_request_topic(az_mqtt5_rpc_server* client, az_span request_topic, az_mqtt5_rpc_server_command_request_specification* out_request);
+
 
 /**
  * @brief Build the reponse payload given the execution finish data
@@ -232,14 +248,25 @@ AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5
  * @param out_data event data for response publish
  * @return az_result
  */
-AZ_NODISCARD az_result az_rpc_server_get_response_packet(
+// AZ_NODISCARD az_result az_rpc_server_get_response_packet(
+//     az_mqtt5_rpc_server* client,
+//     az_mqtt5_rpc_server_response_data* event_data,
+//     az_mqtt5_pub_data* out_data);
+
+AZ_INLINE az_span az_rpc_server_get_status_property_value(
     az_mqtt5_rpc_server* client,
-    az_mqtt5_rpc_server_response_data* event_data,
-    az_mqtt5_pub_data* out_data);
+    az_mqtt5_rpc_status status
+    )
+{
+  (void)client;
+  char status_str[5];
+  sprintf(status_str, "%d", status);
+  return az_span_create_from_str(status_str);
+}
 
 AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
 
-az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client);
+// az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client);
 
 
 // ~~~~~~~~~~~~~~~~~~~~ HFSM RPC Server API ~~~~~~~~~~~~~~~~~
@@ -302,6 +329,11 @@ struct az_mqtt5_rpc_server_hfsm
      * @brief az_mqtt5_rpc_server associated with this hfsm
     */
     az_mqtt5_rpc_server* rpc_server;
+
+    /**
+     * @brief The property bag used by the RPC server policy for sending response messages
+     */
+    az_mqtt5_property_bag property_bag;
 
   } _internal;
 };

@@ -50,6 +50,8 @@ volatile bool sample_finished = false;
 
 static struct mosquitto* mosquitto_handle;
 
+static mosquitto_property *mosq_properties;
+
 static az_mqtt5_rpc_server_command_request pending_command;
 
 #ifdef _WIN32
@@ -74,6 +76,32 @@ void az_platform_critical_error()
     ;
 }
 
+static az_result build_response_properties(az_mqtt5_rpc_server* client, az_mqtt5_rpc_status status, az_span error_message, az_span correlation_id, mosquitto_property **props)
+{
+  // if the status indicates failure, add the status message to the user properties
+  if (status < 200 || status >= 300)
+  {
+    mosquitto_property_add_string_pair(props, AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY, AZ_MQTT5_RPC_STATUS_MESSAGE_PROPERTY_NAME, (const char*)az_span_ptr(error_message));
+  }
+  // if the status indicates success, set the content type property
+  else
+  {
+
+    mosquitto_property_add_string(props, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, (const char*)az_span_ptr(content_type));
+  }
+
+  // Set the status user property
+  az_span status_span = az_rpc_server_get_status_property_value(client, status);
+
+  mosquitto_property_add_string_pair(props, AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY, AZ_MQTT5_RPC_STATUS_PROPERTY_NAME, (const char*)az_span_ptr(status_span));
+
+
+  // Set the correlation data property
+  mosquitto_property_add_binary(props, AZ_MQTT5_PROPERTY_TYPE_CORRELATION_DATA, (const void*)az_span_ptr(correlation_id), (uint16_t)az_span_size(correlation_id));
+
+  return AZ_OK;
+}
+
 /**
  * @brief On command timeout, send an error response with timeout details to the client
  * @note May need to be modified for your solution
@@ -88,36 +116,24 @@ static void timer_callback(union sigval sv)
 #endif
 
   printf(LOG_APP_ERROR "Command execution timed out.\n");
-  az_mqtt5_pub_data pub_data;
-  az_mqtt5_rpc_server_response_data return_data
-      = { .correlation_id = pending_command.correlation_id,
-          .error_message = AZ_SPAN_FROM_STR("Command Server timeout"),
-          .response_topic = pending_command.response_topic,
-          .status = AZ_MQTT5_RPC_STATUS_TIMEOUT,
-          .response = AZ_SPAN_EMPTY,
-          .content_type = AZ_SPAN_EMPTY };
 
-  if (AZ_OK != az_rpc_server_get_response_packet(&rpc_server, &return_data, &pub_data))
-  {
-    printf(LOG_APP_ERROR "Failed to create response packet\n");
-    return;
-  }
+  build_response_properties(&rpc_server, AZ_MQTT5_RPC_STATUS_TIMEOUT, AZ_SPAN_FROM_STR("Command Server timeout"), pending_command.correlation_id, &mosq_properties);
 
- mosquitto_publish_v5(
+  mosquitto_publish_v5(
     mosquitto_handle,
     NULL,	
-    (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.	
-    az_span_size(pub_data.payload),	
-    az_span_ptr(pub_data.payload),	
-    pub_data.qos,	
+    (char*)az_span_ptr(pending_command.response_topic), // Assumes properly formed NULL terminated string.	
+    0,	
+    NULL,	
+    rpc_server.options.response_qos,	
     false,	
-    pub_data.properties ? pub_data.properties->properties : NULL);
+    mosq_properties);
 
-  az_rpc_server_empty_property_bag(&rpc_server);
+  mosquitto_property_free_all(&mosq_properties);
 
   pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
-  pending_command.command_name = AZ_SPAN_FROM_BUFFER(command_name_buffer);
-  pending_command.model_id = AZ_SPAN_FROM_BUFFER(model_id_buffer);
+  pending_command.specification.command_name = AZ_SPAN_FROM_BUFFER(command_name_buffer);
+  pending_command.specification.model_id = AZ_SPAN_FROM_BUFFER(model_id_buffer);
   pending_command.correlation_id = AZ_SPAN_EMPTY;
 
 #ifdef _WIN32
@@ -229,28 +245,24 @@ static void on_message(
   (void)obj;
 
   az_result ret;
-  az_mqtt5_property_bag property_bag;
-  az_mqtt5_property_bag_options property_bag_options;
 
-  property_bag_options = az_mqtt5_property_bag_options_default();
-  property_bag_options.properties = (mosquitto_property*)(uintptr_t)props;
+  az_mqtt5_rpc_server_command_request_specification command_spec;
 
-  ret = az_mqtt5_property_bag_init(&property_bag, NULL, &property_bag_options);
+  char* response_topic_str = NULL;
+  mosquitto_property_read_string(props, AZ_MQTT5_PROPERTY_TYPE_RESPONSE_TOPIC, &response_topic_str, false);
 
+  char* content_type_str = NULL;
+  mosquitto_property_read_string(props, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, &content_type_str, false);
+
+  uint8_t* correlation_id_bin = NULL;
+  uint16_t correlation_id_bin_size;
+  mosquitto_property_read_binary(props, AZ_MQTT5_PROPERTY_TYPE_CORRELATION_DATA, (void**)&correlation_id_bin, &correlation_id_bin_size, false);
+
+  ret = az_rpc_server_parse_request_topic(&rpc_server, az_span_create_from_str(message->topic), &command_spec);
   if (az_result_failed(ret))
   {
     az_platform_critical_error();
   }
-
-  az_mqtt5_recv_data recv_data = (az_mqtt5_recv_data){ .qos = (int8_t)message->qos,
-                             .id = (int32_t)message->mid,
-                             .payload = az_span_create(message->payload, message->payloadlen),
-                             .topic = az_span_create_from_str(message->topic),
-                             .properties = &property_bag };
-
-  az_mqtt5_rpc_server_command_request command_data;
-  az_mqtt5_rpc_server_property_pointers props_to_free;
-  ret = az_rpc_server_parse_request_topic_and_properties(&rpc_server, &recv_data, &props_to_free, &command_data);
 
   if (az_span_ptr(pending_command.correlation_id) != NULL)
   {
@@ -258,42 +270,47 @@ static void on_message(
     // multiple commands at once.
     printf(LOG_APP
             "Received command while another command is executing. Sending error response.\n");
-    az_mqtt5_pub_data pub_data;
-    az_mqtt5_rpc_server_response_data response_data
-        = { .correlation_id = command_data.correlation_id,
-            .error_message = AZ_SPAN_FROM_STR("Can't execute more than one command at a time"),
-            .response_topic = command_data.response_topic,
-            .status = AZ_MQTT5_RPC_STATUS_THROTTLED,
-            .response = AZ_SPAN_EMPTY,
-            .content_type = AZ_SPAN_EMPTY };
-    ret = az_rpc_server_get_response_packet(&rpc_server, &response_data, &pub_data);
+
+    build_response_properties(&rpc_server, AZ_MQTT5_RPC_STATUS_THROTTLED, AZ_SPAN_FROM_STR("Can't execute more than one command at a time"), az_span_create(correlation_id_bin, correlation_id_bin_size), &mosq_properties);
 
     mosquitto_publish_v5(
-      mosq,	
+      mosq,
+      NULL,
+      response_topic_str, // Assumes properly formed NULL terminated string.	
+      0,
       NULL,	
-      (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.	
-      az_span_size(pub_data.payload),	
-      az_span_ptr(pub_data.payload),	
-      pub_data.qos,	
-      false,	
-      pub_data.properties ? pub_data.properties->properties : NULL);
+      rpc_server.options.response_qos,	
+      false,
+      mosq_properties);
 
-    az_rpc_server_empty_property_bag(&rpc_server);
+    mosquitto_property_free_all(&mosq_properties);
   }
   else
   {
+    az_mqtt5_rpc_server_command_request command_req = {
+      .specification = command_spec,
+      .request_data = az_span_create(message->payload, message->payloadlen),
+      .response_topic = az_span_create_from_str(response_topic_str),
+      .correlation_id = az_span_create(correlation_id_bin, correlation_id_bin_size),
+      .content_type = az_span_create_from_str(content_type_str),
+    };
+
     // Mark that there's a pending command to be executed
-    ret = copy_execution_event_data(&pending_command, command_data);
+    ret = copy_execution_event_data(&pending_command, command_req);
+    if (az_result_failed(ret))
+    {
+      az_platform_critical_error();
+    }
     start_timer(NULL, 10000);
     printf(LOG_APP "Added command to queue\n");
   }
 
-  if (ret != AZ_OK)
-  {
-    printf(LOG_APP_ERROR "Failure handling an incoming command\n");
-  }
-
-  az_rpc_server_free_properties(props_to_free);
+  free(response_topic_str);
+  response_topic_str = NULL;
+  free(content_type_str);
+  content_type_str = NULL;
+  free(correlation_id_bin);
+  correlation_id_bin = NULL;
 }
 
 /**
@@ -364,32 +381,25 @@ az_result check_for_commands()
       }
 
       /* Modify the response/error message/status as needed for your solution */
-      az_mqtt5_rpc_server_response_data return_data
-          = { .correlation_id = pending_command.correlation_id,
-              .response = response_payload,
-              .response_topic = pending_command.response_topic,
-              .status = rc,
-              .content_type = content_type,
-              .error_message = error_message };
-      
-      az_mqtt5_pub_data pub_data;
-      rc = az_rpc_server_get_response_packet(&rpc_server, &return_data, &pub_data);
+      build_response_properties(&rpc_server, rc, error_message, pending_command.correlation_id, &mosq_properties);
 
-      mosquitto_publish_v5(
+      int retc = mosquitto_publish_v5(
         mosquitto_handle,	
         NULL,	
-        (char*)az_span_ptr(pub_data.topic), // Assumes properly formed NULL terminated string.	
-        az_span_size(pub_data.payload),	
-        az_span_ptr(pub_data.payload),	
-        pub_data.qos,	
+        (char*)az_span_ptr(pending_command.response_topic), // Assumes properly formed NULL terminated string.	
+        az_span_size(response_payload),	
+        az_span_ptr(response_payload),	
+        rpc_server.options.response_qos,	
         false,	
-        pub_data.properties ? pub_data.properties->properties : NULL);
+        mosq_properties);
 
-      az_rpc_server_empty_property_bag(&rpc_server);
+      printf(LOG_APP "Sent response. Return code: %d\n", retc);
+
+      mosquitto_property_free_all(&mosq_properties);
 
       pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
-      pending_command.command_name = AZ_SPAN_FROM_BUFFER(command_name_buffer);
-      pending_command.model_id = AZ_SPAN_FROM_BUFFER(model_id_buffer);
+      pending_command.specification.command_name = AZ_SPAN_FROM_BUFFER(command_name_buffer);
+      pending_command.specification.model_id = AZ_SPAN_FROM_BUFFER(model_id_buffer);
       pending_command.correlation_id = AZ_SPAN_EMPTY;
     }
   }
@@ -400,12 +410,12 @@ az_result copy_execution_event_data(
     az_mqtt5_rpc_server_command_request* destination,
     az_mqtt5_rpc_server_command_request source)
 {
-  az_span_copy(destination->command_name, source.command_name);
-  destination->command_name
-      = az_span_slice(destination->command_name, 0, az_span_size(source.command_name));
-  az_span_copy(destination->model_id, source.model_id);
-  destination->model_id
-      = az_span_slice(destination->model_id, 0, az_span_size(source.model_id));
+  az_span_copy(destination->specification.command_name, source.specification.command_name);
+  destination->specification.command_name
+      = az_span_slice(destination->specification.command_name, 0, az_span_size(source.specification.command_name));
+  az_span_copy(destination->specification.model_id, source.specification.model_id);
+  destination->specification.model_id
+      = az_span_slice(destination->specification.model_id, 0, az_span_size(source.specification.model_id));
   // az_span_copy(destination->target_client_id, source.target_client_id);
   // destination->target_client_id
   //     = az_span_slice(destination->target_client_id, 0, az_span_size(source.target_client_id));
@@ -464,15 +474,11 @@ int main(int argc, char* argv[])
   pending_command.content_type = AZ_SPAN_FROM_BUFFER(content_type_buffer);
   pending_command.correlation_id = AZ_SPAN_EMPTY;
   pending_command.response_topic = AZ_SPAN_FROM_BUFFER(response_topic_buffer);
-  pending_command.command_name = AZ_SPAN_FROM_BUFFER(command_name_buffer);
-  pending_command.model_id = AZ_SPAN_FROM_BUFFER(model_id_buffer);
-
-  az_mqtt5_property_bag property_bag;
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&property_bag, NULL, NULL));
+  pending_command.specification.command_name = AZ_SPAN_FROM_BUFFER(command_name_buffer);
+  pending_command.specification.model_id = AZ_SPAN_FROM_BUFFER(model_id_buffer);
 
   LOG_AND_EXIT_IF_FAILED(az_rpc_server_init(
       &rpc_server,
-      property_bag,
       model_id,
       client_id,
       command_name,
@@ -509,7 +515,7 @@ int main(int argc, char* argv[])
   }
 
   // mosquitto allocates the property bag for us, but we're responsible for free'ing it
-  mosquitto_property_free_all(&property_bag.properties);
+  mosquitto_property_free_all(&mosq_properties);
 
   if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
   {
