@@ -196,21 +196,6 @@ typedef struct
 
 } az_mqtt5_rpc_server_command_request;
 
-
-
-// typedef struct
-// {
-//   struct {
-//     az_mqtt5_property_string content_type;
-//     az_mqtt5_property_binarydata correlation_data;
-//     az_mqtt5_property_string response_topic;
-//   } _internal;
-// } az_mqtt5_rpc_server_property_pointers;
-
-// az_mqtt5_rpc_server_property_pointers az_mqtt5_rpc_server_property_pointers_default();
-
-// void az_rpc_server_free_properties(az_mqtt5_rpc_server_property_pointers props);
-
 AZ_NODISCARD az_result az_rpc_server_init(
     az_mqtt5_rpc_server* client,
     az_span model_id, az_span client_id, az_span command_name,
@@ -227,31 +212,14 @@ AZ_NODISCARD az_mqtt5_rpc_server_options az_mqtt5_rpc_server_options_default();
 AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
 
 /**
- * @brief Handle an incoming request
+ * @brief Parse information from an RPC request topic
  *
  * @param this_policy
  * @param data event data received from the publish
  *
  * @return az_result
  */
-// AZ_NODISCARD az_result az_rpc_server_parse_request_topic_and_properties(az_mqtt5_rpc_server* client, az_mqtt5_recv_data* data, az_mqtt5_rpc_server_property_pointers* props_to_free, az_mqtt5_rpc_server_command_request* out_request);
-// AZ_NODISCARD az_result az_rpc_server_parse_request_topic(az_mqtt5_rpc_server* client, az_span request_topic, az_mqtt5_rpc_server_command_request* out_request);
 AZ_NODISCARD az_result az_rpc_server_parse_request_topic(az_mqtt5_rpc_server* client, az_span request_topic, az_mqtt5_rpc_server_command_request_specification* out_request);
-
-
-/**
- * @brief Build the reponse payload given the execution finish data
- *
- * @param me
- * @param event_data execution finish data
- *    contains status code, and error message or response payload
- * @param out_data event data for response publish
- * @return az_result
- */
-// AZ_NODISCARD az_result az_rpc_server_get_response_packet(
-//     az_mqtt5_rpc_server* client,
-//     az_mqtt5_rpc_server_response_data* event_data,
-//     az_mqtt5_pub_data* out_data);
 
 AZ_INLINE az_span az_rpc_server_get_status_property_value(
     az_mqtt5_rpc_server* client,
@@ -265,8 +233,6 @@ AZ_INLINE az_span az_rpc_server_get_status_property_value(
 }
 
 AZ_NODISCARD az_result az_rpc_server_get_subscription_topic(az_mqtt5_rpc_server* client, az_span model_id, az_span client_id, az_span command_name, az_span out_subscription_topic);
-
-// az_result az_rpc_server_empty_property_bag(az_mqtt5_rpc_server* client);
 
 
 // ~~~~~~~~~~~~~~~~~~~~ HFSM RPC Server API ~~~~~~~~~~~~~~~~~
