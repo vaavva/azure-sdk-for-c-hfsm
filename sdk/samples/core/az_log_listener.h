@@ -171,6 +171,21 @@ AZ_INLINE void az_sdk_log_callback(az_log_classification classification, az_span
     case AZ_EVENT_RPC_CLIENT_PARSE_ERROR_RSP:
       class_str = "AZ_EVENT_RPC_CLIENT_PARSE_ERROR_RSP";
       break;
+    case AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_ERR_MSG_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_ERR_MSG_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_CONTENT_TYPE_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_CONTENT_TYPE_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_FREE_PROPS:
+      class_str = "AZ_EVENT_RPC_CLIENT_FREE_PROPS";
+      break;
     default:
       class_str = NULL;
   }
@@ -274,6 +289,21 @@ AZ_INLINE void az_app_log_callback(az_log_classification classification, az_span
       break;
     case AZ_EVENT_RPC_CLIENT_PARSE_ERROR_RSP:
       class_str = "AZ_EVENT_RPC_CLIENT_PARSE_ERROR_RSP";
+      break;
+    case AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_ERR_MSG_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_ERR_MSG_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_CONTENT_TYPE_ALLOCED:
+      class_str = "AZ_EVENT_RPC_CLIENT_CONTENT_TYPE_ALLOCED";
+      break;
+    case AZ_EVENT_RPC_CLIENT_FREE_PROPS:
+      class_str = "AZ_EVENT_RPC_CLIENT_FREE_PROPS";
       break;
     default:
       class_str = NULL;

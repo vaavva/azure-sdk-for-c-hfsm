@@ -1,0 +1,56 @@
+@startuml
+
+state processing {
+  state idle
+  idle : <b>entry/</b> READ_CORR_DATA
+  idle : <b>READ_CORR_DATA_FAIL/</b> ignore
+
+  state correlation_data {
+    state correlation_data_idle
+    correlation_data_idle : <b>entry/</b> az_mqtt5_property_get_binarydata, READ_STATUS
+    correlation_data_idle : <b>READ_STATUS_FAIL/</b> ignore
+    state status {
+      state status_idle
+      status_idle : <b>entry/</b> az_mqtt5_property_stringpair_get_value \n\tparse status
+      status_idle : \tif (status < 200 || status >= 300) 
+      status_idle : \t\tREAD_ERROR_MSG
+      status_idle : \tif (status >= 200 && status < 300)
+      status_idle : \t\tif(payload !empty)
+      status_idle : \t\t\tREAD_CONTENT_TYPE
+      status_idle : <b>READ_ERROR_MSG_FAIL/</b> ignore
+      status_idle : <b>READ_CONTENT_TYPE_FAIL/</b> ignore
+
+      state error_message
+      error_message : <b>exit/</b> free(error_message)
+
+      state content_type
+      content_type : <b>exit/</b> free(content_type)
+
+      [*] -> status_idle
+      status_idle --> error_message : <b>READ_ERROR_MSG_SUCCEED</b>
+      status_idle --> content_type : <b>READ_CONTENT_TYPE_SUCCEED</b>
+    }
+    status : <b>exit/</b> free(status)
+
+    [*] -> correlation_data_idle
+    correlation_data_idle --> status : <b>READ_STATUS_SUCCEED</b>
+  }
+  correlation_data : <b>exit/</b> free(correlation_data)
+
+  
+  [*] -> idle
+  idle --> correlation_data : <b>READ_CORR_DATA_SUCCEED</b>
+
+}
+processing : <b>az_event_policy_send_inbound_event/</b> ^exit
+
+@enduml
+
+' READ_CORR_DATA_SUCCEED
+' READ_CORR_DATA_FAIL
+' READ_STATUS_SUCCEED
+' READ_STATUS_FAIL
+' READ_ERROR_MSG_SUCCEED
+' READ_ERROR_MSG_FAIL
+' READ_CONTENT_TYPE_SUCCEED
+' READ_CONTENT_TYPE_FAIL

@@ -20,6 +20,11 @@ static az_result subscribing(az_event_policy* me, az_event event);
 static az_result ready(az_event_policy* me, az_event event);
 static az_result faulted(az_event_policy* me, az_event event);
 
+static az_result correlation_data_alloced(az_event_policy* me, az_event event);
+static az_result status_alloced(az_event_policy* me, az_event event);
+// static az_result err_msg_alloced(az_event_policy* me, az_event event);
+// static az_result content_type_alloced(az_event_policy* me, az_event event);
+
 AZ_NODISCARD az_result _az_rpc_client_hfsm_policy_init(
     _az_hfsm* hfsm,
     _az_event_client* event_client,
@@ -38,6 +43,18 @@ static az_event_policy_handler _get_parent(az_event_policy_handler child_state)
       || child_state == faulted)
   {
     parent_state = root;
+  }
+  else if (
+      child_state == correlation_data_alloced)//  || child_state == err_msg_alloced
+      // || child_state == content_type_alloced)
+  {
+    parent_state = ready;
+  }
+  else if (
+      child_state == status_alloced)//  || child_state == err_msg_alloced
+      // || child_state == content_type_alloced)
+  {
+    parent_state = correlation_data_alloced;
   }
   else
   {
@@ -70,6 +87,7 @@ AZ_INLINE az_result unsubscribe(az_mqtt5_rpc_client_hfsm* this_policy, az_event_
 }
 
 AZ_INLINE az_result _parse_response(
+    _az_hfsm *client_hfsm,
     az_mqtt5_recv_data* recv_data,
     az_mqtt5_property_binarydata* correlation_data,
     az_mqtt5_property_stringpair* status,
@@ -90,6 +108,13 @@ AZ_INLINE az_result _parse_response(
         = AZ_SPAN_FROM_STR("Cannot process response message without CorrelationData");
     return AZ_ERROR_ITEM_NOT_FOUND;
   }
+  else
+  {    
+    // send reference to correlation_data to the substate (will transition upon handling)
+    _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+      client_hfsm,
+      (az_event){ .type = AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED, .data = correlation_data }));
+  }
   out_rsp_data->correlation_id = az_mqtt5_property_get_binarydata(correlation_data);
   printf("Processing response for: %s\n", az_span_ptr(out_rsp_data->correlation_id));
 
@@ -103,6 +128,13 @@ AZ_INLINE az_result _parse_response(
   {
     out_rsp_data->error_message = AZ_SPAN_FROM_STR("Response does not have the 'status' property.");
     return AZ_ERROR_ITEM_NOT_FOUND;
+  }
+  else
+  {    
+    // send reference to correlation_data to the substate (will transition upon handling)
+    _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+      client_hfsm,
+      (az_event){ .type = AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED, .data = status }));
   }
 
   // parse status
@@ -150,7 +182,7 @@ AZ_INLINE az_result _parse_response(
   return AZ_OK;
 }
 
-AZ_INLINE az_result send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_hfsm* this_policy, az_event event, az_event_policy_handler source_state, az_event_policy_handler destination_state)
+AZ_INLINE az_result send_to_ready_if_topic_matches(az_mqtt5_rpc_client_hfsm* this_policy, az_event event, az_event_policy_handler source_state)
 {
   az_mqtt5_recv_data* recv_data = (az_mqtt5_recv_data*)event.data;
 
@@ -159,10 +191,10 @@ AZ_INLINE az_result send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_hfsm*
           this_policy->_internal.rpc_client->_internal.subscription_topic, recv_data->topic))
   {
     // transition states if requested
-    if (source_state != NULL && destination_state != NULL)
+    if (source_state != NULL)
     {
       _az_RETURN_IF_FAILED(
-        _az_hfsm_transition_peer(&this_policy->_internal.rpc_client_policy, source_state, destination_state));
+        _az_hfsm_transition_peer(&this_policy->_internal.rpc_client_policy, source_state, ready));
       // notify application that it can now send invoke requests
       // if ((az_event_policy*)this_policy->inbound_policy != NULL)
       // {
@@ -173,7 +205,24 @@ AZ_INLINE az_result send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_hfsm*
           this_policy->_internal.connection,
           (az_event){ .type = AZ_EVENT_RPC_CLIENT_READY_IND, .data = this_policy->_internal.rpc_client }));
 
+      // pass event to Ready to be processed there
+      _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+          &this_policy->_internal.rpc_client_policy, event));
     }
+  }
+
+  return AZ_OK;
+
+}
+
+AZ_INLINE az_result send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_hfsm* this_policy, az_event event)
+{
+  az_mqtt5_recv_data* recv_data = (az_mqtt5_recv_data*)event.data;
+
+  // Ensure pub is of the right topic
+  if (az_span_topic_matches_sub(
+          this_policy->_internal.rpc_client->_internal.subscription_topic, recv_data->topic))
+  {
 
     az_mqtt5_property_binarydata correlation_data;
     az_mqtt5_property_stringpair status;
@@ -186,7 +235,7 @@ AZ_INLINE az_result send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_hfsm*
                                                    .content_type = AZ_SPAN_EMPTY,
                                                    .correlation_id = AZ_SPAN_EMPTY };
 
-    az_result rc = _parse_response(recv_data, &correlation_data, &status, &error_message, &content_type, &resp_data);
+    az_result rc = _parse_response(&this_policy->_internal.rpc_client_policy, recv_data, &correlation_data, &status, &error_message, &content_type, &resp_data);
 
     // send to application to handle
     // if ((az_event_policy*)this_policy->inbound_policy != NULL)
@@ -351,7 +400,7 @@ static az_result idle(az_event_policy* me, az_event event)
     case AZ_MQTT5_EVENT_PUB_RECV_IND:
     {
       // If the pub is of the right topic, we must already be subscribed so transition to ready & send response to the application
-      _az_RETURN_IF_FAILED(send_resp_inbound_if_topic_matches(this_policy, event, idle, ready));
+      _az_RETURN_IF_FAILED(send_to_ready_if_topic_matches(this_policy, event, idle));
 
       break;
     }
@@ -427,7 +476,7 @@ static az_result subscribing(az_event_policy* me, az_event event)
     case AZ_MQTT5_EVENT_PUB_RECV_IND:
     {
       // If the pub is of the right topic, we must already be subscribed so transition to ready & send response to the application
-      _az_RETURN_IF_FAILED(send_resp_inbound_if_topic_matches(this_policy, event, subscribing, ready));
+      _az_RETURN_IF_FAILED(send_to_ready_if_topic_matches(this_policy, event, subscribing));
       
       break;
     }
@@ -553,9 +602,56 @@ static az_result ready(az_event_policy* me, az_event event)
     case AZ_MQTT5_EVENT_PUB_RECV_IND:
     {
       // If the pub is of the right topic, send response to the application. Stay in this state
-      _az_RETURN_IF_FAILED(send_resp_inbound_if_topic_matches(this_policy, event, NULL, NULL));
+      az_mqtt5_recv_data* recv_data = (az_mqtt5_recv_data*)event.data;
+
+      // Ensure pub is of the right topic
+      if (az_span_topic_matches_sub(
+              this_policy->_internal.rpc_client->_internal.subscription_topic, recv_data->topic))
+      {
+
+        az_mqtt5_property_binarydata correlation_data;
+        az_mqtt5_property_stringpair status;
+        az_mqtt5_property_stringpair error_message;
+        az_mqtt5_property_string content_type;
+
+        az_mqtt5_rpc_client_rsp_event_data resp_data = { .response_payload = AZ_SPAN_EMPTY,
+                                                      .status = AZ_MQTT5_RPC_STATUS_UNKNOWN,
+                                                      .error_message = AZ_SPAN_EMPTY,
+                                                      .content_type = AZ_SPAN_EMPTY,
+                                                      .correlation_id = AZ_SPAN_EMPTY };
+
+        az_result rc = _parse_response(&this_policy->_internal.rpc_client_policy, recv_data, &correlation_data, &status, &error_message, &content_type, &resp_data);
+
+        // send to application to handle
+        // if ((az_event_policy*)this_policy->inbound_policy != NULL)
+        // {
+        // az_event_policy_send_inbound_event((az_event_policy*)this_policy, (az_event){.type =
+        // AZ_EVENT_RPC_SERVER_EXECUTE_COMMAND_REQ, .data = data});
+        // }
+        _az_RETURN_IF_FAILED(_az_mqtt5_connection_api_callback(
+            this_policy->_internal.connection,
+            (az_event){ .type = az_result_failed(rc) ? AZ_EVENT_RPC_CLIENT_PARSE_ERROR_RSP : AZ_EVENT_RPC_CLIENT_RSP, .data = &resp_data }));
+
+        _az_RETURN_IF_FAILED(_az_hfsm_send_event(&this_policy->_internal.rpc_client_policy, (az_event){ .type = AZ_EVENT_RPC_CLIENT_FREE_PROPS, .data = NULL }));
+        // az_mqtt5_property_free_binarydata(&correlation_data);
+        // az_mqtt5_property_free_stringpair(&status);
+        // if (az_mqtt5_rpc_status_failed(resp_data.status))
+        // {
+        //   // TODO: Might need to check if this isn't empty
+          // az_mqtt5_property_free_stringpair(&error_message);
+        // }
+        // else
+        // {
+        //   az_mqtt5_property_free_string(&content_type);
+        // }
+      }
       break;
     }
+
+    case AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, ready, correlation_data_alloced));
+      _az_RETURN_IF_FAILED(_az_hfsm_send_event(&this_policy->_internal.rpc_client_policy, event));
+      break;
 
     default:
       // TODO
@@ -563,6 +659,97 @@ static az_result ready(az_event_policy* me, az_event event)
       break;
   }
 
+  return ret;
+}
+
+static az_result correlation_data_alloced(az_event_policy* me, az_event event)
+{
+  az_result ret = AZ_OK;
+  az_mqtt5_rpc_client_hfsm* this_policy = (az_mqtt5_rpc_client_hfsm*)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_rpc_client_hfsm/ready/correlation_data_alloced"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      // TODO 
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+      // TODO 
+      break;
+
+    case AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED:
+    {
+      az_mqtt5_property_binarydata* correlation_data = (az_mqtt5_property_binarydata*)event.data;
+      (void)correlation_data;
+      break;
+    }
+
+    case AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED:
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_substate((_az_hfsm*)me, correlation_data_alloced, status_alloced));
+      _az_RETURN_IF_FAILED(_az_hfsm_send_event(&this_policy->_internal.rpc_client_policy, event));
+      break;
+
+    case AZ_EVENT_RPC_CLIENT_FREE_PROPS:
+    {
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_superstate((_az_hfsm*)me, correlation_data_alloced, ready));
+      break;
+    }
+
+    default:
+      // TODO 
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
+  return ret;
+}
+
+static az_result status_alloced(az_event_policy* me, az_event event)
+{
+  az_result ret = AZ_OK;
+  // az_mqtt5_rpc_client_hfsm* this_policy = (az_mqtt5_rpc_client_hfsm*)me;
+  (void)me;
+
+  if (_az_LOG_SHOULD_WRITE(event.type))
+  {
+    _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_rpc_client_hfsm/ready/status_alloced"));
+  }
+
+  switch (event.type)
+  {
+    case AZ_HFSM_EVENT_ENTRY:
+      // TODO 
+      break;
+
+    case AZ_HFSM_EVENT_EXIT:
+      // TODO 
+      break;
+
+    case AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED:
+    {
+      az_mqtt5_property_stringpair* status = (az_mqtt5_property_stringpair*)event.data;
+      (void)status;
+      break;
+    }
+
+    case AZ_EVENT_RPC_CLIENT_FREE_PROPS:
+    {
+      _az_RETURN_IF_FAILED(_az_hfsm_transition_superstate((_az_hfsm*)me, status_alloced, ready));
+      // trigger freeing up the chain
+      // _az_RETURN_IF_FAILED(_az_hfsm_send_event(
+      //     &this_policy->_internal.rpc_client_policy, event));
+      break;
+    }
+
+    default:
+      // TODO 
+      ret = AZ_HFSM_RETURN_HANDLE_BY_SUPERSTATE;
+      break;
+  }
   return ret;
 }
 

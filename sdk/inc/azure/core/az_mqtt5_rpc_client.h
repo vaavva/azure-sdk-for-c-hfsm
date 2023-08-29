@@ -149,7 +149,12 @@ enum az_event_type_mqtt5_rpc_client
    * @brief Event representing the application requesting the RPC client to unsubscribe from the
    * response topic
    */
-  AZ_EVENT_RPC_CLIENT_UNSUB_REQ = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 6)
+  AZ_EVENT_RPC_CLIENT_UNSUB_REQ = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 6),
+  AZ_EVENT_RPC_CLIENT_CORRELATION_DATA_ALLOCED = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 7),
+  AZ_EVENT_RPC_CLIENT_STATUS_ALLOCED = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 8),
+  AZ_EVENT_RPC_CLIENT_ERR_MSG_ALLOCED = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 9),
+  AZ_EVENT_RPC_CLIENT_CONTENT_TYPE_ALLOCED = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 10),
+  AZ_EVENT_RPC_CLIENT_FREE_PROPS = _az_MAKE_EVENT(_az_FACILITY_RPC_CLIENT, 11),
 };
 
 typedef struct az_mqtt5_rpc_client_hfsm
@@ -221,11 +226,6 @@ typedef struct az_mqtt5_rpc_client_invoke_req_event_data
    * @brief The message id of the request to correlate with pubacks.
    */
   int32_t mid;
-
-  /**
-   * @brief Reference to the rpc client that should invoke this request
-  */
-  az_mqtt5_rpc_client* rpc_client;
 
   az_span rpc_server_client_id;
 
