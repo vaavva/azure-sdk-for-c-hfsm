@@ -278,6 +278,7 @@ static az_result waiting(az_event_policy* me, az_event event)
 
   if (_az_LOG_SHOULD_WRITE(event.type))
   {
+    printf("%s ", az_span_ptr(az_span_slice_to_end(this_policy->_internal.subscription_topic, az_span_size(this_policy->_internal.subscription_topic) - 201)));
     _az_LOG_WRITE(event.type, AZ_SPAN_FROM_STR("az_rpc_server/waiting"));
   }
 
