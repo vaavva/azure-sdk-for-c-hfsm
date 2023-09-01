@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <uuid/uuid.h>
 
 #include "rpc_client_pending_commands.h"
 #include <azure/az_core.h>
@@ -27,29 +26,35 @@
 #include <unistd.h>
 #endif
 
-static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/vaavva/repos/MqttApplicationSamples/scenarios/command/mobile-app.pem");
-static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("/home/vaavva/repos/MqttApplicationSamples/scenarios/command/mobile-app.key");
+static const az_span cert_path1 = AZ_SPAN_LITERAL_FROM_STR("<path to pem file>");
+static const az_span key_path1 = AZ_SPAN_LITERAL_FROM_STR("<path to key file>");
 static const az_span client_id = AZ_SPAN_LITERAL_FROM_STR("mobile-app");
 static const az_span username = AZ_SPAN_LITERAL_FROM_STR("mobile-app");
-static const az_span hostname = AZ_SPAN_LITERAL_FROM_STR("mqtt-samples-eg-pub-prev.westus2-1.ts.eventgrid.azure.net");
-static const az_span command_name = AZ_SPAN_LITERAL_FROM_STR("unlock");
+static const az_span hostname = AZ_SPAN_LITERAL_FROM_STR("<hostname>");
+static const az_span unlock_command_name = AZ_SPAN_LITERAL_FROM_STR("unlock");
+static const az_span getstats_command_name = AZ_SPAN_LITERAL_FROM_STR("getStats");
 static const az_span model_id = AZ_SPAN_LITERAL_FROM_STR("dtmi:rpc:samples:vehicle;1");
 static const az_span server_client_id = AZ_SPAN_LITERAL_FROM_STR("vehicle03");
 static const az_span content_type = AZ_SPAN_LITERAL_FROM_STR("application/json");
 
-static char response_topic_buffer[256];
-static char request_topic_buffer[256];
-static char subscription_topic_buffer[256];
+static char unlock_response_topic_buffer[256];
+static char unlock_request_topic_buffer[256];
+static char unlock_subscription_topic_buffer[256];
 
-static uint8_t correlation_id_buffers[RPC_CLIENT_MAX_PENDING_COMMANDS]
-                                     [AZ_MQTT5_RPC_CORRELATION_ID_LENGTH];
-static pending_commands_array pending_commands;
+static char getstats_response_topic_buffer[256];
+static char getstats_request_topic_buffer[256];
+static char getstats_subscription_topic_buffer[256];
+
+static pending_command* pending_commands = NULL;
 
 static az_mqtt5_connection mqtt_connection;
 static az_context connection_context;
 
-static az_mqtt5_rpc_client_policy rpc_client_policy;
-static az_mqtt5_rpc_client rpc_client;
+static az_mqtt5_rpc_client_hfsm unlock_rpc_client;
+static az_mqtt5_rpc_client unlock_underlying_rpc_client;
+
+static az_mqtt5_rpc_client_hfsm getstats_rpc_client;
+static az_mqtt5_rpc_client getstats_underlying_rpc_client;
 
 volatile bool sample_finished = false;
 
@@ -78,7 +83,8 @@ az_result mqtt_callback(az_mqtt5_connection* client, az_event event)
       az_mqtt5_connack_data* connack_data = (az_mqtt5_connack_data*)event.data;
       printf(LOG_APP "CONNACK: %d\n", connack_data->connack_reason);
 
-      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_client_subscribe_begin(&rpc_client_policy));
+      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_client_subscribe_begin(&getstats_rpc_client));
+      LOG_AND_EXIT_IF_FAILED(az_mqtt5_rpc_client_subscribe_begin(&unlock_rpc_client));
 
       break;
     }
@@ -93,9 +99,14 @@ az_result mqtt_callback(az_mqtt5_connection* client, az_event event)
     case AZ_EVENT_MQTT5_RPC_CLIENT_READY_IND:
     {
       az_mqtt5_rpc_client* ready_rpc_client = (az_mqtt5_rpc_client*)event.data;
-      if (ready_rpc_client == &rpc_client)
+      if (ready_rpc_client == &getstats_underlying_rpc_client)
       {
-        printf(LOG_APP "RPC Client Ready\n");
+        printf(LOG_APP "Get stats RPC Client Ready\n");
+        // invoke any queued requests that couldn't be sent earlier?
+      }
+      else if (ready_rpc_client == &unlock_underlying_rpc_client)
+      {
+        printf(LOG_APP "Unlock RPC Client Ready\n");
         // invoke any queued requests that couldn't be sent earlier?
       }
       else
@@ -106,10 +117,36 @@ az_result mqtt_callback(az_mqtt5_connection* client, az_event event)
       break;
     }
 
+    case AZ_MQTT5_EVENT_PUBACK_RSP:
+    {
+      az_mqtt5_puback_data* puback_data = (az_mqtt5_puback_data*)event.data;
+      pending_command* puback_cmd = get_command_with_mid(pending_commands, puback_data->id);
+      if (puback_cmd != NULL)
+      {
+        // printf("Pub for command %s with mid %d acknowledged\n", az_span_ptr(puback_cmd->command_name), puback_cmd->mid);
+        // TODO: handle no subscribers on pub topic scenario or other bad RCs
+      }
+      else
+      {
+        // ignore
+        // printf("Puback for unknown mid %d\n", puback_data->id);
+      }
+      break;
+    }
+
     case AZ_EVENT_MQTT5_RPC_CLIENT_RSP:
     {
+      az_result ret;
       az_mqtt5_rpc_client_rsp_event_data* recv_data
           = (az_mqtt5_rpc_client_rsp_event_data*)event.data;
+      // if (recv_data->parsing_failure)
+      // {
+      //   printf(
+      //       LOG_APP_ERROR "Parsing failure for command %s: %s\n",
+      //       az_span_ptr(recv_data->correlation_id),
+      //       az_span_ptr(recv_data->error_message));
+      //   ret = remove_command(&pending_commands, recv_data->correlation_id);
+      // }
       if (is_pending_command(pending_commands, recv_data->correlation_id))
       {
         if (recv_data->status != AZ_MQTT5_RPC_STATUS_OK)
@@ -136,24 +173,26 @@ az_result mqtt_callback(az_mqtt5_connection* client, az_event event)
                 az_span_ptr(recv_data->response_payload));
           }
         }
-        remove_command(&pending_commands, recv_data->correlation_id);
+        ret = remove_command(&pending_commands, recv_data->correlation_id);
       }
       else
       {
-        printf(LOG_APP_ERROR "Request with ");
-        print_correlation_id(recv_data->correlation_id);
-        printf("not found\n");
+        printf(
+            LOG_APP_ERROR "Request with correlation id: %s not found\n",
+            az_span_ptr(recv_data->correlation_id));
       }
+      (void)ret;
       break;
     }
 
-    case AZ_EVENT_MQTT5_RPC_CLIENT_ERROR_RSP:
+    case AZ_EVENT_MQTT5_RPC_CLIENT_PARSE_ERROR_RSP:
     {
       az_mqtt5_rpc_client_rsp_event_data* recv_data
           = (az_mqtt5_rpc_client_rsp_event_data*)event.data;
-      printf(LOG_APP_ERROR "Broker/Client failure for command ");
-      print_correlation_id(recv_data->correlation_id);
-      printf(": %s Status: %d\n", az_span_ptr(recv_data->error_message), recv_data->status);
+      printf(
+          LOG_APP_ERROR "Parsing failure for command %s: %s\n",
+          az_span_ptr(recv_data->correlation_id),
+          az_span_ptr(recv_data->error_message));
       remove_command(&pending_commands, recv_data->correlation_id);
       break;
     }
@@ -210,24 +249,40 @@ int main(int argc, char* argv[])
   LOG_AND_EXIT_IF_FAILED(az_mqtt5_connection_init(
       &mqtt_connection, &connection_context, &mqtt5, mqtt_callback, &connection_options));
 
-  az_mqtt5_property_bag property_bag;
-  mosquitto_property* mosq_prop = NULL;
-  LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&property_bag, &mqtt5, &mosq_prop));
+  az_mqtt5_property_bag unlock_property_bag;
+  mosquitto_property* unlock_mosq_prop = NULL;
+  LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&unlock_property_bag, &mqtt5, &unlock_mosq_prop));
 
-  LOG_AND_EXIT_IF_FAILED(az_rpc_client_policy_init(
-      &rpc_client_policy,
-      &rpc_client,
+  LOG_AND_EXIT_IF_FAILED(az_rpc_client_hfsm_init(
+      &unlock_rpc_client,
+      &unlock_underlying_rpc_client,
       &mqtt_connection,
-      property_bag,
+      unlock_property_bag,
       client_id,
       model_id,
-      command_name,
-      AZ_SPAN_FROM_BUFFER(response_topic_buffer),
-      AZ_SPAN_FROM_BUFFER(request_topic_buffer),
-      AZ_SPAN_FROM_BUFFER(subscription_topic_buffer),
+      unlock_command_name,
+      AZ_SPAN_FROM_BUFFER(unlock_response_topic_buffer),
+      AZ_SPAN_FROM_BUFFER(unlock_request_topic_buffer),
+      AZ_SPAN_FROM_BUFFER(unlock_subscription_topic_buffer),
       NULL));
 
-  LOG_AND_EXIT_IF_FAILED(pending_commands_array_init(&pending_commands, correlation_id_buffers));
+  az_mqtt5_property_bag getstats_property_bag;
+  mosquitto_property* getstats_mosq_prop = NULL;
+  LOG_AND_EXIT_IF_FAILED(az_mqtt5_property_bag_init(&getstats_property_bag, &mqtt5, &getstats_mosq_prop));
+
+  LOG_AND_EXIT_IF_FAILED(az_rpc_client_hfsm_init(
+      &getstats_rpc_client,
+      &getstats_underlying_rpc_client,
+      &mqtt_connection,
+      getstats_property_bag,
+      client_id,
+      model_id,
+      getstats_command_name,
+      AZ_SPAN_FROM_BUFFER(getstats_response_topic_buffer),
+      AZ_SPAN_FROM_BUFFER(getstats_request_topic_buffer),
+      AZ_SPAN_FROM_BUFFER(getstats_subscription_topic_buffer),
+      NULL));
+
   LOG_AND_EXIT_IF_FAILED(az_mqtt5_connection_open(&mqtt_connection));
 
   az_result rc;
@@ -238,9 +293,7 @@ int main(int argc, char* argv[])
     pending_command* expired_command = get_first_expired_command(pending_commands);
     while (expired_command != NULL)
     {
-      printf(LOG_APP_ERROR "command ");
-      print_correlation_id(expired_command->correlation_id);
-      printf(" expired\n");
+      printf(LOG_APP_ERROR "command %s : %d expired\n", az_span_ptr(expired_command->command_name), expired_command->mid);
       az_result ret = remove_command(&pending_commands, expired_command->correlation_id);
       if (ret != AZ_OK)
       {
@@ -255,24 +308,44 @@ int main(int argc, char* argv[])
 #endif
     printf(LOG_APP "Waiting...\r");
     fflush(stdout);
-    if (i % 15 == 0)
+    if (i % 9 == 0)
     {
-      uuid_t new_uuid;
-      uuid_generate(new_uuid);
       az_mqtt5_rpc_client_invoke_req_event_data command_data
-          = { .correlation_id
-              = az_span_create((uint8_t*)new_uuid, AZ_MQTT5_RPC_CORRELATION_ID_LENGTH),
+          = { .correlation_id = az_rpc_client_generate_correlation_id(),
               .content_type = content_type,
               .rpc_server_client_id = server_client_id,
               .request_payload = AZ_SPAN_FROM_STR(
                   "{\"RequestTimestamp\":1691530585198,\"RequestedFrom\":\"mobile-app\"}") };
-      LOG_AND_EXIT_IF_FAILED(
-          add_command(&pending_commands, command_data.correlation_id, command_name, 10000));
-      rc = az_mqtt5_rpc_client_invoke_begin(&rpc_client_policy, &command_data);
+      rc = az_mqtt5_rpc_client_invoke_begin(&unlock_rpc_client, &command_data);
+
       if (az_result_failed(rc))
       {
-        printf(LOG_APP_ERROR "Failed to invoke command with rc: %s\n", az_result_to_string(rc));
-        remove_command(&pending_commands, command_data.correlation_id);
+        printf(LOG_APP_ERROR "Failed to invoke unlock command with rc: %s\n", az_result_to_string(rc));
+      }
+      else
+      {
+        pending_commands
+            = add_command(pending_commands, command_data.correlation_id, unlock_command_name, command_data.mid, 10000);
+      }
+    }
+    if (i % 7 == 0)
+    {
+      az_mqtt5_rpc_client_invoke_req_event_data command_data
+          = { .correlation_id = az_rpc_client_generate_correlation_id(),
+              .content_type = content_type,
+              .rpc_server_client_id = server_client_id,
+              .request_payload = AZ_SPAN_FROM_STR(
+                  "{\"RequestTimestamp\":1691530585198,\"RequestedFrom\":\"mobile-app\"}") };
+      rc = az_mqtt5_rpc_client_invoke_begin(&getstats_rpc_client, &command_data);
+
+      if (az_result_failed(rc))
+      {
+        printf(LOG_APP_ERROR "Failed to invoke getstats command with rc: %s\n", az_result_to_string(rc));
+      }
+      else
+      {
+        pending_commands
+            = add_command(pending_commands, command_data.correlation_id, getstats_command_name, command_data.mid, 10000);
       }
     }
   }
@@ -287,7 +360,8 @@ int main(int argc, char* argv[])
   }
 
   // mosquitto allocates the property bag for us, but we're responsible for free'ing it
-  mosquitto_property_free_all(&mosq_prop);
+  mosquitto_property_free_all(&unlock_mosq_prop);
+  mosquitto_property_free_all(&getstats_mosq_prop);
 
   if (mosquitto_lib_cleanup() != MOSQ_ERR_SUCCESS)
   {

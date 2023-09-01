@@ -182,6 +182,12 @@ az_mqtt5_rpc_status execute_command(unlock_request req)
       LOG_APP "Executing command from: %s at: %ld\n",
       az_span_ptr(req.requested_from),
       req.request_timestamp);
+  // for (int i = 5; i > 0; i--)
+  // {
+  //   LOG_AND_EXIT_IF_FAILED(az_platform_sleep_msec(1000));
+  //   printf(LOG_APP "Executing %ds        \r", i);
+  //   fflush(stdout);
+  // }
   return AZ_MQTT5_RPC_STATUS_OK;
 }
 
@@ -331,7 +337,8 @@ az_result mqtt_callback(az_mqtt5_connection* client, az_event event)
       {
         // Mark that there's a pending command to be executed
         LOG_AND_EXIT_IF_FAILED(copy_execution_event_data(&pending_command, data));
-        start_timer(NULL, 10000);
+        // start_timer(NULL, 10000);
+        start_timer(NULL, 2000);
         printf(LOG_APP "Added command to queue\n");
       }
 
