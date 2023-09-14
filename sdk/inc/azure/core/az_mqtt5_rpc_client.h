@@ -438,6 +438,50 @@ AZ_NODISCARD az_result az_rpc_client_policy_init(
     az_span subscribe_topic_buffer,
     az_mqtt5_rpc_client_options* options);
 
+
+// ~~~~~~~~~~~~~~~~~~~~ RPC Client Pending Commands API ~~~~~~~~~~~~~~~~~
+
+// Application can define this value to control how much memory is used to track pending commands
+// (and how many can be in flight at once)
+#ifndef RPC_CLIENT_MAX_PENDING_COMMANDS
+#define RPC_CLIENT_MAX_PENDING_COMMANDS 5
+#endif
+
+typedef struct pending_command
+{
+  az_span correlation_id;
+  az_context context;
+  az_span command_name;
+} pending_command;
+
+typedef struct pending_commands_array
+{
+  int32_t pending_commands_count;
+  az_platform_mutex mutex;
+  pending_command commands[RPC_CLIENT_MAX_PENDING_COMMANDS];
+} pending_commands_array;
+
+AZ_NODISCARD az_result pending_commands_array_init(
+    pending_commands_array* pending_commands,
+    uint8_t correlation_id_buffers[RPC_CLIENT_MAX_PENDING_COMMANDS]
+                                  [AZ_MQTT5_RPC_CORRELATION_ID_LENGTH]);
+
+AZ_NODISCARD az_result add_command(
+    pending_commands_array* pending_commands,
+    az_span correlation_id,
+    az_span command_name,
+    int32_t timeout_ms);
+
+az_result remove_command(pending_commands_array* pending_commands, az_span correlation_id);
+
+AZ_NODISCARD bool is_command_pending(pending_commands_array pending_commands, az_span correlation_id);
+
+/**
+ * @brief Get the first expired command from the pending commands array.
+ *
+ */
+AZ_NODISCARD pending_command* get_first_expired_command(pending_commands_array pending_commands);
+
 #include <azure/core/_az_cfg_suffix.h>
 
 #endif // _az_MQTT5_RPC_CLIENT_H

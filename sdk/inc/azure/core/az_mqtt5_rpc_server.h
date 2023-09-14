@@ -312,6 +312,69 @@ AZ_NODISCARD az_result az_mqtt5_rpc_server_execution_finish(
     az_mqtt5_rpc_server_policy* client,
     az_mqtt5_rpc_server_execution_rsp_event_data* data);
 
+// ~~~~~~~~~~~~~~~~~~~~ RPC Server Pending Commands API ~~~~~~~~~~~~~~~~~
+
+// Application can define this value to control how much memory is used to track pending commands
+// (and how many can be in flight at once)
+#ifndef RPC_SERVER_MAX_PENDING_COMMANDS
+#define RPC_SERVER_MAX_PENDING_COMMANDS 5
+#endif
+
+typedef struct az_mqtt5_rpc_server_pending_command
+{
+  az_platform_mutex mutex;
+  _az_platform_timer timer;
+  az_mqtt5_rpc_server_policy* rpc_server_policy;
+  az_span content_type_buffer;
+  az_span response_topic_buffer;
+  az_span request_topic_buffer;
+  az_span correlation_id_buffer;
+  az_span request_data_buffer;
+  az_span response_payload_buffer;
+  /**
+   * @brief The correlation id of the command.
+   */
+  az_span correlation_id;
+  /**
+   * @brief The topic to send the response to.
+   */
+  az_span response_topic;
+  /**
+   * @brief The request topic.
+   */
+  az_span request_topic;
+  /**
+   * @brief The command request payload.
+   */
+  az_span request_data;
+  /**
+   * @brief The content type of the request.
+   */
+  az_span content_type;
+} az_mqtt5_rpc_server_pending_command;
+
+AZ_NODISCARD az_result az_mqtt5_rpc_server_pending_command_init(
+    az_mqtt5_rpc_server_pending_command* pending_server_command,
+    az_span content_type_buffer,
+    az_span response_topic_buffer,
+    az_span request_topic_buffer,
+    az_span correlation_id_buffer,
+    az_span request_data_buffer,
+    az_span response_payload_buffer
+    );
+
+AZ_NODISCARD az_result az_mqtt5_rpc_server_pending_command_add(
+    az_mqtt5_rpc_server_pending_command* pending_server_command,
+    az_mqtt5_rpc_server_execution_req_event_data data,
+    int32_t delay_milliseconds,
+    az_mqtt5_rpc_server_policy* rpc_server_policy
+    );
+
+AZ_NODISCARD az_result az_mqtt5_rpc_server_pending_command_check_and_execute(
+    az_mqtt5_rpc_server_pending_command* pending_server_command,
+    az_span content_type,
+    az_mqtt5_rpc_status (execute_command)(az_span request_data, az_span request_topic, az_span response)
+    );
 #include <azure/core/_az_cfg_suffix.h>
 
 #endif // _az_MQTT5_RPC_SERVER_H
