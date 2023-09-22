@@ -371,36 +371,68 @@ AZ_INLINE az_result _parse_response(
     az_mqtt5_property_string* content_type,
     az_mqtt5_rpc_client_rsp_event_data* out_rsp_data)
 {
-  out_rsp_data->response_payload = recv_data->payload;
+  //// Perform all allocating property bag reads ////
+  /// WARNING: DO NOT RETURN FROM THIS FUNCTION BEFORE READING ALL PROPERTIES ///
 
-  if (recv_data->properties == NULL)
-  {
-    out_rsp_data->error_message = AZ_SPAN_FROM_STR("Response does not have properties.");
-    return AZ_ERROR_ITEM_NOT_FOUND;
-  }
-
+  // Read the correlation data
   if (az_result_failed(az_mqtt5_property_bag_read_binarydata(
           recv_data->properties, AZ_MQTT5_PROPERTY_TYPE_CORRELATION_DATA, correlation_data)))
   {
-    out_rsp_data->error_message
-        = AZ_SPAN_FROM_STR("Cannot process response message without CorrelationData");
-    return AZ_ERROR_ITEM_NOT_FOUND;
+    out_rsp_data->correlation_id = AZ_SPAN_EMPTY;
   }
-  out_rsp_data->correlation_id = az_mqtt5_property_get_binarydata(correlation_data);
-
-  // read the status of the response
+  // Read the status of the response
   if (az_result_failed(az_mqtt5_property_bag_find_stringpair(
           recv_data->properties,
           AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
           AZ_SPAN_FROM_STR(AZ_MQTT5_RPC_STATUS_PROPERTY_NAME),
           status)))
   {
-    out_rsp_data->error_message = AZ_SPAN_FROM_STR("Response does not have the 'status' property.");
+    out_rsp_data->status = AZ_MQTT5_RPC_STATUS_UNKNOWN;
+  }
+  // Read the error message
+  if (az_result_failed(az_mqtt5_property_bag_find_stringpair(
+            recv_data->properties,
+            AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
+            AZ_SPAN_FROM_STR(AZ_MQTT5_RPC_STATUS_MESSAGE_PROPERTY_NAME),
+            error_message)))
+  {
+    out_rsp_data->error_message = AZ_SPAN_EMPTY;
+  }
+  // Read the content type
+  if (az_result_failed(az_mqtt5_property_bag_read_string(
+            recv_data->properties, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, content_type)))
+  {
+    out_rsp_data->content_type = AZ_SPAN_EMPTY;
+  }
+
+  //// Parse the property bag values into the out_rsp_data struct ////
+  // Beyond this point is safe to return from this function //
+
+  out_rsp_data->response_payload = recv_data->payload;
+
+  // @Raul: this doesn't check anything since the null property bag is obfuscated. Not sure if this would be a useful check to be able to do
+  // if (recv_data->properties == NULL)
+  // {
+  //   out_rsp_data->error_message = AZ_SPAN_FROM_STR("Response does not have properties.");
+  //   return AZ_ERROR_ITEM_NOT_FOUND;
+  // }
+
+  // Put the correlation id in out_rsp_data if it was in the property bag, otherwise return an error
+  out_rsp_data->correlation_id = az_mqtt5_property_get_binarydata(correlation_data);
+  if (az_span_is_content_equal(out_rsp_data->correlation_id, AZ_SPAN_EMPTY))
+  {
+    out_rsp_data->error_message
+        = AZ_SPAN_FROM_STR("Cannot process response message without CorrelationData");
     return AZ_ERROR_ITEM_NOT_FOUND;
   }
 
-  // parse status
+  // Parse status and put it in out_rsp_data if it was in the property bag and valid, otherwise return an error
   az_span status_str = az_mqtt5_property_stringpair_get_value(status);
+  if (az_span_is_content_equal(status_str, AZ_SPAN_EMPTY))
+  {
+    out_rsp_data->error_message = AZ_SPAN_FROM_STR("Response does not have the 'status' property.");
+    return AZ_ERROR_ITEM_NOT_FOUND;
+  }
   if (az_result_failed((az_span_atoi32(status_str, (int32_t*)&out_rsp_data->status))))
   {
     out_rsp_data->error_message = AZ_SPAN_FROM_STR("Status property contains invalid value.");
@@ -410,14 +442,7 @@ AZ_INLINE az_result _parse_response(
   if (az_mqtt5_rpc_status_failed(out_rsp_data->status))
   {
     // read the error message if there is one
-    if (!az_result_failed(az_mqtt5_property_bag_find_stringpair(
-            recv_data->properties,
-            AZ_MQTT5_PROPERTY_TYPE_USER_PROPERTY,
-            AZ_SPAN_FROM_STR(AZ_MQTT5_RPC_STATUS_MESSAGE_PROPERTY_NAME),
-            error_message)))
-    {
-      out_rsp_data->error_message = az_mqtt5_property_stringpair_get_value(error_message);
-    }
+    out_rsp_data->error_message = az_mqtt5_property_stringpair_get_value(error_message);
   }
   else
   {
@@ -427,12 +452,8 @@ AZ_INLINE az_result _parse_response(
       return AZ_ERROR_ITEM_NOT_FOUND;
     }
     // read the content type so the application can properly deserialize the request
-    if (!az_result_failed(az_mqtt5_property_bag_read_string(
-            recv_data->properties, AZ_MQTT5_PROPERTY_TYPE_CONTENT_TYPE, content_type)))
-    {
-      out_rsp_data->content_type = az_mqtt5_property_get_string(content_type);
-    }
-    else
+    out_rsp_data->content_type = az_mqtt5_property_get_string(content_type);
+    if (az_span_is_content_equal(out_rsp_data->content_type, AZ_SPAN_EMPTY))
     {
       out_rsp_data->error_message
           = AZ_SPAN_FROM_STR("Response does not have the 'content type' property.");
@@ -454,10 +475,10 @@ send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_policy* this_policy, az_e
           this_policy->_internal.rpc_client->_internal.subscription_topic, recv_data->topic))
   {
 
-    az_mqtt5_property_binarydata correlation_data = AZ_MQTT5_PROPERTY_BINARYDATA_EMPTY;
-    az_mqtt5_property_stringpair status = AZ_MQTT5_PROPERTY_STRINGPAIR_EMPTY;
-    az_mqtt5_property_stringpair error_message = AZ_MQTT5_PROPERTY_STRINGPAIR_EMPTY;
-    az_mqtt5_property_string content_type = AZ_MQTT5_PROPERTY_STRING_EMPTY;
+    az_mqtt5_property_binarydata correlation_data;
+    az_mqtt5_property_stringpair status;
+    az_mqtt5_property_stringpair error_message;
+    az_mqtt5_property_string content_type;
 
     az_mqtt5_rpc_client_rsp_event_data resp_data = { .response_payload = AZ_SPAN_EMPTY,
                                                      .status = AZ_MQTT5_RPC_STATUS_UNKNOWN,
@@ -465,8 +486,9 @@ send_resp_inbound_if_topic_matches(az_mqtt5_rpc_client_policy* this_policy, az_e
                                                      .content_type = AZ_SPAN_EMPTY,
                                                      .correlation_id = AZ_SPAN_EMPTY };
 
+    // transition to substate
     az_result rc = _parse_response(
-        recv_data, &correlation_data, &status, &error_message, &content_type, &resp_data);
+      recv_data, &correlation_data, &status, &error_message, &content_type, &resp_data);
 
     // send to application to handle
     // if ((az_event_policy*)this_policy->inbound_policy != NULL)

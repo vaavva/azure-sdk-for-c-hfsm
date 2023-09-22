@@ -482,6 +482,7 @@ AZ_NODISCARD az_result az_mqtt5_property_bag_read_string(
 
   if (prop == NULL)
   {
+    out_prop_str->str = AZ_SPAN_EMPTY;
     return AZ_ERROR_ITEM_NOT_FOUND;
   }
 
@@ -523,6 +524,8 @@ AZ_NODISCARD az_result az_mqtt5_property_bag_find_stringpair(
       free((void*)value_str);
     }
   }
+  out_prop_strpair->key = AZ_SPAN_EMPTY;
+  out_prop_strpair->value = AZ_SPAN_EMPTY;
 
   return AZ_ERROR_ITEM_NOT_FOUND;
 }
@@ -579,9 +582,9 @@ AZ_NODISCARD az_result az_mqtt5_property_bag_read_binarydata(
 
   if (prop == NULL)
   {
+    out_prop_bindata->bindata = AZ_SPAN_EMPTY;
     return AZ_ERROR_ITEM_NOT_FOUND;
   }
-
   out_prop_bindata->bindata = az_span_create(out_bin, out_bin_size);
 
   return AZ_OK;
